@@ -1,5 +1,7 @@
 use std::fmt::Debug;
 
+use anyhow::{Error, Result};
+
 use crate::{benchmark_param::BenchmarkConfig, model::tauri_com::Task};
 
 pub trait Client<T, C>: Send + Sync
@@ -11,7 +13,7 @@ where
     fn setup_clients(
         &self,
         config: &BenchmarkConfig<T, C>,
-    ) -> impl std::future::Future<Output = Result<Vec<Self::Item>, Box<dyn std::error::Error>>> + Send;
+    ) -> impl std::future::Future<Output = Result<Vec<Self::Item>, Error>> + Send;
 
     fn wait_for_connections(
         &self,
@@ -21,7 +23,7 @@ where
     fn on_connect_success(
         &self,
         client: &mut Self::Item,
-    ) -> impl std::future::Future<Output = ()> + Send;
+    ) -> impl std::future::Future<Output = Result<(), Error> > + Send;
     fn spawn_message(
         &self,
         clients: Vec<Self::Item>,

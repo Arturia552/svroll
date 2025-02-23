@@ -6,19 +6,11 @@
       row-key="fieldName"
       :tree-props="{ children: 'children' }"
     >
-      <el-table-column
-        prop="fieldName"
-        label="键值"
-        min-width="20%"
-      ></el-table-column>
-      <el-table-column
-        prop="fieldType"
-        label="数据类型"
-        min-width="20%"
-      ></el-table-column>
+      <el-table-column prop="fieldName" label="键值" min-width="20%" />
+      <el-table-column prop="fieldType" label="数据类型" min-width="20%" />
       <el-table-column prop="minValue" label="最小值" min-width="20%">
         <template #default="scope">
-          <onClickOutside
+          <on-click-outside
             v-if="scope.row.editing1"
             @trigger="scope.row.editing1 = false"
           >
@@ -28,19 +20,18 @@
               @blur="
                 blurInput(scope.row, scope.row.minValue, 'minValue', 'editing1')
               "
-            ></el-input>
-          </onClickOutside>
+            />
+          </on-click-outside>
           <span
             v-else
             style="display: block; width: 100%"
             @dblclick="scope.row.editing1 = true"
-            >{{ scope.row.minValue ?? "--" }}</span
-          >
+          >{{ scope.row.minValue ?? "--" }}</span>
         </template>
       </el-table-column>
       <el-table-column prop="maxValue" label="最大值" min-width="20%">
         <template #default="scope">
-          <onClickOutside
+          <on-click-outside
             v-if="scope.row.editing2"
             @trigger="scope.row.editing2 = false"
           >
@@ -50,19 +41,18 @@
               @blur="
                 blurInput(scope.row, scope.row.maxValue, 'maxValue', 'editing2')
               "
-            ></el-input>
-          </onClickOutside>
+            />
+          </on-click-outside>
           <span
-            style="display: block; width: 100%"
             v-else
+            style="display: block; width: 100%"
             @dblclick="scope.row.editing2 = true"
-            >{{ scope.row.maxValue ?? "--" }}</span
-          >
+          >{{ scope.row.maxValue ?? "--" }}</span>
         </template>
       </el-table-column>
       <el-table-column prop="possibleValues" label="有效值" min-width="20%">
         <template #default="scope">
-          <onClickOutside
+          <on-click-outside
             v-if="
               scope.row.editing3 && scope.row.fieldType !== FieldTypeEnum.Object
             "
@@ -79,25 +69,24 @@
                   'editing3'
                 )
               "
-            ></el-input>
-          </onClickOutside>
+            />
+          </on-click-outside>
           <span
-            style="display: block; width: 100%"
             v-else
+            style="display: block; width: 100%"
             @dblclick="scope.row.editing3 = true"
-            >{{ scope.row.possibleValues ?? "--" }}</span
-          >
-        </template></el-table-column
-      >
+          >{{ scope.row.possibleValues ?? "--" }}</span>
+        </template>
+      </el-table-column>
     </el-table>
   </div>
 </template>
 <script setup lang="ts" name="DataModel">
 import { convertToJsonStruct } from "@/hooks/processJsonStruct";
-import { FieldTypeEnum, JsonStruct, MqttConfig } from "@/types/mqttConfig";
+import { FieldTypeEnum, JsonStruct } from "@/types/mqttConfig";
 import { OnClickOutside } from "@vueuse/components";
 
-const config = inject<any>("config")
+const config = inject<any>("config");
 const loading = ref<boolean>(true);
 
 const convertJsonStructToJson = (jsonStructArray: JsonStruct[]): object => {
@@ -131,19 +120,28 @@ const blurInput = (
   }
 };
 
-watch(() => config.value.fieldStruct, (newVal) => {
-  if (newVal === undefined) return;
-  config.value.fieldStruct = newVal
-  config.value.sendData = JSON.stringify(convertJsonStructToJson(newVal));
-},{deep: true});
+watch(
+  () => config.value.fieldStruct,
+  (newVal) => {
+    if (newVal === undefined) return;
+    config.value.fieldStruct = newVal;
+    config.value.sendData = JSON.stringify(convertJsonStructToJson(newVal));
+  },
+  { deep: true }
+);
 
 onMounted(() => {
   loading.value = true;
   let parsedData = {};
   try {
     parsedData = JSON.parse(config.value.sendData);
-  } catch (e) {}
-  config.value.fieldStruct = convertToJsonStruct(parsedData, config.value.fieldStruct);
+  } catch (e) {
+    console.error(e);
+  }
+  config.value.fieldStruct = convertToJsonStruct(
+    parsedData,
+    config.value.fieldStruct
+  );
   loading.value = false;
 });
 </script>

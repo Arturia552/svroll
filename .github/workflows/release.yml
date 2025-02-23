@@ -78,7 +78,7 @@ jobs:
                   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
               with:
                   tagName: ${{ github.ref_name }} 
-                  releaseName: 'svroll v__VERSION__' 
+                  releaseName: 'svroll' 
                   releaseDraft: false
                   prerelease: false
                   publish: true

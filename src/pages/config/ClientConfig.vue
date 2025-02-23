@@ -1,13 +1,15 @@
 <template>
   <div>
-    <el-button icon="Files" @click="resolveClientFile"></el-button>
+    <el-button icon="Files" @click="resolveClientFile" />
     <el-popconfirm width="220" title="客户端数量" @cancel="onCancel" @confirm="confirm">
       <template #reference>
         <el-button>随机生成</el-button>
       </template>
       <template #actions="{ confirm, cancel }">
-        <el-input style="margin-bottom: 10px;" size="small" v-model="generateSize" />
-        <el-button size="small" @click="cancel">取消</el-button>
+        <el-input v-model="generateSize" style="margin-bottom: 10px;" size="small" />
+        <el-button size="small" @click="cancel">
+          取消
+        </el-button>
         <el-button type="danger" size="small" @click="confirm">
           生成
         </el-button>

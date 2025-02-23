@@ -1,5 +1,5 @@
 <template>
-  <div ref="editor" class="edit-container"></div>
+  <div ref="editor" class="edit-container" />
 </template>
 <script setup name="CodeEditor" lang="ts">
 import * as monaco from "monaco-editor";
@@ -11,9 +11,8 @@ const props = defineProps({
 });
 const modelValue = defineModel<string>("jsonEdit");
 const editor = ref(null);
-const instant = ref(null);
 onMounted(() => {
-  let editorInstance = monaco.editor.create(editor.value, {
+  const editorInstance = monaco.editor.create(editor.value, {
     language: props.language,
     minimap: {
       enabled: false,

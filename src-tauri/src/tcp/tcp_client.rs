@@ -6,6 +6,7 @@ use std::{
 use crate::{
     benchmark_param::BenchmarkConfig, model::tauri_com::Task, mqtt::Client, TCP_CLIENT_CONTEXT,
 };
+use anyhow::{Error, Result};
 use serde::Deserialize;
 use tokio::{
     io::AsyncWriteExt,
@@ -15,6 +16,7 @@ use tokio::{
 };
 use tokio_stream::StreamExt;
 use tokio_util::codec::FramedRead;
+use tracing::error;
 
 use super::RequestCodec;
 
@@ -105,7 +107,7 @@ impl Client<Vec<u8>, TcpClientData> for TcpClient {
     async fn setup_clients(
         &self,
         config: &BenchmarkConfig<Vec<u8>, TcpClientData>,
-    ) -> Result<Vec<TcpClientData>, Box<dyn std::error::Error>> {
+    ) -> Result<Vec<TcpClientData>, Error> {
         let clients = vec![];
 
         let semaphore = Arc::new(Semaphore::new(config.get_max_connect_per_second()));
@@ -144,14 +146,14 @@ impl Client<Vec<u8>, TcpClientData> for TcpClient {
                         self.on_connect_success(client).await;
                     }
                     Err(e) => {
-                        println!("{}", format!("连接失败: {}", e))
+                        error!("{}", format!("连接失败: {}", e));
                     }
                 }
             }
         }
     }
 
-    async fn on_connect_success(&self, client: &mut TcpClientData) {
+    async fn on_connect_success(&self, client: &mut TcpClientData) -> Result<(), Error> {
         if let Some(mut writer) = TCP_CLIENT_CONTEXT.get_mut(&client.get_mac()) {
             if self.get_enable_register() {
                 // 发送注册包
@@ -161,6 +163,7 @@ impl Client<Vec<u8>, TcpClientData> for TcpClient {
                 }
             }
         }
+        Ok(())
     }
 
     async fn spawn_message(

@@ -1572,33 +1572,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "iot-connect-app"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "bytes",
- "chrono",
- "csv",
- "dashmap",
- "hex",
- "once_cell",
- "paho-mqtt",
- "rand 0.8.5",
- "serde",
- "serde_json",
- "serde_yaml",
- "sysinfo",
- "tauri",
- "tauri-build",
- "tempfile",
- "tokio",
- "tokio-stream",
- "tokio-util",
- "tracing",
- "tracing-subscriber",
-]
-
-[[package]]
 name = "itoa"
 version = "0.4.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2920,6 +2893,33 @@ name = "strsim"
 version = "0.11.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7da8b5736845d9f2fcb837ea5d9e2628564b3b043a70948a3f0b778838c5fb4f"
+
+[[package]]
+name = "svroll"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "bytes",
+ "chrono",
+ "csv",
+ "dashmap",
+ "hex",
+ "once_cell",
+ "paho-mqtt",
+ "rand 0.8.5",
+ "serde",
+ "serde_json",
+ "serde_yaml",
+ "sysinfo",
+ "tauri",
+ "tauri-build",
+ "tempfile",
+ "tokio",
+ "tokio-stream",
+ "tokio-util",
+ "tracing",
+ "tracing-subscriber",
+]
 
 [[package]]
 name = "syn"

@@ -6,7 +6,7 @@
     "distDir": "../dist"
   },
   "package": {
-    "productName": "iot-connect-app",
+    "productName": "svroll",
     "version": "0.1.0"
   },
   "tauri": {
@@ -18,11 +18,23 @@
       },
       "dialog": {
         "all": true
+      },
+      "fs": {
+        "readFile": true,
+        "writeFile": true,
+        "createDir": true,
+        "removeDir": true,
+        "removeFile": true,
+        "readDir": true,
+        "exists": true
+      },
+      "path": {
+        "all": true
       }
     },
     "windows": [
       {
-        "title": "iot-connect-app",
+        "title": "svroll",
         "width": 700,
         "height": 500
       }
@@ -33,7 +45,7 @@
     "bundle": {
       "active": true,
       "targets": "all",
-      "identifier": "com.iot-connect-app.app",
+      "identifier": "com.svroll.app",
       "icon": [
         "icons/32x32.png",
         "icons/128x128.png",

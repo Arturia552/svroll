@@ -6,17 +6,16 @@ use std::{
     time::Duration,
 };
 
+use anyhow::{Error, Result};
 use paho_mqtt::{
-    disconnect_options, AsyncClient, ConnectOptionsBuilder, CreateOptionsBuilder,
-    DisconnectOptionsBuilder, Message,
+    AsyncClient, ConnectOptionsBuilder, CreateOptionsBuilder, DisconnectOptionsBuilder, Message,
 };
 use serde::{Deserialize, Serialize};
-use serde_json::{Map, Value};
 use tokio::{
     sync::Semaphore,
     time::{sleep, Instant},
 };
-use tracing::info;
+use tracing::{error, info};
 
 use crate::{
     benchmark_param::BenchmarkConfig, model::tauri_com::Task, MqttSendData, TopicWrap,
@@ -98,7 +97,12 @@ impl MqttClient {
                         let register_topic = self.get_register_topic();
                         let reg_sub_topic_wrap = register_topic.unwrap();
                         let reg_sub_topic = reg_sub_topic_wrap.get_subscribe_topic().unwrap();
-                        let extra_key = reg_sub_topic_wrap.subscribe.clone().unwrap().extra_key.unwrap();
+                        let extra_key = reg_sub_topic_wrap
+                            .subscribe
+                            .clone()
+                            .unwrap()
+                            .extra_key
+                            .unwrap();
                         // 检查真实主题是否为注册包回复
                         if real_topic == reg_sub_topic {
                             // 检查JSON对象中是否存在"device_key"
@@ -125,7 +129,7 @@ impl Client<MqttSendData, MqttClientData> for MqttClient {
     async fn setup_clients(
         &self,
         config: &BenchmarkConfig<MqttSendData, MqttClientData>,
-    ) -> Result<Vec<AsyncClient>, Box<dyn std::error::Error>> {
+    ) -> Result<Vec<AsyncClient>, Error> {
         let mut clients = vec![];
 
         let broker = config.get_broker();
@@ -162,7 +166,10 @@ impl Client<MqttSendData, MqttClientData> for MqttClient {
                 let start = Instant::now();
                 match cli.connect(conn_opts).await {
                     Ok(_) => {
-                        mqtt_client.on_connect_success(&mut cli).await;
+                       match mqtt_client.on_connect_success(&mut cli).await {
+                           Ok(_) => {},
+                           Err(_) => todo!(),
+                       }
                     }
                     Err(_) => todo!(),
                 }
@@ -179,7 +186,7 @@ impl Client<MqttSendData, MqttClientData> for MqttClient {
         Ok(clients)
     }
 
-    async fn on_connect_success(&self, cli: &mut Self::Item) {
+    async fn on_connect_success(&self, cli: &mut Self::Item) -> Result<(), Error> {
         // 注册包机制启用判断
         if self.get_enable_register() {
             match self.get_register_topic() {
@@ -208,16 +215,20 @@ impl Client<MqttSendData, MqttClientData> for MqttClient {
                     } else {
                         let disconnect_options = DisconnectOptionsBuilder::new().finalize();
                         cli.disconnect(disconnect_options);
+                        error!("注册主题配置错误");
+                        return Err(Error::msg("注册主题配置错误"));
                     }
                 }
                 None => {
                     // 断开连接
                     let disconnect_options = DisconnectOptionsBuilder::new().finalize();
                     cli.disconnect(disconnect_options);
-                    println!("没有配置注册主题");
+                    error!("没有配置注册主题");
+                    return Err(Error::msg("没有配置注册主题"));
                 }
             }
         }
+        Ok(())
     }
 
     async fn spawn_message(

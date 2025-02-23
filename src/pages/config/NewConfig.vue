@@ -1,21 +1,21 @@
 <template>
-  <el-tabs class="basic-tabs" v-model="activeName">
-    <el-tab-pane label="基础配置" name="basic"></el-tab-pane>
-    <el-tab-pane label="客户端配置" name="client"></el-tab-pane>
-    <el-tab-pane label="数据配置" name="data"></el-tab-pane>
+  <el-tabs v-model="activeName" class="basic-tabs">
+    <el-tab-pane label="基础配置" name="basic" />
+    <el-tab-pane label="客户端配置" name="client" />
+    <el-tab-pane label="数据配置" name="data" />
   </el-tabs>
 
-  <DataModel
+  <data-model
     v-show="activeName === 'data'"
-  ></DataModel>
-  <ClientConfig
+  />
+  <client-config
     v-show="activeName === 'client'"
-  ></ClientConfig>
+  />
   <el-form
     v-show="activeName === 'basic'"
+    ref="newConfigFormRef"
     :rules="rules"
     :model="newConfigForm"
-    ref="newConfigFormRef"
     label-position="top"
     :inline="false"
     size="default"
@@ -29,20 +29,24 @@
     >
       <el-input v-model="newConfigForm.broker">
         <template #append>
-          <el-button @click="validateUrl">测试连通</el-button>
+          <el-button @click="validateUrl">
+            测试连通
+          </el-button>
         </template>
       </el-input>
     </el-form-item>
     <el-form-item class="topic" label="消息主题" prop="topicConfig.data">
-      <template v-for="(key, value) in newConfigForm.topicConfig.data">
+      <template v-for="(key, value) in newConfigForm.topicConfig.data" :key="value">
         <div style="display: flex">
-          <div class="form-label">{{ value }}</div>
+          <div class="form-label">
+            {{ value }}
+          </div>
           <div class="form-content">
-            <template v-for="(k, v) in key">
+            <template v-for="(k, v) in key" :key="k">
               <el-input
-                :placeholder="v"
                 v-model="newConfigForm.topicConfig.data[value][v]"
-              ></el-input>
+                :placeholder="v"
+              />
             </template>
           </div>
         </div>
@@ -50,31 +54,33 @@
     </el-form-item>
     <el-form-item label="协议类型" prop="protocol">
       <el-radio-group v-model="newConfigForm.protocol">
-        <el-radio-button label="MQTT" value="Mqtt"></el-radio-button>
-        <el-radio-button label="TCP" value="Tcp"></el-radio-button>
+        <el-radio-button label="MQTT" value="Mqtt" />
+        <el-radio-button label="TCP" value="Tcp" />
       </el-radio-group>
     </el-form-item>
     <el-form-item label="注册包机制" prop="enableRegister">
       <el-radio-group v-model="newConfigForm.enableRegister">
-        <el-radio-button label="关闭" :value="false"></el-radio-button>
-        <el-radio-button label="启动" :value="true"></el-radio-button>
+        <el-radio-button label="关闭" :value="false" />
+        <el-radio-button label="启动" :value="true" />
       </el-radio-group>
     </el-form-item>
     <el-form-item
+      v-if="newConfigForm.enableRegister"
       class="topic"
       label="主题配置"
-      v-if="newConfigForm.enableRegister"
       prop="topicConfig.register"
     >
-      <template v-for="(key, value) in newConfigForm.topicConfig.register">
+      <template v-for="(key, value) in newConfigForm.topicConfig.register" :key="value">
         <div style="display: flex">
-          <div class="form-label">{{ value }}</div>
+          <div class="form-label">
+            {{ value }}
+          </div>
           <div class="form-content">
-            <template v-for="(k, v) in key">
+            <template v-for="(k, v) in key" :key="k">
               <el-input
-                :placeholder="v"
                 v-model="newConfigForm.topicConfig.register[value][v]"
-              ></el-input>
+                :placeholder="v"
+              />
             </template>
           </div>
         </div>
@@ -82,8 +88,8 @@
     </el-form-item>
     <el-form-item label="随机生成" prop="enableRandom">
       <el-radio-group v-model="newConfigForm.enableRandom">
-        <el-radio-button label="关闭" :value="false"></el-radio-button>
-        <el-radio-button label="启动" :value="true"></el-radio-button>
+        <el-radio-button label="关闭" :value="false" />
+        <el-radio-button label="启动" :value="true" />
       </el-radio-group>
     </el-form-item>
     <el-form-item label="线程数" prop="threadSize">
@@ -96,8 +102,12 @@
       <el-input v-model.number="newConfigForm.sendInterval" />
     </el-form-item>
     <el-form-item>
-      <el-button type="primary" @click="onSubmit">确定</el-button>
-      <el-button @click="cancel">取消</el-button>
+      <el-button type="primary" @click="onSubmit">
+        确定
+      </el-button>
+      <el-button @click="cancel">
+        取消
+      </el-button>
     </el-form-item>
   </el-form>
 </template>
@@ -105,9 +115,7 @@
 import { MqttConfig } from "@/types/mqttConfig";
 import {
   ElMessage,
-  FormRules,
   type FormInstance,
-  type FormItemRule,
 } from "element-plus";
 import { invoke } from "@tauri-apps/api/tauri";
 import DataModel from "./DataModel.vue";
@@ -123,7 +131,7 @@ const newConfigFormRef = ref<FormInstance>();
 const newConfigForm = defineModel<MqttConfig>("configForm");
 const activeName = ref<string>("basic");
 
-const validateTopic = (rule: any, value: any, callback: Function) => {
+const validateTopic = (rule: any, value: any, callback: any) => {
   if (
     isJsonValueNull(getNestedValue(newConfigForm.value, rule.field), [
       "keyIndex",

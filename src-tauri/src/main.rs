@@ -2,8 +2,8 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 extern crate paho_mqtt as mqtt;
-use iot_connect_app::{
-    model::tauri_com::{self, Rs2JsEntity},
+use svroll::{
+    model::{tauri_com::{self}, Rs2JsEntity},
     AsyncProcInputTx,
 };
 use tauri::Manager;
@@ -24,7 +24,8 @@ async fn main() {
             tauri_com::receive_file,
             tauri_com::start_task,
             tauri_com::stop_task,
-            tauri_com::process_client_file
+            tauri_com::process_client_file,
+            tauri_com::write_file,
         ])
         .setup(|app| {
             let app_handle = app.handle();

@@ -1,5 +1,6 @@
 use crate::{
     benchmark_param::{init_mqtt_context, read_from_csv_into_struct, Protocol},
+    model::Rs2JsEntity,
     tcp::tcp_client::{TcpClient, TcpClientData},
     AsyncProcInputTx,
 };
@@ -12,9 +13,8 @@ use std::{
 };
 
 use once_cell::sync::OnceCell;
-use serde::{Deserialize, Serialize};
 use tauri::{command, State};
-use tokio::{sync::Mutex, task::JoinHandle, time::sleep};
+use tokio::{fs, sync::Mutex, task::JoinHandle, time::sleep};
 use tracing::info;
 
 use crate::{
@@ -23,7 +23,7 @@ use crate::{
     MqttClientData, MqttSendData,
 };
 
-use super::connect_param::ConnectParam;
+use super::{connect_param::ConnectParam, Rs2JsMsgType};
 
 static TASK: OnceCell<Arc<Mutex<Task>>> = OnceCell::new();
 
@@ -35,13 +35,6 @@ pub struct Task {
     pub counter: Arc<AtomicU32>,
 }
 
-#[derive(Debug, Deserialize, Serialize)]
-pub struct Rs2JsEntity {
-    #[serde(rename = "msgType")]
-    pub msg_type: String,
-    pub msg: String,
-}
-
 #[command]
 pub async fn receive_file(file_path: String) -> Result<String, String> {
     info!(file_path);
@@ -49,12 +42,17 @@ pub async fn receive_file(file_path: String) -> Result<String, String> {
 }
 
 #[command]
+pub async fn write_file(file_path: String, content: String) -> Result<(), String> {
+    fs::write(&file_path, content).await.map_err(|e| e.to_string())
+}
+
+
+#[command]
 pub async fn start_task(
     param: ConnectParam,
     async_proc_output_tx: State<'_, AsyncProcInputTx>,
 ) -> Result<String, String> {
     info!(?param);
-    // 打印配置信息，以便调试和日志记录
     match param.protocol {
         Protocol::Mqtt => {
             let config = param.into_config().await.unwrap();
@@ -82,24 +80,54 @@ async fn start_mqtt(
     topic_config: Option<TopicConfig>,
     async_proc_output_tx: State<'_, AsyncProcInputTx>,
 ) -> Result<String, String> {
-    println!("开始初始化MQTT客户端...");
-    let mqtt_config = topic_config.unwrap_or_else(|| {
-        TopicConfig::default()
-    });
-    println!("初始化MQTT客户端成功!");
+    let tx = async_proc_output_tx.inner.lock().await.clone();
+
+    tx.send(Rs2JsEntity::new(
+        Rs2JsMsgType::Terminal,
+        "开始初始化MQTT客户端...".to_string(),
+    ))
+    .await
+    .unwrap();
+
+    let mqtt_config = topic_config.unwrap_or_else(|| TopicConfig::default());
+
+    tx.send(Rs2JsEntity::new(
+        Rs2JsMsgType::Terminal,
+        "初始化MQTT客户端成功".to_string(),
+    ))
+    .await
+    .unwrap();
+
     let mqtt_client = init_mqtt_context(&param, mqtt_config).map_err(|e| e.to_string())?;
-    println!("初始化客户端...");
+
+    tx.send(Rs2JsEntity::new(
+        Rs2JsMsgType::Terminal,
+        "初始化客户端...".to_string(),
+    ))
+    .await
+    .unwrap();
+
     let mut clients = mqtt_client
         .setup_clients(&param)
         .await
         .map_err(|e| e.to_string())?;
 
-    println!("等待连接...");
+    tx.send(Rs2JsEntity::new(
+        Rs2JsMsgType::Terminal,
+        "等待连接...".to_string(),
+    ))
+    .await
+    .unwrap();
 
     // 等待所有客户端连接成功
     mqtt_client.wait_for_connections(&mut clients).await;
 
-    println!("客户端已全部连接!");
+    tx.send(Rs2JsEntity::new(
+        Rs2JsMsgType::Terminal,
+        "客户端已全部连接!".to_string(),
+    ))
+    .await
+    .unwrap();
 
     let task = TASK.get_or_init(|| {
         Arc::new(Mutex::new(Task {
@@ -112,32 +140,36 @@ async fn start_mqtt(
 
     reset_task(task.clone()).await;
 
-    // 启动发送消息的线程
-    let tx = async_proc_output_tx.inner.lock().await.clone();
     let handle: JoinHandle<()> = tokio::spawn(async move {
         let task = task.clone();
         mqtt_client
             .spawn_message(clients, &*task.lock().await, &param)
             .await;
     });
-
+    let tx_clone = tx.clone();
     let count_handle = tokio::spawn(async move {
         let counter = task.lock().await.counter.clone();
         loop {
-            let rs2_js = Rs2JsEntity {
-                msg_type: "counter".to_string(),
-                msg: counter.load(Ordering::SeqCst).to_string(),
-            };
-
-            tx.send(rs2_js).await.unwrap();
+            tx_clone.send(Rs2JsEntity::new(
+                Rs2JsMsgType::Counter,
+                counter.load(Ordering::SeqCst).to_string(),
+            ))
+            .await
+            .unwrap();
             sleep(Duration::from_secs(1)).await;
         }
     });
 
-    // 保存任务句柄
     let mut task = task.lock().await;
     task.handle = Some(handle);
     task.count_handle = Some(count_handle);
+
+    tx.send(Rs2JsEntity::new(
+        Rs2JsMsgType::Terminal,
+        "开始发送消息...".to_string(),
+    ))
+    .await
+    .unwrap();
 
     Ok("开始发送消息...".to_string())
 }
@@ -155,9 +187,9 @@ async fn start_tcp(
         .await
         .map_err(|e| e.to_string())?;
 
-    println!("等待连接...");
+    info!("等待连接...");
     tcp_client.wait_for_connections(&mut clients).await;
-    println!("客户端已全部连接!");
+    info!("客户端已全部连接!");
 
     let task = TASK.get_or_init(|| {
         Arc::new(Mutex::new(Task {
@@ -183,12 +215,12 @@ async fn start_tcp(
     let count_handle = tokio::spawn(async move {
         let counter = task.lock().await.counter.clone();
         loop {
-            let rs2_js = Rs2JsEntity {
-                msg_type: "counter".to_string(),
-                msg: counter.load(Ordering::SeqCst).to_string(),
-            };
-
-            tx.send(rs2_js).await.unwrap();
+            tx.send(Rs2JsEntity::new(
+                Rs2JsMsgType::Counter,
+                counter.load(Ordering::SeqCst).to_string(),
+            ))
+            .await
+            .unwrap();
             sleep(Duration::from_secs(1)).await;
         }
     });
