@@ -1,85 +1,83 @@
 name: Release
 on:
-    push:
-        branches:
-            - 'main'
-    workflow_dispatch:
-        inputs:
-            branch:
-                description: 'Branch to run the workflow on'
-                required: true
-                default: 'template'
- 
+  push:
+    tags:
+      - 'v*.*.*'
+
 jobs:
-    publish-tauri:
-        permissions:
-            contents: write
-        strategy:
-            fail-fast: false
-            matrix:
-                include:
-                    - platform: 'macos-latest' 
-                      target: 'aarch64-apple-darwin'
-                      args: '--target aarch64-apple-darwin'
-                    - platform: 'macos-latest' 
-                      target: 'x86_64-apple-darwin'
-                      args: '--target x86_64-apple-darwin'
-                    - platform: 'ubuntu-20.04'
-                      target: 'x86_64-unknown-linux-gnu'
-                      args: ''
-                    - platform: 'windows-latest'
-                      target: 'x86_64-pc-windows-msvc'
- 
-                    - platform: 'windows-latest'
-                      target: 'i686-pc-windows-msvc'
-                    - platform: 'windows-latest'
-                      target: 'aarch64-pc-windows-msvc'
-                      args: '--target aarch64-pc-windows-msvc'
- 
-        runs-on: ${{ matrix.platform }}
-        steps:
-            - name: Checkout repository
-              uses: actions/checkout@v3
- 
-            - name: Install rust target
-              run: rustup target add ${{ matrix.target }}
- 
-            - name: Install dependencies (ubuntu only)
-              if: matrix.platform == 'ubuntu-20.04'
-              run: |
-                  sudo apt-get update
-                  sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.0-dev libayatana-appindicator3-dev librsvg2-dev
-            - name: Setup node
-              uses: actions/setup-node@v4
-              with:
-                  node-version: 20
-            - uses: pnpm/action-setup@v3
-              with:
-                  version: latest
-            - name: Sync node version and setup cache
-              uses: actions/setup-node@v4
-              with:
-                  node-version: 20
-                  cache: pnpm
-            - name: install Rust stable
-              uses: dtolnay/rust-toolchain@stable 
-              with:
-                  targets: ${{ matrix.platform == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
- 
-            - name: Rust cache
-              uses: swatinem/rust-cache@v2
-              with:
-                  workspaces: './src-tauri -> target'
- 
-            - name: install frontend dependencies
-              run: pnpm install 
-            - uses: tauri-apps/tauri-action@v0
-              env:
-                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-              with:
-                  tagName: ${{ github.ref_name }} 
-                  releaseName: 'svroll' 
-                  releaseDraft: false
-                  prerelease: false
-                  publish: true
-                  args: ${{ matrix.args }}
+  publish-tauri:
+    permissions:
+      contents: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: 'macos-latest'
+            target: 'aarch64-apple-darwin'
+            args: '--target aarch64-apple-darwin'
+          - platform: 'macos-latest'
+            target: 'x86_64-apple-darwin'
+            args: '--target x86_64-apple-darwin'
+          - platform: 'ubuntu-20.04'
+            target: 'x86_64-unknown-linux-gnu'
+            args: ''
+          - platform: 'windows-latest'
+            target: 'x86_64-pc-windows-msvc'
+          - platform: 'windows-latest'
+            target: 'i686-pc-windows-msvc'
+          - platform: 'windows-latest'
+            target: 'aarch64-pc-windows-msvc'
+            args: '--target aarch64-pc-windows-msvc'
+
+    runs-on: ${{ matrix.platform }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Install rust target
+        run: rustup target add ${{ matrix.target }}
+
+      - name: Install dependencies (ubuntu only)
+        if: matrix.platform == 'ubuntu-20.04'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.0-dev libayatana-appindicator3-dev librsvg2-dev
+
+      - name: Setup node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - uses: pnpm/action-setup@v3
+        with:
+          version: latest
+
+      - name: Sync node version and setup cache
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.platform == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
+
+      - name: Rust cache
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: './src-tauri -> target'
+
+      - name: Install frontend dependencies
+        run: pnpm install
+
+      - uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tagName: ${{ github.ref_name }}
+          releaseName: 'svroll ${{ github.ref_name }}'
+          releaseDraft: false
+          prerelease: false
+          publish: true
+          args: ${{ matrix.args }}
