@@ -9,7 +9,7 @@ import App from "./App.vue";
 import store from "./store";
 import router from "./router";
 
-let app = createApp(App);
+const app = createApp(App);
 app.use(store);
 app.use(router);
 app.use(ElementPlus, {

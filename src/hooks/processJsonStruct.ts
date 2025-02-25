@@ -62,7 +62,7 @@ export const isJsonValueNull = (
     if (ignore.includes(key)) {
       continue;
     }
-    if (jsonObj[key] === null) {
+    if (jsonObj[key] === null) { 
       return true;
     }
     if (typeof jsonObj[key] === "string" && jsonObj[key].trim() === "") {

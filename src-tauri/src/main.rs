@@ -3,12 +3,15 @@
 
 extern crate paho_mqtt as mqtt;
 use svroll::{
-    model::{tauri_com::{self}, Rs2JsEntity},
+    model::{
+        tauri_com::{self},
+        Rs2JsEntity,
+    },
     AsyncProcInputTx,
 };
 use tauri::Manager;
 use tokio::sync::{mpsc, Mutex};
-use tracing::info; 
+use tracing::info;
 
 #[tokio::main]
 async fn main() {
@@ -26,6 +29,7 @@ async fn main() {
             tauri_com::stop_task,
             tauri_com::process_client_file,
             tauri_com::write_file,
+            tauri_com::load_config,
         ])
         .setup(|app| {
             let app_handle = app.handle();

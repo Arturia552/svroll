@@ -59,20 +59,8 @@ impl MqttClient {
         self.enable_register = enable;
     }
 
-    pub fn set_register_topic(&mut self, topic: Option<TopicWrap>) {
-        self.register_topic = Arc::new(topic);
-    }
-
     pub fn get_register_topic(&self) -> Option<&TopicWrap> {
         self.register_topic.as_ref().as_ref()
-    }
-
-    pub fn set_data_topic(&mut self, topic: TopicWrap) {
-        self.data_topic = Arc::new(topic);
-    }
-
-    pub fn get_data_topic(&self) -> &TopicWrap {
-        &self.data_topic
     }
 
     fn get_real_topic_mac(topic: &str) -> (String, String) {
@@ -84,36 +72,26 @@ impl MqttClient {
 
     pub fn on_message_callback(&self, _: &AsyncClient, msg: Option<Message>) {
         if let Some(msg) = msg {
-            let topic = msg.topic(); // 获取消息主题
-
-            // 检查主题是否以"/sub"开头
-            if topic.starts_with("/sub") {
-                // 获取真实的主题和MAC地址
-                let (real_topic, mac) = Self::get_real_topic_mac(topic);
-                let data = msg.payload(); // 获取消息负载
-                                          // 尝试将负载解析为JSON
-                if let Ok(data) = serde_json::from_slice::<serde_json::Value>(data) {
-                    if self.get_enable_register() {
-                        let register_topic = self.get_register_topic();
-                        let reg_sub_topic_wrap = register_topic.unwrap();
-                        let reg_sub_topic = reg_sub_topic_wrap.get_subscribe_topic().unwrap();
-                        let extra_key = reg_sub_topic_wrap
-                            .subscribe
-                            .clone()
-                            .unwrap()
-                            .extra_key
-                            .unwrap();
-                        // 检查真实主题是否为注册包回复
-                        if real_topic == reg_sub_topic {
-                            // 检查JSON对象中是否存在"device_key"
-                            if let Some(device_key) = data.get(extra_key) {
-                                // 将device_key转换为字符串
-                                if let Some(device_key_str) = device_key.as_str() {
-                                    // 更新CLIENT_CONTEXT中的device_key
-                                    MQTT_CLIENT_CONTEXT.entry(mac.to_string()).and_modify(|v| {
-                                        v.set_device_key(device_key_str.to_string());
-                                    });
-                                }
+            let topic = msg.topic(); 
+            let (real_topic, mac) = Self::get_real_topic_mac(topic);
+            let data = msg.payload(); 
+            if let Ok(data) = serde_json::from_slice::<serde_json::Value>(data) {
+                if self.get_enable_register() {
+                    let register_topic = self.get_register_topic();
+                    let reg_sub_topic_wrap = register_topic.unwrap();
+                    let reg_sub_topic = reg_sub_topic_wrap.get_subscribe_topic().unwrap();
+                    let extra_key = reg_sub_topic_wrap
+                        .subscribe
+                        .clone()
+                        .unwrap()
+                        .extra_key
+                        .unwrap();
+                    if real_topic == reg_sub_topic {
+                        if let Some(device_key) = data.get(extra_key) {
+                            if let Some(device_key_str) = device_key.as_str() {
+                                MQTT_CLIENT_CONTEXT.entry(mac.to_string()).and_modify(|v| {
+                                    v.set_device_key(device_key_str.to_string());
+                                });
                             }
                         }
                     }
@@ -165,12 +143,10 @@ impl Client<MqttSendData, MqttClientData> for MqttClient {
 
                 let start = Instant::now();
                 match cli.connect(conn_opts).await {
-                    Ok(_) => {
-                       match mqtt_client.on_connect_success(&mut cli).await {
-                           Ok(_) => {},
-                           Err(_) => todo!(),
-                       }
-                    }
+                    Ok(_) => match mqtt_client.on_connect_success(&mut cli).await {
+                        Ok(_) => {}
+                        Err(_) => todo!(),
+                    },
                     Err(_) => todo!(),
                 }
 

@@ -5,27 +5,14 @@
     <el-tab-pane label="数据配置" name="data" />
   </el-tabs>
 
-  <data-model
-    v-show="activeName === 'data'"
-  />
-  <client-config
-    v-show="activeName === 'client'"
-  />
-  <el-form
-    v-show="activeName === 'basic'"
-    ref="newConfigFormRef"
-    :rules="rules"
-    :model="newConfigForm"
-    label-position="top"
-    :inline="false"
-    size="default"
+  <data-model v-show="activeName === 'data'" />
+  <client-config v-show="activeName === 'client'" />
+  <el-form v-show="activeName === 'basic'" ref="newConfigFormRef" :rules="rules" :model="newConfigForm"
+           label-position="top" :inline="false" size="default"
   >
-    <el-form-item
-      label="broker地址"
-      prop="broker"
-      :rules="[
-        { required: true, message: '请输入broker地址', trigger: 'blur' },
-      ]"
+    <el-form-item label="broker地址" prop="broker" :rules="[
+      { required: true, message: '请输入broker地址', trigger: 'blur' },
+    ]"
     >
       <el-input v-model="newConfigForm.broker">
         <template #append>
@@ -37,16 +24,13 @@
     </el-form-item>
     <el-form-item class="topic" label="消息主题" prop="topicConfig.data">
       <template v-for="(key, value) in newConfigForm.topicConfig.data" :key="value">
-        <div style="display: flex">
+        <div v-if="newConfigForm.topicConfig.data[value]" style="display: flex">
           <div class="form-label">
-            {{ value }}
+            {{ value === "publish" ? "发布" : "订阅" }}
           </div>
           <div class="form-content">
-            <template v-for="(k, v) in key" :key="k">
-              <el-input
-                v-model="newConfigForm.topicConfig.data[value][v]"
-                :placeholder="v"
-              />
+            <template v-for="(column, index) in tableColumn" :key="`data-${column.label}-${index}`">
+              <el-input v-model="newConfigForm.topicConfig.data[value][column.prop]" :placeholder="column.label" />
             </template>
           </div>
         </div>
@@ -64,23 +48,15 @@
         <el-radio-button label="启动" :value="true" />
       </el-radio-group>
     </el-form-item>
-    <el-form-item
-      v-if="newConfigForm.enableRegister"
-      class="topic"
-      label="主题配置"
-      prop="topicConfig.register"
-    >
+    <el-form-item v-if="newConfigForm.enableRegister" class="topic" label="主题配置" prop="topicConfig.register">
       <template v-for="(key, value) in newConfigForm.topicConfig.register" :key="value">
-        <div style="display: flex">
+        <div v-if="newConfigForm.topicConfig.register[value]" style="display: flex">
           <div class="form-label">
-            {{ value }}
+            {{ value === "publish" ? "发布" : "订阅" }}
           </div>
           <div class="form-content">
-            <template v-for="(k, v) in key" :key="k">
-              <el-input
-                v-model="newConfigForm.topicConfig.register[value][v]"
-                :placeholder="v"
-              />
+            <template v-for="(column, index) in tableColumn" :key="`reg-${column.label}-${index}`">
+              <el-input v-model="newConfigForm.topicConfig.register[value][column.prop]" :placeholder="column.label" />
             </template>
           </div>
         </div>
@@ -134,13 +110,20 @@ const activeName = ref<string>("basic");
 const validateTopic = (rule: any, value: any, callback: any) => {
   if (
     isJsonValueNull(getNestedValue(newConfigForm.value, rule.field), [
-      "keyIndex",
+      "keyIndex","extraKey","subscribe"
     ])
   ) {
     callback(new Error("请完善主题"));
   }
   callback();
 };
+
+const tableColumn = ref([
+  { label: "主题", prop: "topic", },
+  { label: "QoS", prop: "qos", },
+  { label: "Key索引", prop: "keyIndex", },
+  { label: "额外Key", prop: "extraKey" },
+]);
 
 const rules: any = ref({
   broker: [{ required: true, message: "请输入broker地址", trigger: "blur" }],
@@ -160,13 +143,19 @@ const validateUrl = async () => {
 };
 
 const onSubmit = async () => {
+  console.log(123)
   newConfigFormRef.value?.validate((valid) => {
     if (valid) {
+      console.log(valid)
       validConfig.value = true;
       emit("close");
     }
   });
 };
+
+computed(async () => {
+  validConfig.value = await newConfigFormRef.value?.validate();
+})
 
 const cancel = () => {
   emit("close");

@@ -54,14 +54,17 @@ export function convert2Type(obj: any, typeDef: any): void {
   if (typeof obj !== typeof typeDef) {
     return;
   }
-
   if (typeof obj === "object" && obj !== null) {
     for (const key in typeDef) {
       if (typeDef.hasOwnProperty(key)) {
         if (typeof obj[key] !== typeof typeDef[key]) {
           // 强制转换类型
           if (typeof typeDef[key] === "number") {
-            obj[key] = Number(obj[key]);
+            if(obj[key] === null) {
+              obj[key] = undefined
+            }else {
+              obj[key] = Number(obj[key]);
+            }
           } else if (typeof typeDef[key] === "string") {
             obj[key] = String(obj[key]);
           } else if (typeof typeDef[key] === "boolean") {

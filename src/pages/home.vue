@@ -4,8 +4,11 @@
       <el-button type="success" size="default" @click="showNewConfig">
         编辑配置
       </el-button>
-      <el-button type="primary" @click="exportConfig">
+      <el-button type="primary" :disabled="!valid" @click="exportConfig">
         导出配置
+      </el-button>
+      <el-button type="primary" @click="loadConfig">
+        导入配置
       </el-button>
     </div>
     <code-editor v-model:jsonEdit="config.sendData" class="json-edit-container" />
@@ -32,7 +35,7 @@ import CodeEditor from "@/components/CodeEditor/index.vue";
 import NewConfig from "@/pages/config/NewConfig.vue";
 import { convert2Type, MqttConfig, mqttConfigTypeDef, rs2JsEntity } from "@/types/mqttConfig";
 import { listen } from "@tauri-apps/api/event";
-import { save } from "@tauri-apps/api/dialog";
+import { save, open } from "@tauri-apps/api/dialog";
 import { writeTextFile } from "@tauri-apps/api/fs";
 
 const valid = ref<boolean>(false);
@@ -86,6 +89,7 @@ const exportConfig = async () => {
     filters: [{ name: "JSON 文件", extensions: ["json"] }],
     title: "导出配置",
   });
+  convert2Type(config.value, mqttConfigTypeDef);
   if (!filePath || filePath?.trim() === "") return;
   const content = JSON.stringify(config.value);
   try {
@@ -96,10 +100,24 @@ const exportConfig = async () => {
   }
 };
 
+const loadConfig = async () => {
+  const filePath = await open({
+    filters: [{ name: "JSON 文件", extensions: ["json"] }],
+    title: "导入配置",
+  });
+  if (!filePath || filePath === "") return;
+  try {
+    config.value = await invoke<MqttConfig>("load_config", { filePath });    
+      convert2Type(config.value, mqttConfigTypeDef);
+      ElMessage.success("导入成功");
+  } catch (e) {
+    ElMessage.error(e);
+  }
+};
+
 const start = async () => {
   counter.value = 0;
   convert2Type(config.value, mqttConfigTypeDef);
-  console.log(config.value);
   const msg = await invoke("start_task", { param: config.value as MqttConfig });
   ElMessage.success(msg);
   receive();

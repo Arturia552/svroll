@@ -43,9 +43,22 @@ pub async fn receive_file(file_path: String) -> Result<String, String> {
 
 #[command]
 pub async fn write_file(file_path: String, content: String) -> Result<(), String> {
-    fs::write(&file_path, content).await.map_err(|e| e.to_string())
+    fs::write(&file_path, content)
+        .await
+        .map_err(|e| e.to_string())
 }
 
+#[command]
+pub async fn load_config(file_path: String) -> Result<ConnectParam, String> {
+    info!(file_path);
+
+    let config_str = fs::read_to_string(file_path)
+        .await
+        .map_err(|e| e.to_string())?;
+    let config = serde_json::from_str(&config_str).map_err(|e| e.to_string())?;
+    info!(?config);
+    Ok(config)
+}
 
 #[command]
 pub async fn start_task(
@@ -150,12 +163,13 @@ async fn start_mqtt(
     let count_handle = tokio::spawn(async move {
         let counter = task.lock().await.counter.clone();
         loop {
-            tx_clone.send(Rs2JsEntity::new(
-                Rs2JsMsgType::Counter,
-                counter.load(Ordering::SeqCst).to_string(),
-            ))
-            .await
-            .unwrap();
+            tx_clone
+                .send(Rs2JsEntity::new(
+                    Rs2JsMsgType::Counter,
+                    counter.load(Ordering::SeqCst).to_string(),
+                ))
+                .await
+                .unwrap();
             sleep(Duration::from_secs(1)).await;
         }
     });

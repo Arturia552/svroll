@@ -79,6 +79,25 @@ where
         }
     }
 
+    pub async fn validate(&self) -> Result<(), String> {
+        if self.thread_size == 0 {
+            return Err("线程数量不能为0".into());
+        }
+        if self.max_connect_per_second == 0 {
+            return Err("每秒最大连接数不能为0".into());
+        }
+        if self.send_interval == 0 {
+            return Err("发送间隔不能为0".into());
+        }
+        if self.clients.is_empty() {
+            return Err("客户端配置不能为空".into());
+        }
+        if self.broker.is_empty() {
+            return Err("broker地址不能为空".into());
+        }
+        Ok(())
+    }
+
     pub fn set_send_data(&mut self, data: T) {
         self.send_data = data;
     }
@@ -91,36 +110,8 @@ where
         &self.broker
     }
 
-    pub fn set_clients(&mut self, clients: Vec<C>) {
-        self.clients = clients;
-    }
-
-    pub fn get_mut_clients(&mut self) -> &mut Vec<C> {
-        &mut self.clients
-    }
-
     pub fn get_clients(&self) -> &Vec<C> {
         &self.clients
-    }
-
-    pub fn set_protocol_type(&mut self, protocol_type: Protocol) {
-        self.protocol_type = protocol_type;
-    }
-
-    pub fn set_thread_size(&mut self, thread_size: usize) {
-        self.thread_size = thread_size;
-    }
-
-    pub fn set_enable_register(&mut self, enable_register: bool) {
-        self.enable_register = enable_register;
-    }
-
-    pub fn set_broker(&mut self, broker: String) {
-        self.broker = broker;
-    }
-
-    pub fn set_max_connect_per_second(&mut self, max_connect_per_second: usize) {
-        self.max_connect_per_second = max_connect_per_second;
     }
 
     pub fn get_max_connect_per_second(&self) -> usize {
