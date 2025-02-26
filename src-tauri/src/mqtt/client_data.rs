@@ -63,36 +63,46 @@ impl MqttClient {
         self.register_topic.as_ref().as_ref()
     }
 
-    fn get_real_topic_mac(topic: &str) -> (String, String) {
+    fn parse_topic_mac(topic: &str, key_index: usize) -> (String, String) {
         let topic = topic.to_string();
         let mut topic = topic.split('/').collect::<Vec<&str>>();
-        let mac = topic.remove(2);
+        let mac = topic.remove(key_index);
         (topic.join("/"), mac.to_string())
     }
 
     pub fn on_message_callback(&self, _: &AsyncClient, msg: Option<Message>) {
         if let Some(msg) = msg {
-            let topic = msg.topic(); 
-            let (real_topic, mac) = Self::get_real_topic_mac(topic);
-            let data = msg.payload(); 
+            let topic = msg.topic();
+            let data = msg.payload();
             if let Ok(data) = serde_json::from_slice::<serde_json::Value>(data) {
                 if self.get_enable_register() {
-                    let register_topic = self.get_register_topic();
-                    let reg_sub_topic_wrap = register_topic.unwrap();
-                    let reg_sub_topic = reg_sub_topic_wrap.get_subscribe_topic().unwrap();
-                    let extra_key = reg_sub_topic_wrap
-                        .subscribe
-                        .clone()
-                        .unwrap()
-                        .extra_key
-                        .unwrap();
-                    if real_topic == reg_sub_topic {
-                        if let Some(device_key) = data.get(extra_key) {
-                            if let Some(device_key_str) = device_key.as_str() {
-                                MQTT_CLIENT_CONTEXT.entry(mac.to_string()).and_modify(|v| {
-                                    v.set_device_key(device_key_str.to_string());
-                                });
-                            }
+                    // 优化点：使用级联的early returns代替深层嵌套，提高代码可读性
+                    let Some(register_topic) = self.get_register_topic() else {
+                        return;
+                    };
+                    let Some(reg_subscribe) = &register_topic.subscribe else {
+                        return;
+                    };
+
+                    let (real_topic, mac) =
+                        Self::parse_topic_mac(topic, reg_subscribe.key_index.unwrap());
+
+                    let Some(reg_sub_topic) = register_topic.get_subscribe_topic() else {
+                        return;
+                    };
+                    let Some(extra_key) = &reg_subscribe.extra_key else {
+                        return;
+                    };
+
+                    if real_topic != reg_sub_topic {
+                        return;
+                    }
+
+                    if let Some(device_key) = data.get(extra_key) {
+                        if let Some(device_key_str) = device_key.as_str() {
+                            MQTT_CLIENT_CONTEXT.entry(mac.to_string()).and_modify(|v| {
+                                v.set_device_key(device_key_str.to_string());
+                            });
                         }
                     }
                 }
@@ -214,15 +224,10 @@ impl Client<MqttSendData, MqttClientData> for MqttClient {
         config: &BenchmarkConfig<MqttSendData, MqttClientData>,
     ) {
         info!("开始发送消息...");
-        info!(?task);
         // 确定每个线程处理的客户端数量
-        let startup_thread_size = clients.len() / config.thread_size
-            + if clients.len() % config.thread_size != 0 {
-                1
-            } else {
-                0
-            };
-        let clients_group = clients.chunks(startup_thread_size);
+        let clients_per_thread = (clients.len() + config.thread_size - 1) / config.thread_size;
+
+        let clients_group = clients.chunks(clients_per_thread);
 
         for group in clients_group {
             let mut group = group.to_vec();
@@ -251,30 +256,31 @@ impl Client<MqttSendData, MqttClientData> for MqttClient {
                             continue;
                         }
                         let client_id = cli.client_id().to_string();
-                        if let Some(client_data) = MQTT_CLIENT_CONTEXT.get(&client_id) {
-                            let device_key = client_data.get_device_key();
-                            if device_key.is_empty() && enable_register {
-                                mqtt_client.on_connect_success(cli).await;
-                                continue;
-                            }
-                            let real_topic =
-                                topic.get_publish_real_topic(Some(client_data.get_device_key()));
-
-                            let mut msg_value = (*send_data).clone();
-                            msg_value.process_fields(enable_random);
-                            let json_msg = match serde_json::to_string(&msg_value.data) {
-                                Ok(msg) => msg,
-                                Err(e) => {
-                                    eprintln!("序列化JSON失败: {}", e);
-                                    return;
-                                }
-                            };
-                            info!(?json_msg);
-                            let payload: Message =
-                                Message::new(real_topic, json_msg, topic.get_publish_qos());
-                            counter.fetch_add(1, Ordering::SeqCst);
-                            let _ = cli.publish(payload);
+                        let Some(client_data) = MQTT_CLIENT_CONTEXT.get(&client_id) else {
+                            continue;
+                        };
+                        let device_key = client_data.get_device_key();
+                        if device_key.is_empty() && enable_register {
+                            let _ = mqtt_client.on_connect_success(cli).await;
+                            continue;
                         }
+                        let real_topic =
+                            topic.get_publish_real_topic(Some(client_data.get_device_key()));
+
+                        let mut msg_value = (*send_data).clone();
+                        msg_value.process_fields(enable_random);
+                        let json_msg = match serde_json::to_string(&msg_value.data) {
+                            Ok(msg) => msg,
+                            Err(e) => {
+                                eprintln!("序列化JSON失败: {}", e);
+                                return;
+                            }
+                        };
+                        info!(?json_msg);
+                        let payload: Message =
+                            Message::new(real_topic, json_msg, topic.get_publish_qos());
+                        counter.fetch_add(1, Ordering::SeqCst);
+                        let _ = cli.publish(payload);
                     }
                 }
             });
@@ -282,10 +288,18 @@ impl Client<MqttSendData, MqttClientData> for MqttClient {
     }
 
     async fn wait_for_connections(&self, clients: &mut [AsyncClient]) {
-        for ele in clients {
-            while !ele.is_connected() {
-                sleep(Duration::from_secs(1)).await;
-            }
+        let mut futures = Vec::with_capacity(clients.len());
+
+        for client in clients.iter() {
+            let cli = client.clone();
+            futures.push(tokio::spawn(async move {
+                while !cli.is_connected() {
+                    sleep(Duration::from_millis(100)).await;
+                }
+            }));
+        }
+        for future in futures {
+            let _ = future.await;
         }
     }
 }

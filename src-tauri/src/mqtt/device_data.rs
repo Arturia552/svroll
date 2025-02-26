@@ -27,6 +27,7 @@ impl MqttSendData {
                 FieldType::Timestamp => {
                     let now = Local::now().timestamp_millis();
                     self.data[&field.field_name] = Value::from(now);
+
                 },
                 FieldType::DateTime => {
                     let now = Local::now().format("%Y-%m-%d %H:%M:%S%.3f").to_string();

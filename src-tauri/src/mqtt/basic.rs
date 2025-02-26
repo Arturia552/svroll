@@ -1,3 +1,5 @@
+use std::borrow::Cow;
+
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
@@ -55,23 +57,25 @@ impl TopicWrap {
         self.subscribe.as_ref().unwrap().qos
     }
 
-    pub fn get_publish_real_topic(&self, key_value: Option<&str>) -> &str {
-        let topic = &self.publish;
-        wrap_real_topic(topic, key_value)
+    pub fn get_publish_real_topic<'a>(&'a self, key_value: Option<&str>) -> Cow<'a, str> {
+        wrap_real_topic(&self.publish, key_value)
     }
 
-    pub fn get_subscribe_real_topic(&self, key_value: Option<&str>) -> &str {
-        let topic = self.subscribe.as_ref().unwrap();
-        wrap_real_topic(topic, key_value)
+    pub fn get_subscribe_real_topic<'a>(&'a self, key_value: Option<&str>) -> Cow<'a, str> {
+        if let Some(topic) = &self.subscribe {
+            wrap_real_topic(topic, key_value)
+        } else {
+            Cow::Borrowed("")
+        }
     }
 }
 
-pub fn wrap_real_topic<'a>(topic: &'a TopicInfo, key_value: Option<&str>) -> &'a str {
+pub fn wrap_real_topic<'a>(topic: &'a TopicInfo, key_value: Option<&str>) -> Cow<'a, str> {
     if topic.key_index.unwrap_or(0) == 0
         || key_value.is_none()
         || key_value.is_some_and(|val| val.is_empty())
     {
-        &topic.topic
+        return Cow::Borrowed(&topic.topic); 
     } else {
         let key_index = topic.key_index.unwrap_or(0);
         let parts: Vec<&str> = topic.topic.split('/').collect();
@@ -84,9 +88,9 @@ pub fn wrap_real_topic<'a>(topic: &'a TopicInfo, key_value: Option<&str>) -> &'a
             new_topic_parts.extend(&parts[key_index..]);
 
             let new_topic = new_topic_parts.join("/");
-            Box::leak(new_topic.into_boxed_str())
+            Cow::Owned(new_topic) 
         } else {
-            &topic.topic
+            Cow::Borrowed(&topic.topic)
         }
     }
 }
