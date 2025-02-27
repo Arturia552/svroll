@@ -4,6 +4,7 @@ import ElementPlus from "element-plus";
 import locale from "element-plus/dist/locale/zh-cn.mjs";
 import * as ElementPlusIconsVue from "@element-plus/icons-vue";
 import "./assets/styles/index.scss";
+import "./assets/styles/common.scss";
 
 import App from "./App.vue";
 import store from "./store";
