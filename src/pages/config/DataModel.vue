@@ -385,7 +385,7 @@ const activateEdit = (row: JsonStruct, editKey: string) => {
 };
 
 // 根据字段类型返回不同的标签类型
-const getTagType = (type: string): string => {
+const getTagType = (type: string): 'success' | 'warning' | 'info' | 'primary' | 'danger' => {
   switch (type) {
     case FieldTypeEnum.String:
       return 'success';
@@ -399,7 +399,7 @@ const getTagType = (type: string): string => {
     case FieldTypeEnum.Array:
       return 'info';
     default:
-      return '';
+      return 'info';
   }
 };
 
