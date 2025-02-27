@@ -2,17 +2,21 @@
   "extends": [
     "plugin:@typescript-eslint/recommended",
     "@vue/typescript/recommended",
-    "plugin:vue/vue3-recommended",
+    "plugin:vue/vue3-recommended"
   ],
   "env": {
     "browser": true,
     "node": true,
     "jest": true,
-    "es6": true,
+    "es6": true
   },
   "globals": {
     "defineProps": "readonly",
     "defineEmits": "readonly",
+    "ElMessage": "readonly",
+    "ElMessageBox": "readonly",
+    "ElLoading": "readonly",
+    "ElNotification": "readonly"
   },
   "parser": "vue-eslint-parser",
   "plugins": ["vue", "@typescript-eslint"],
@@ -21,11 +25,11 @@
     "sourceType": "module",
     "allowImportExportEverywhere": true,
     "ecmaFeatures": {
-      "jsx": true,
-    },
+      "jsx": true
+    }
   },
   "settings": {
-    "import/extensions": [".js", ".jsx", ".ts", ".tsx"],
+    "import/extensions": [".js", ".jsx", ".ts", ".tsx"]
   },
   "rules": {
     "no-console": "off",
@@ -49,22 +53,22 @@
       "error",
       {
         "argsIgnorePattern": "^_",
-        "varsIgnorePattern": "^_",
-      },
+        "varsIgnorePattern": "^_"
+      }
     ],
     "vue/max-attributes-per-line": "off",
     "no-unused-vars": [
       "error",
       {
         "argsIgnorePattern": "^_",
-        "varsIgnorePattern": "^_",
-      },
+        "varsIgnorePattern": "^_"
+      }
     ],
     "no-use-before-define": "off",
     "@typescript-eslint/no-use-before-define": "off",
     "@typescript-eslint/ban-ts-comment": "off",
     "@typescript-eslint/ban-types": "off",
-    "class-methods-use-this": "off", // 因为AxiosCancel必须实例化而能静态化所以加的规则，如果有办法解决可以取消
+    "class-methods-use-this": "off" // 因为AxiosCancel必须实例化而能静态化所以加的规则，如果有办法解决可以取消
   },
   "overrides": [
     {
@@ -75,7 +79,7 @@
         "vue/multi-word-component-names": 0,
         "vue/no-reserved-props": 0,
         "vue/no-v-html": 0
-      },
+      }
     },
     {
       "files": ["*.ts", "*.tsx"], // https://github.com/typescript-eslint eslint-recommended
@@ -100,8 +104,8 @@
         "prefer-const": "error", // ts provides better types with const
         "prefer-rest-params": "error", // ts provides better types with rest args over arguments
         "prefer-spread": "error", // ts transpiles spread to apply, so no need for manual apply
-        "valid-typeof": "off", // ts(2367)
-      },
-    },
-  ],
+        "valid-typeof": "off" // ts(2367)
+      }
+    }
+  ]
 }

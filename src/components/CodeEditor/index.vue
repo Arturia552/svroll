@@ -21,6 +21,8 @@ onMounted(() => {
     colorDecorators: true,
     readOnly: false,
     theme: "vs-dark",
+    automaticLayout: true, // 启用自动布局调整
+    scrollBeyondLastLine: false, // 防止内容较少时出现过多空白
   });
   editorInstance.onDidChangeModelContent(() => {
     modelValue.value = editorInstance.getValue();
