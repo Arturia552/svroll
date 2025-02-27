@@ -71,7 +71,7 @@
           min-width="20%"
         >
           <template #default="scope">
-            <el-tag :type="getTagType(scope.row.fieldType)" effect="plain">
+            <el-tag effect="plain">
               {{ scope.row.fieldType }}
             </el-tag>
           </template>
@@ -384,24 +384,24 @@ const activateEdit = (row: JsonStruct, editKey: string) => {
   }
 };
 
-// 根据字段类型返回不同的标签类型
-const getTagType = (type: string): 'success' | 'warning' | 'info' | 'primary' | 'danger' => {
-  switch (type) {
-    case FieldTypeEnum.String:
-      return 'success';
-    case FieldTypeEnum.Integer:
-    case FieldTypeEnum.Float:
-    case FieldTypeEnum.Timestamp:
-      return 'warning';
-    case FieldTypeEnum.Boolean:
-      return 'danger';
-    case FieldTypeEnum.Object:
-    case FieldTypeEnum.Array:
-      return 'info';
-    default:
-      return 'info';
-  }
-};
+// todo 根据字段类型返回不同的标签类型
+// const getTagType = (type: string): 'success' | 'warning' | 'info' | 'primary' | 'danger' => {
+//   switch (type) {
+//     case FieldTypeEnum.String:
+//       return 'success';
+//     case FieldTypeEnum.Integer:
+//     case FieldTypeEnum.Float:
+//     case FieldTypeEnum.Timestamp:
+//       return 'warning';
+//     case FieldTypeEnum.Boolean:
+//       return 'danger';
+//     case FieldTypeEnum.Object:
+//     case FieldTypeEnum.Array:
+//       return 'info';
+//     default:
+//       return 'info';
+//   }
+// };
 
 // 刷新数据结构
 const refreshStructure = () => {
