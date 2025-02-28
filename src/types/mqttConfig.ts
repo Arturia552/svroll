@@ -111,7 +111,7 @@ export interface JsonStruct {
 }
 
 export interface rs2JsEntity {
-  msgType: string;
+  msgType: 'counter' | 'clientInfo' | 'error' | 'log';
   msg: string;
 }
 

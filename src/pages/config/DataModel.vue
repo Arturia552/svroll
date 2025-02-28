@@ -181,20 +181,6 @@
       <el-alert type="info" :closable="false">
         <div class="tips-content">
           <p><strong>提示：</strong> 双击单元格进行编辑。</p>
-          <p>
-            <el-tag size="small">
-              Object
-            </el-tag>: 对象类型
-            <el-tag size="small" type="success">
-              String
-            </el-tag>: 字符串
-            <el-tag size="small" type="warning">
-              Integer/Float
-            </el-tag>: 数字
-            <el-tag size="small" type="danger">
-              Boolean
-            </el-tag>: 布尔值
-          </p>
         </div>
       </el-alert>
     </div>

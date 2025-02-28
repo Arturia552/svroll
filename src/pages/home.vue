@@ -3,47 +3,42 @@
     <!-- <theme-switch /> -->
     <el-card class="main-card">
       <div class="header">
-        <h2 class="title">
-          IoT 连接测试工具
-        </h2>
         <div class="func-button-group">
-          <el-button type="success" size="default" @click="showNewConfig">
+          <el-button type="success" size="default" :disabled="isRunning" @click="showNewConfig">
             <el-icon><Edit /></el-icon>编辑配置
           </el-button>
-          <el-button type="primary" :disabled="!valid" @click="exportConfig">
+          <el-button type="primary" :disabled="!valid || isRunning" @click="exportConfig">
             <el-icon><Download /></el-icon>导出配置
           </el-button>
-          <el-button type="primary" @click="loadConfig">
+          <el-button type="primary" :disabled="isRunning" @click="loadConfig">
             <el-icon><Upload /></el-icon>导入配置
           </el-button>
         </div>
       </div>
 
       <div class="editor-section">
+        <!-- 根据测试状态显示编辑器或仪表盘 -->
         <code-editor
+          v-if="!isRunning"
           v-model:jsonEdit="config.sendData"
           class="json-edit-container"
+        />
+        <dashboard-panel
+          v-else
+          :counter="counter"
+          :client-info="clientInfo"
+          class="dashboard-container"
         />
       </div>
 
       <div class="control-section">
         <div class="controls">
-          <el-button type="primary" size="large" :disabled="!valid" @click="start">
+          <el-button type="primary" size="large" :disabled="!valid || isRunning" @click="start">
             <el-icon><VideoPlay /></el-icon>开始测试
           </el-button>
           <el-button type="danger" size="large" @click="stop">
             <el-icon><VideoPause /></el-icon>停止测试
           </el-button>
-        </div>
-        <div class="status-panel">
-          <div class="counter-card">
-            <div class="counter-label">
-              消息计数
-            </div>
-            <div class="counter-value">
-              {{ counter }}
-            </div>
-          </div>
         </div>
       </div>
     </el-card>
@@ -71,11 +66,20 @@
 import { invoke } from "@tauri-apps/api/tauri";
 import CodeEditor from "@/components/CodeEditor/index.vue";
 import TabsConfig from "@/pages/config/TabsConfig.vue";
+import DashboardPanel from "@/components/Dashboard/DashboardPanel.vue";
 import { MqttConfig, rs2JsEntity } from "@/types/mqttConfig";
 import { listen } from "@tauri-apps/api/event";
 import { open } from "@tauri-apps/api/dialog";
 
 const valid = ref<boolean>(false);
+const isRunning = ref<boolean>(false);
+const clientInfo = ref<any>({
+  connected: 0,
+  disconnected: 0,
+  failed: 0,
+  connecting: 0
+});
+
 const config = ref<MqttConfig>({
   sendData: "",
   protocol: "Mqtt",
@@ -178,6 +182,8 @@ const loadConfig = async () => {
   try {
     config.value = await invoke<MqttConfig>("load_config", { filePath });    
     convertType(config.value, mqttConfigTypeDef);
+    console.log(config.value)
+    valid.value = true;
     ElMessage.success("导入成功");
   } catch (e) {
     ElMessage.error(String(e));
@@ -188,14 +194,16 @@ const start = async () => {
   counter.value = 0;
   convertType(config.value, mqttConfigTypeDef);
   console.log(config.value)
-  // const msg = await invoke("start_task", { param: config.value as MqttConfig });
-  // ElMessage.success(msg);
+  const msg = await invoke("start_task", { param: config.value as MqttConfig });
+  ElMessage.success(msg);
+  isRunning.value = true;
   receive();
 };
 
 const stop = async () => {
   const msg = await invoke("stop_task");
   ElMessage.success(msg);
+  isRunning.value = false;
 };
 
 const closeConfigDrawer = () => {
@@ -244,13 +252,19 @@ const receive = () => {
     const entity: rs2JsEntity = JSON.parse(event.payload as string);
     if (entity.msgType === "counter") {
       counter.value = parseInt(entity.msg);
+    } else if (entity.msgType === "clientInfo") {
+      try {
+        clientInfo.value = JSON.parse(entity.msg);
+      } catch (e) {
+        console.error("解析客户端信息失败:", e);
+      }
     }
   });
 };
 </script>
 <style lang="scss" scoped>
 .home {
-  padding: 20px;
+  padding: 10px;
   height: 100vh; /* 使用视口高度 */
   box-sizing: border-box; /* 确保padding不增加元素总高度 */
   display: flex;
@@ -330,6 +344,17 @@ const receive = () => {
   overflow: hidden;
   box-shadow: var(--el-box-shadow-light);
   flex: 1; /* 占用编辑区域的所有剩余空间 */
+}
+
+.dashboard-container {
+  height: 100%;
+  min-height: 260px;
+  border-radius: var(--el-border-radius-base);
+  overflow: auto;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
 }
 
 .control-section {
