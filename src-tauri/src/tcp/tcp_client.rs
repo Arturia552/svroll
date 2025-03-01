@@ -171,7 +171,7 @@ impl Client<Vec<u8>, TcpClientData> for TcpClient {
         clients: Vec<TcpClientData>,
         task: &Task,
         config: &BenchmarkConfig<Vec<u8>, TcpClientData>,
-    ) {
+    ) -> Result<Vec<tokio::task::JoinHandle<()>>, Error> {
         // 确定每个线程处理的客户端数量
         let startup_thread_size = clients.len() / config.thread_size
             + if clients.len() % config.thread_size != 0 {
@@ -181,6 +181,7 @@ impl Client<Vec<u8>, TcpClientData> for TcpClient {
             };
         // 按线程大小将客户端分组
         let clients_group = clients.chunks(startup_thread_size);
+        let mut hanldes = vec![];
 
         for group in clients_group {
             let mut groups = group.to_vec();
@@ -189,7 +190,7 @@ impl Client<Vec<u8>, TcpClientData> for TcpClient {
             let send_interval = config.send_interval;
             let enable_register = config.enable_register;
 
-            tokio::spawn(async move {
+            let handle =  tokio::spawn(async move {
                 let mut interval = tokio::time::interval(Duration::from_secs(send_interval));
                 loop {
                     interval.tick().await;
@@ -203,6 +204,8 @@ impl Client<Vec<u8>, TcpClientData> for TcpClient {
                     }
                 }
             });
+            hanldes.push(handle);
         }
+        anyhow::Result::Ok(hanldes)
     }
 }

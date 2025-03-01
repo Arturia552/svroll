@@ -2,8 +2,7 @@ use std::{
     sync::{
         atomic::{AtomicBool, AtomicU32, Ordering},
         Arc,
-    },
-    time::Duration,
+    }, time::Duration, vec
 };
 
 use anyhow::{Error, Result};
@@ -12,8 +11,7 @@ use paho_mqtt::{
 };
 use serde::{Deserialize, Serialize};
 use tokio::{
-    sync::Semaphore,
-    time::{sleep, Instant},
+    sync::Semaphore, task::JoinHandle, time::{sleep, Instant}
 };
 use tracing::{error, info};
 
@@ -155,9 +153,11 @@ impl Client<MqttSendData, MqttClientData> for MqttClient {
                 match cli.connect(conn_opts).await {
                     Ok(_) => match mqtt_client.on_connect_success(&mut cli).await {
                         Ok(_) => {}
-                        Err(_) => todo!(),
+                        Err(_) => error!("连接成功但初始化失败"),
                     },
-                    Err(_) => todo!(),
+                    Err(_) => {
+                        error!("连接失败");
+                    },
                 }
 
                 let elapsed = start.elapsed();
@@ -222,12 +222,13 @@ impl Client<MqttSendData, MqttClientData> for MqttClient {
         clients: Vec<Self::Item>,
         task: &Task,
         config: &BenchmarkConfig<MqttSendData, MqttClientData>,
-    ) {
+    ) -> Result<Vec<JoinHandle<()>>, Error> {
         info!("开始发送消息...");
         // 确定每个线程处理的客户端数量
         let clients_per_thread = (clients.len() + config.thread_size - 1) / config.thread_size;
-
-        let clients_group = clients.chunks(clients_per_thread);
+        let clients_group: std::slice::Chunks<'_, AsyncClient> = clients.chunks(clients_per_thread);
+        /// 存放每个线程的JoinHandle
+        let mut handles: Vec<JoinHandle<()>> = vec![];
 
         for group in clients_group {
             let mut group = group.to_vec();
@@ -240,7 +241,7 @@ impl Client<MqttSendData, MqttClientData> for MqttClient {
             let enable_register = config.enable_register;
             let enable_random = config.enable_random;
 
-            tokio::spawn(async move {
+            let handle = tokio::spawn(async move {
                 let mut interval = tokio::time::interval(Duration::from_secs(send_interval));
                 loop {
                     if !status.load(Ordering::SeqCst) {
@@ -284,7 +285,9 @@ impl Client<MqttSendData, MqttClientData> for MqttClient {
                     }
                 }
             });
+            handles.push(handle);
         }
+        anyhow::Result::Ok(handles)
     }
 
     async fn wait_for_connections(&self, clients: &mut [AsyncClient]) {

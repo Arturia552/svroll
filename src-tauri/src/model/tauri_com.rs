@@ -29,7 +29,7 @@ static TASK: OnceCell<Arc<Mutex<Task>>> = OnceCell::new();
 
 #[derive(Debug)]
 pub struct Task {
-    pub handle: Option<JoinHandle<()>>,
+    pub task_handle: Option<Vec<JoinHandle<()>>>,
     pub count_handle: Option<JoinHandle<()>>,
     pub status: Arc<AtomicBool>,
     pub counter: Arc<AtomicU32>,
@@ -144,7 +144,7 @@ async fn start_mqtt(
 
     let task = TASK.get_or_init(|| {
         Arc::new(Mutex::new(Task {
-            handle: None,
+            task_handle: None,
             count_handle: None,
             status: Arc::new(AtomicBool::new(true)),
             counter: Arc::new(AtomicU32::new(0)),
@@ -153,11 +153,13 @@ async fn start_mqtt(
 
     reset_task(task.clone()).await;
 
-    let handle: JoinHandle<()> = tokio::spawn(async move {
+    tokio::spawn(async move {
         let task = task.clone();
-        mqtt_client
+        let task_handle = mqtt_client
             .spawn_message(clients, &*task.lock().await, &param)
-            .await;
+            .await
+            .unwrap();
+        task.lock().await.task_handle = Some(task_handle);
     });
     let tx_clone = tx.clone();
     let count_handle = tokio::spawn(async move {
@@ -175,7 +177,6 @@ async fn start_mqtt(
     });
 
     let mut task = task.lock().await;
-    task.handle = Some(handle);
     task.count_handle = Some(count_handle);
 
     tx.send(Rs2JsEntity::new(
@@ -207,7 +208,7 @@ async fn start_tcp(
 
     let task = TASK.get_or_init(|| {
         Arc::new(Mutex::new(Task {
-            handle: None,
+            task_handle: None,
             count_handle: None,
             status: Arc::new(AtomicBool::new(true)),
             counter: Arc::new(AtomicU32::new(0)),
@@ -219,11 +220,13 @@ async fn start_tcp(
     // 启动发送消息的线程
     let tx = async_proc_output_tx.inner.lock().await.clone();
 
-    let handle: JoinHandle<()> = tokio::spawn(async move {
+    tokio::spawn(async move {
         let task = task.clone();
-        tcp_client
+        let handles = tcp_client
             .spawn_message(clients, &*task.lock().await, &benchmark_config)
-            .await;
+            .await
+            .unwrap();
+        task.lock().await.task_handle = Some(handles);
     });
 
     let count_handle = tokio::spawn(async move {
@@ -240,20 +243,19 @@ async fn start_tcp(
     });
 
     let mut task = task.lock().await;
-    task.handle = Some(handle);
     task.count_handle = Some(count_handle);
     Ok("开始发送消息...".to_string())
 }
 
 #[command]
 pub async fn stop_task() -> Result<String, String> {
-    info!("stop_task");
     if let Some(task) = TASK.get() {
-        info!("stop_task: task.get()");
         let mut task = task.lock().await;
-        if let Some(handle) = task.handle.take() {
+        if let Some(handle) = task.task_handle.take() {
             info!("stop_task: handle.take()");
-            handle.abort();
+            for h in handle {
+                h.abort();
+            }
             task.status.store(false, Ordering::SeqCst);
         }
         sleep(Duration::from_secs(5)).await;

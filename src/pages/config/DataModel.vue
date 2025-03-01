@@ -1,9 +1,9 @@
 <template>
   <div v-loading="loading" class="data-model">
     <div class="header">
-      <h3 class="title">
+      <div class="title">
         数据模型配置
-      </h3>
+      </div>
       <div class="actions">
         <el-tooltip content="刷新数据结构" placement="top">
           <el-button type="primary" circle @click="refreshStructure">
@@ -538,7 +538,7 @@ onMounted(() => {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 20px;
+    margin-bottom: 16px;
 
     .title {
       font-size: 18px;

@@ -1,6 +1,7 @@
 use std::fmt::Debug;
 
 use anyhow::{Error, Result};
+use tokio::task::JoinHandle;
 
 use crate::{benchmark_param::BenchmarkConfig, model::tauri_com::Task};
 
@@ -29,5 +30,5 @@ where
         clients: Vec<Self::Item>,
         task: &Task,
         config: &BenchmarkConfig<T, C>,
-    ) -> impl std::future::Future<Output = ()> + Send;
+    ) -> impl std::future::Future<Output = Result<Vec<JoinHandle<()>>, Error>> + Send;
 }

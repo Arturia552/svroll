@@ -52,7 +52,6 @@
     
     <div class="table-section">
       <div class="table-header">
-        <span>客户端列表 ({{ config.clients.length }})</span>
         <el-input
           v-if="config.clients.length > 0"
           v-model="searchQuery"
@@ -163,7 +162,7 @@ const removeClient = (index: number) => {
 </script>
 <style scoped lang="scss">
 .client-config {
-  padding: 16px;
+  
 }
 
 .actions-bar {
@@ -175,7 +174,7 @@ const removeClient = (index: number) => {
   .title {
     font-size: 18px;
     font-weight: 600;
-    color: var(--el-text-color-primary);
+    color: var(--el-color-primary);
   }
   
   .buttons {
@@ -201,7 +200,6 @@ const removeClient = (index: number) => {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 16px;
     font-size: 16px;
     color: var(--el-text-color-regular);
     
