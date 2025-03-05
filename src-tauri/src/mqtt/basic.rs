@@ -75,7 +75,7 @@ pub fn wrap_real_topic<'a>(topic: &'a TopicInfo, key_value: Option<&str>) -> Cow
         || key_value.is_none()
         || key_value.is_some_and(|val| val.is_empty())
     {
-        return Cow::Borrowed(&topic.topic); 
+        return Cow::Borrowed(&topic.topic);
     } else {
         let key_index = topic.key_index.unwrap_or(0);
         let parts: Vec<&str> = topic.topic.split('/').collect();
@@ -88,7 +88,7 @@ pub fn wrap_real_topic<'a>(topic: &'a TopicInfo, key_value: Option<&str>) -> Cow
             new_topic_parts.extend(&parts[key_index..]);
 
             let new_topic = new_topic_parts.join("/");
-            Cow::Owned(new_topic) 
+            Cow::Owned(new_topic)
         } else {
             Cow::Borrowed(&topic.topic)
         }

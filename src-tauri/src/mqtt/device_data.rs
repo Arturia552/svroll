@@ -21,39 +21,36 @@ impl MqttSendData {
 
     pub fn process_fields(&mut self, enable_random: bool) {
         let mut rng = rand::thread_rng();
-        self.fields
-            .iter()
-            .for_each(|field| match field.field_type {
-                FieldType::Timestamp => {
-                    let now = Local::now().timestamp_millis();
-                    self.data[&field.field_name] = Value::from(now);
-
-                },
-                FieldType::DateTime => {
-                    let now = Local::now().format("%Y-%m-%d %H:%M:%S%.3f").to_string();
-                    self.data[&field.field_name] = Value::from(now);
-                },
-                FieldType::Integer => {
-                    if enable_random {
-                        let random_integer = rng.gen_range(field.min_value as i64..=field.max_value as i64);
-                        self.data[&field.field_name] = Value::from(random_integer);
-                    }
-                },
-                FieldType::Boolean => {
-                    if enable_random {
-                        let random_boolean = rng.gen_bool(0.5);
-                        self.data[&field.field_name] = Value::from(random_boolean);
-                    }
-                },
-                FieldType::Float => {
-                    if enable_random {
-                        let random_float = rng.gen_range(field.min_value..=field.max_value);
-                        self.data[&field.field_name] = Value::from(random_float);
-                    }
-
+        self.fields.iter().for_each(|field| match field.field_type {
+            FieldType::Timestamp => {
+                let now = Local::now().timestamp_millis();
+                self.data[&field.field_name] = Value::from(now);
+            }
+            FieldType::DateTime => {
+                let now = Local::now().format("%Y-%m-%d %H:%M:%S%.3f").to_string();
+                self.data[&field.field_name] = Value::from(now);
+            }
+            FieldType::Integer => {
+                if enable_random {
+                    let random_integer =
+                        rng.gen_range(field.min_value as i64..=field.max_value as i64);
+                    self.data[&field.field_name] = Value::from(random_integer);
                 }
-                _ => {}
-            })
+            }
+            FieldType::Boolean => {
+                if enable_random {
+                    let random_boolean = rng.gen_bool(0.5);
+                    self.data[&field.field_name] = Value::from(random_boolean);
+                }
+            }
+            FieldType::Float => {
+                if enable_random {
+                    let random_float = rng.gen_range(field.min_value..=field.max_value);
+                    self.data[&field.field_name] = Value::from(random_float);
+                }
+            }
+            _ => {}
+        })
     }
 }
 

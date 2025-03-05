@@ -24,7 +24,7 @@ where
     fn on_connect_success(
         &self,
         client: &mut Self::Item,
-    ) -> impl std::future::Future<Output = Result<(), Error> > + Send;
+    ) -> impl std::future::Future<Output = Result<(), Error>> + Send;
     fn spawn_message(
         &self,
         clients: Vec<Self::Item>,

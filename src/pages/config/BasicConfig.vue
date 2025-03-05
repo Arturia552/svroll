@@ -123,7 +123,7 @@
 <script setup lang="ts" name="BasicConfig">
 import { MqttConfig } from '@/types/mqttConfig';
 import { ElMessage, FormRules, type FormInstance } from 'element-plus';
-import { invoke } from '@tauri-apps/api/tauri';
+import { invoke } from '@tauri-apps/api/core';
 import { getNestedValue, isJsonValueNull } from '@/hooks/processJsonStruct';
 
 const config = ref(inject<MqttConfig>("config"));

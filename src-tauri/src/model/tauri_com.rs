@@ -258,7 +258,7 @@ pub async fn stop_task() -> Result<String, String> {
             }
             task.status.store(false, Ordering::SeqCst);
         }
-        sleep(Duration::from_secs(5)).await;
+        sleep(Duration::from_secs(1)).await;
         if let Some(handle) = task.count_handle.take() {
             info!("stop_task: handle.take()");
             handle.abort();

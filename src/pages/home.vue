@@ -63,13 +63,14 @@
   </el-drawer>
 </template>
 <script setup lang="ts" name="Home">
-import { invoke } from "@tauri-apps/api/tauri";
+import { invoke } from "@tauri-apps/api/core";
 import CodeEditor from "@/components/CodeEditor/index.vue";
 import TabsConfig from "@/pages/config/TabsConfig.vue";
 import DashboardPanel from "@/components/Dashboard/DashboardPanel.vue";
-import { MqttConfig, rs2JsEntity } from "@/types/mqttConfig";
+import { convert2Type, MqttConfig, rs2JsEntity } from "@/types/mqttConfig";
 import { listen } from "@tauri-apps/api/event";
-import { open } from "@tauri-apps/api/dialog";
+import { open, save } from "@tauri-apps/plugin-dialog";
+import { writeTextFile } from "@tauri-apps/plugin-fs";
 
 const valid = ref<boolean>(false);
 const isRunning = ref<boolean>(false);
@@ -160,18 +161,22 @@ const showNewConfig = () => {
   configDrawerVisible.value = true;
 };
 
-const exportConfig = () => {
-  const jsonString = JSON.stringify(config.value, null, 2);
-  const blob = new Blob([jsonString], { type: "application/json" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = "config.json";
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
+const exportConfig = async () => {
+  const filePath = await save({
+    filters: [{ name: "JSON 文件", extensions: ["json"] }],
+    title: "导出配置",
+  });
+  convert2Type(config.value, mqttConfigTypeDef);
+  if (!filePath || filePath?.trim() === "") return;
+  const content = JSON.stringify(config.value);
+  try {
+    await writeTextFile(filePath, content);
+    ElMessage.success("导出成功");
+  } catch (e) {
+    ElMessage.error(e);
+  }
 };
+
 
 const loadConfig = async () => {
   const filePath = await open({

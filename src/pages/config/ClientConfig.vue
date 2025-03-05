@@ -99,8 +99,8 @@
 </template>
 <script setup lang="ts">
 import { MqttClient, MqttConfig } from "@/types/mqttConfig";
-import { open } from "@tauri-apps/api/dialog";
-import { invoke } from "@tauri-apps/api/tauri";
+import { open } from "@tauri-apps/plugin-dialog";
+import { invoke } from "@tauri-apps/api/core";
 import { ElMessage } from "element-plus";
 
 const generateSize = ref(100);

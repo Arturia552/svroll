@@ -278,8 +278,8 @@
 import { convertToJsonStruct } from "@/hooks/processJsonStruct";
 import { FieldTypeEnum, JsonStruct } from "@/types/mqttConfig";
 import { OnClickOutside } from "@vueuse/components";
-import { open } from "@tauri-apps/api/dialog";
-import { invoke } from "@tauri-apps/api/tauri";
+import { open } from "@tauri-apps/plugin-dialog";
+import { invoke } from "@tauri-apps/api/core";
 import { ElMessage, FormInstance } from "element-plus";
 import { Folder, Document, Odometer, SwitchButton, Operation, More, Refresh, Plus, Download } from '@element-plus/icons-vue';
 

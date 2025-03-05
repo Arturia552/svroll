@@ -2,7 +2,9 @@ use std::{
     sync::{
         atomic::{AtomicBool, AtomicU32, Ordering},
         Arc,
-    }, time::Duration, vec
+    },
+    time::Duration,
+    vec,
 };
 
 use anyhow::{Error, Result};
@@ -11,7 +13,9 @@ use paho_mqtt::{
 };
 use serde::{Deserialize, Serialize};
 use tokio::{
-    sync::Semaphore, task::JoinHandle, time::{sleep, Instant}
+    sync::Semaphore,
+    task::JoinHandle,
+    time::{sleep, Instant},
 };
 use tracing::{error, info};
 
@@ -157,7 +161,7 @@ impl Client<MqttSendData, MqttClientData> for MqttClient {
                     },
                     Err(_) => {
                         error!("连接失败");
-                    },
+                    }
                 }
 
                 let elapsed = start.elapsed();

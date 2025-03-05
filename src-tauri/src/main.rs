@@ -9,7 +9,7 @@ use svroll::{
     },
     AsyncProcInputTx,
 };
-use tauri::Manager;
+use tauri::{AppHandle, Emitter, Manager};
 use tokio::sync::{mpsc, Mutex};
 use tracing::info;
 
@@ -20,6 +20,9 @@ async fn main() {
     let (async_proc_output_tx, mut async_proc_output_rx) = mpsc::channel(1);
 
     tauri::Builder::default()
+        .plugin(tauri_plugin_shell::init())
+        .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_fs::init())
         .manage(AsyncProcInputTx {
             inner: Mutex::new(async_proc_output_tx),
         })
@@ -32,7 +35,7 @@ async fn main() {
             tauri_com::load_config,
         ])
         .setup(|app| {
-            let app_handle = app.handle();
+            let app_handle = app.handle().to_owned();
             tokio::spawn(async move {
                 loop {
                     if let Some(output) = async_proc_output_rx.recv().await {
@@ -47,8 +50,8 @@ async fn main() {
         .expect("error while running tauri application");
 }
 
-fn rs2js<R: tauri::Runtime>(message: Rs2JsEntity, manager: &impl Manager<R>) {
+fn rs2js<R: tauri::Runtime>(message: Rs2JsEntity, manager: &AppHandle<R>) {
     info!(?message, "rs2js");
     let payload = serde_json::to_string(&message).unwrap();
-    manager.emit_all("rs2js", payload).unwrap();
+    manager.emit("rs2js", payload).unwrap();
 }

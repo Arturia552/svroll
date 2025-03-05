@@ -190,7 +190,7 @@ impl Client<Vec<u8>, TcpClientData> for TcpClient {
             let send_interval = config.send_interval;
             let enable_register = config.enable_register;
 
-            let handle =  tokio::spawn(async move {
+            let handle = tokio::spawn(async move {
                 let mut interval = tokio::time::interval(Duration::from_secs(send_interval));
                 loop {
                     interval.tick().await;

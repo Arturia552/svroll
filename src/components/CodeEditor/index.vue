@@ -11,6 +11,7 @@ const props = defineProps({
 });
 const modelValue = defineModel<string>("jsonEdit");
 const editor = ref(null);
+
 onMounted(() => {
   const editorInstance = monaco.editor.create(editor.value, {
     language: props.language,
@@ -33,6 +34,7 @@ onMounted(() => {
       editorInstance.getAction("editor.action.formatDocument").run();
     }
   });
+  editorInstance.setValue(modelValue.value);
 });
 </script>
 <style lang="scss" scoped>
