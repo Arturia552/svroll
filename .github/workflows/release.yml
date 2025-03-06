@@ -41,9 +41,7 @@ jobs:
         if: matrix.platform == 'ubuntu-22.04'
         run: |
           sudo apt-get update
-          sudo apt-get install -y pkg-config libgtk-3-dev libwebkit2gtk-4.0-dev libayatana-appindicator3-dev librsvg2-dev libglib2.0-dev libgobject-2.0-0 libpango1.0-dev libcairo2-dev libatk1.0-dev libgdk-pixbuf2.0-dev
-          echo "PKG_CONFIG_PATH=/usr/lib/x86_64-linux-gnu/pkgconfig:/usr/share/pkgconfig" >> $GITHUB_ENV
-          pkg-config --list-all | grep gobject
+          sudo apt-get install -y libwebkit2gtk-4.0-dev libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
           
       - name: Setup node
         uses: actions/setup-node@v4
