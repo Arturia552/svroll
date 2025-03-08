@@ -80,7 +80,7 @@ const clientInfo = ref<any>({
   failed: 0,
   connecting: 0
 });
-
+const clientConnectionInfo = ref<any>([])
 const config = ref<MqttConfig>({
   sendData: "",
   protocol: "Mqtt",
@@ -118,6 +118,7 @@ const config = ref<MqttConfig>({
 });
 
 provide("config", config);
+provide("clientConnectionInfo", clientConnectionInfo)
 
 const mqttConfigTypeDef: MqttConfig = {
   sendData: "",
@@ -252,8 +253,7 @@ function convertType(obj: any, typeDef: any): void {
 }
 
 const receive = () => {
-  listen("rs2js", (event) => {
-    console.log(event);
+  listen("rs2js", async (event) => {
     const entity: rs2JsEntity = JSON.parse(event.payload as string);
     if (entity.msgType === "counter") {
       counter.value = parseInt(entity.msg);
@@ -264,6 +264,9 @@ const receive = () => {
         console.error("解析客户端信息失败:", e);
       }
     }
+    const clients = await invoke("get_mqtt_clients")
+    console.log(clients)
+    clientConnectionInfo.value = clients
   });
 };
 </script>

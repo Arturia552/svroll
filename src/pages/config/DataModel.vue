@@ -7,157 +7,101 @@
       <div class="actions">
         <el-tooltip content="刷新数据结构" placement="top">
           <el-button type="primary" circle @click="refreshStructure">
-            <el-icon><refresh /></el-icon>
+            <el-icon>
+              <refresh />
+            </el-icon>
           </el-button>
         </el-tooltip>
         <el-tooltip content="添加字段" placement="top">
           <el-button type="success" circle @click="showAddFieldDialog">
-            <el-icon><plus /></el-icon>
+            <el-icon>
+              <plus />
+            </el-icon>
           </el-button>
         </el-tooltip>
         <el-tooltip content="导入模板" placement="top">
           <el-button type="info" circle @click="importTemplate">
-            <el-icon><download /></el-icon>
+            <el-icon>
+              <download />
+            </el-icon>
           </el-button>
         </el-tooltip>
       </div>
     </div>
-    
+
     <el-divider />
-    
+
     <div class="table-container">
-      <el-table
-        :data="config.fieldStruct"
-        style="width: 100%"
-        row-key="fieldName"
-        :tree-props="{ children: 'children' }"
-        border
-        stripe
-        highlight-current-row
+      <el-table :data="config.fieldStruct" style="width: 100%" size="small" row-key="fieldName"
+                :tree-props="{ children: 'children' }" border stripe highlight-current-row
       >
-        <el-table-column
-          prop="fieldName"
-          label="键值"
-          min-width="20%"
-        >
+        <el-table-column prop="fieldName" label="键值" min-width="20%" />
+
+        <el-table-column prop="fieldType" label="数据类型" min-width="20%">
           <template #default="scope">
-            <div class="field-name-cell">
-              <el-icon v-if="scope.row.fieldType === FieldTypeEnum.Object">
-                <folder />
-              </el-icon>
-              <el-icon v-else-if="scope.row.fieldType === FieldTypeEnum.String">
-                <document />
-              </el-icon>
-              <el-icon v-else-if="scope.row.fieldType === FieldTypeEnum.Integer || scope.row.fieldType === FieldTypeEnum.Float">
-                <odometer />
-              </el-icon>
-              <el-icon v-else-if="scope.row.fieldType === FieldTypeEnum.Boolean">
-                <switch-button />
-              </el-icon>
-              <el-icon v-else-if="scope.row.fieldType === FieldTypeEnum.Array">
-                <operation />
-              </el-icon>
-              <el-icon v-else>
-                <more />
-              </el-icon>
-              <span>{{ scope.row.fieldName }}</span>
-            </div>
+            <el-select v-model="scope.row.fieldType" v-focus
+                       class="edit-select" size="small"
+                       @change="handleTypeChange"
+            >
+              <el-option v-for="item in fieldTypeOptions" 
+                         :key="item.value" 
+                         :label="item.label" 
+                         :value="item.value"
+              />
+            </el-select>
           </template>
         </el-table-column>
-        
-        <el-table-column
-          prop="fieldType"
-          label="数据类型"
-          min-width="20%"
-        >
-          <template #default="scope">
-            <el-tag effect="plain">
-              {{ scope.row.fieldType }}
-            </el-tag>
-          </template>
-        </el-table-column>
-        
+
         <el-table-column prop="minValue" label="最小值" min-width="15%">
           <template #default="scope">
-            <on-click-outside
-              v-if="scope.row.editing1"
-              @trigger="scope.row.editing1 = false"
+            <on-click-outside v-if="scope.row.editing1 && scope.row.fieldType !== FieldTypeEnum.Object"
+                              @trigger="scope.row.editing1 = false"
             >
-              <el-input
-                v-if="scope.row.editing1"
-                ref="minValueInput"
-                v-model="scope.row.minValue"
-                v-focus
-                class="edit-input"
-                @blur="
-                  blurInput(scope.row, scope.row.minValue, 'minValue', 'editing1')
-                "
+              <el-input v-if="scope.row.editing1" ref="minValueInput" v-model="scope.row.minValue" v-focus
+                        class="edit-input" @blur="
+                          blurInput(scope.row, scope.row.minValue, 'minValue', 'editing1')
+                        "
               />
             </on-click-outside>
-            <div
-              v-else
-              class="editable-cell"
-              @dblclick="activateEdit(scope.row, 'editing1')"
-            >
+            <div v-else class="editable-cell" @dblclick="activateEdit(scope.row, 'editing1')">
               {{ scope.row.minValue ?? "--" }}
             </div>
           </template>
         </el-table-column>
-        
+
         <el-table-column prop="maxValue" label="最大值" min-width="15%">
           <template #default="scope">
-            <on-click-outside
-              v-if="scope.row.editing2"
-              @trigger="scope.row.editing2 = false"
+            <on-click-outside v-if="scope.row.editing2 && scope.row.fieldType !== FieldTypeEnum.Object"
+                              @trigger="scope.row.editing2 = false"
             >
-              <el-input
-                v-if="scope.row.editing2"
-                v-model="scope.row.maxValue"
-                v-focus
-                class="edit-input"
-                @blur="
-                  blurInput(scope.row, scope.row.maxValue, 'maxValue', 'editing2')
-                "
+              <el-input v-if="scope.row.editing2" v-model="scope.row.maxValue" v-focus class="edit-input" @blur="
+                blurInput(scope.row, scope.row.maxValue, 'maxValue', 'editing2')
+              "
               />
             </on-click-outside>
-            <div
-              v-else
-              class="editable-cell"
-              @dblclick="activateEdit(scope.row, 'editing2')"
-            >
+            <div v-else class="editable-cell" @dblclick="activateEdit(scope.row, 'editing2')">
               {{ scope.row.maxValue ?? "--" }}
             </div>
           </template>
         </el-table-column>
-        
+
         <el-table-column prop="possibleValues" label="有效值" min-width="20%">
           <template #default="scope">
-            <on-click-outside
-              v-if="
-                scope.row.editing3 && scope.row.fieldType !== FieldTypeEnum.Object
-              "
-              @trigger="scope.row.editing3 = false"
+            <on-click-outside v-if="
+              scope.row.editing3 && scope.row.fieldType !== FieldTypeEnum.Object
+            " @trigger="scope.row.editing3 = false"
             >
-              <el-input
-                v-if="scope.row.editing3"
-                v-model="scope.row.possibleValues"
-                v-focus
-                class="edit-input"
-                @blur="
-                  blurInput(
-                    scope.row,
-                    scope.row.possibleValues,
-                    'possibleValues',
-                    'editing3'
-                  )
-                "
+              <el-input v-if="scope.row.editing3" v-model="scope.row.possibleValues" v-focus class="edit-input" @blur="
+                blurInput(
+                  scope.row,
+                  scope.row.possibleValues,
+                  'possibleValues',
+                  'editing3'
+                )
+              "
               />
             </on-click-outside>
-            <div
-              v-else
-              class="editable-cell"
-              @dblclick="activateEdit(scope.row, 'editing3')"
-            >
+            <div v-else class="editable-cell" @dblclick="activateEdit(scope.row, 'editing3')">
               {{ scope.row.possibleValues ?? "--" }}
             </div>
           </template>
@@ -176,7 +120,7 @@
         </template>
       </el-table>
     </div>
-    
+
     <div class="tips">
       <el-alert type="info" :closable="false">
         <div class="tips-content">
@@ -186,25 +130,21 @@
     </div>
 
     <!-- 添加字段对话框 -->
-    <el-dialog
-      v-model="addFieldDialogVisible"
-      title="添加字段"
-      width="500px"
-      :close-on-click-modal="false"
-      :append-to-body="true"
+    <el-dialog v-model="addFieldDialogVisible" title="添加字段" width="500px" :close-on-click-modal="false"
+               :append-to-body="true"
     >
-      <el-form ref="fieldFormRef" :model="newField" label-width="80px" :rules="fieldRules">
+      <el-form ref="fieldFormRef" :model="newField" label-width="100px" :rules="fieldRules">
+        <el-form-item label="添加到" prop="parentField">
+          <el-select v-model="selectedParentFieldId" placeholder="请选择添加位置" style="width: 100%">
+            <el-option v-for="field in objectFields" :key="field.id" :label="field.label" :value="field.id" />
+          </el-select>
+        </el-form-item>
         <el-form-item label="字段名称" prop="fieldName">
           <el-input v-model="newField.fieldName" placeholder="请输入字段名称" />
         </el-form-item>
         <el-form-item label="字段类型" prop="fieldType">
           <el-select v-model="newField.fieldType" placeholder="请选择字段类型" style="width: 100%">
-            <el-option
-              v-for="item in fieldTypeOptions"
-              :key="item.value"
-              :label="item.label"
-              :value="item.value"
-            />
+            <el-option v-for="item in fieldTypeOptions" :key="item.value" :label="item.label" :value="item.value" />
           </el-select>
         </el-form-item>
         <template v-if="newField.fieldType !== FieldTypeEnum.Object && newField.fieldType !== FieldTypeEnum.Array">
@@ -213,10 +153,14 @@
           </el-form-item>
           <template v-if="newField.fieldType === FieldTypeEnum.Integer || newField.fieldType === FieldTypeEnum.Float">
             <el-form-item label="最小值">
-              <el-input-number v-model="newField.minValue" :precision="newField.fieldType === FieldTypeEnum.Float ? 2 : 0" />
+              <el-input-number v-model="newField.minValue"
+                               :precision="newField.fieldType === FieldTypeEnum.Float ? 2 : 0"
+              />
             </el-form-item>
             <el-form-item label="最大值">
-              <el-input-number v-model="newField.maxValue" :precision="newField.fieldType === FieldTypeEnum.Float ? 2 : 0" />
+              <el-input-number v-model="newField.maxValue"
+                               :precision="newField.fieldType === FieldTypeEnum.Float ? 2 : 0"
+              />
             </el-form-item>
           </template>
         </template>
@@ -230,12 +174,8 @@
     </el-dialog>
 
     <!-- 编辑字段对话框 -->
-    <el-dialog
-      v-model="editFieldDialogVisible"
-      title="编辑字段"
-      width="500px"
-      :close-on-click-modal="false"
-      :append-to-body="true"
+    <el-dialog v-model="editFieldDialogVisible" title="编辑字段" width="500px" :close-on-click-modal="false"
+               :append-to-body="true"
     >
       <el-form ref="editFieldFormRef" :model="currentEditField" label-width="80px" :rules="fieldRules">
         <el-form-item label="字段名称" prop="fieldName">
@@ -243,24 +183,27 @@
         </el-form-item>
         <el-form-item label="字段类型" prop="fieldType">
           <el-select v-model="currentEditField.fieldType" placeholder="请选择字段类型" style="width: 100%">
-            <el-option
-              v-for="item in fieldTypeOptions"
-              :key="item.value"
-              :label="item.label"
-              :value="item.value"
-            />
+            <el-option v-for="item in fieldTypeOptions" :key="item.value" :label="item.label" :value="item.value" />
           </el-select>
         </el-form-item>
-        <template v-if="currentEditField.fieldType !== FieldTypeEnum.Object && currentEditField.fieldType !== FieldTypeEnum.Array">
+        <template
+          v-if="currentEditField.fieldType !== FieldTypeEnum.Object && currentEditField.fieldType !== FieldTypeEnum.Array"
+        >
           <el-form-item v-if="currentEditField.fieldType" label="默认值">
             <el-input v-model="currentEditField.possibleValues" placeholder="请输入默认值" />
           </el-form-item>
-          <template v-if="currentEditField.fieldType === FieldTypeEnum.Integer || currentEditField.fieldType === FieldTypeEnum.Float">
+          <template
+            v-if="currentEditField.fieldType === FieldTypeEnum.Integer || currentEditField.fieldType === FieldTypeEnum.Float"
+          >
             <el-form-item label="最小值">
-              <el-input-number v-model="currentEditField.minValue" :precision="currentEditField.fieldType === FieldTypeEnum.Float ? 2 : 0" />
+              <el-input-number v-model="currentEditField.minValue"
+                               :precision="currentEditField.fieldType === FieldTypeEnum.Float ? 2 : 0"
+              />
             </el-form-item>
             <el-form-item label="最大值">
-              <el-input-number v-model="currentEditField.maxValue" :precision="currentEditField.fieldType === FieldTypeEnum.Float ? 2 : 0" />
+              <el-input-number v-model="currentEditField.maxValue"
+                               :precision="currentEditField.fieldType === FieldTypeEnum.Float ? 2 : 0"
+              />
             </el-form-item>
           </template>
         </template>
@@ -281,7 +224,7 @@ import { OnClickOutside } from "@vueuse/components";
 import { open } from "@tauri-apps/plugin-dialog";
 import { invoke } from "@tauri-apps/api/core";
 import { ElMessage, FormInstance } from "element-plus";
-import { Folder, Document, Odometer, SwitchButton, Operation, More, Refresh, Plus, Download } from '@element-plus/icons-vue';
+import { Refresh, Plus, Download } from '@element-plus/icons-vue';
 
 const config = inject<any>("config");
 const loading = ref<boolean>(true);
@@ -291,6 +234,8 @@ const currentParent = ref<JsonStruct | null>(null);
 const currentEditField = ref<JsonStruct>({});
 const fieldFormRef = ref<FormInstance>();
 const editFieldFormRef = ref<FormInstance>();
+const objectFields = ref<{ id: string, label: string }[]>([]);
+const selectedParentFieldId = ref<string>('');
 
 // 自定义指令：自动聚焦
 const vFocus = {
@@ -370,24 +315,21 @@ const activateEdit = (row: JsonStruct, editKey: string) => {
   }
 };
 
-// todo 根据字段类型返回不同的标签类型
-// const getTagType = (type: string): 'success' | 'warning' | 'info' | 'primary' | 'danger' => {
-//   switch (type) {
-//     case FieldTypeEnum.String:
-//       return 'success';
-//     case FieldTypeEnum.Integer:
-//     case FieldTypeEnum.Float:
-//     case FieldTypeEnum.Timestamp:
-//       return 'warning';
-//     case FieldTypeEnum.Boolean:
-//       return 'danger';
-//     case FieldTypeEnum.Object:
-//     case FieldTypeEnum.Array:
-//       return 'info';
-//     default:
-//       return 'info';
-//   }
-// };
+const handleTypeChange = (row: JsonStruct) => {
+  const newFieldType = row.fieldType;
+  if (newFieldType === FieldTypeEnum.Object && !row.children) {
+    row.children = [];
+  }
+  if (newFieldType === FieldTypeEnum.Object || newFieldType === FieldTypeEnum.Array) {
+    row.minValue = undefined;
+    row.maxValue = undefined;
+    row.possibleValues = '';
+  }
+  
+  // 更新JSON结构
+  updateJsonFromStruct();
+  
+};
 
 // 刷新数据结构
 const refreshStructure = () => {
@@ -410,6 +352,37 @@ const updateJsonFromStruct = () => {
   config.value.sendData = JSON.stringify(convertJsonStructToJson(config.value.fieldStruct), null, 2);
 };
 
+// 获取所有Object类型字段
+const getObjectFields = (fields: JsonStruct[], prefix = '', path = ''): void => {
+  fields.forEach((field, index) => {
+    if (field.fieldType === FieldTypeEnum.Object) {
+      const id = path ? `${path}.${index}` : `${index}`;
+      const label = prefix ? `${prefix}.${field.fieldName}` : field.fieldName;
+      objectFields.value.push({ id, label });
+
+      if (field.children && field.children.length > 0) {
+        getObjectFields(field.children, label, id);
+      }
+    }
+  });
+};
+
+// 根据path获取字段
+const getFieldByPath = (path: string): JsonStruct | null => {
+  if (!path) return null;
+
+  const indices = path.split('.').map(Number);
+  let current = config.value.fieldStruct;
+  let field = null;
+
+  for (const index of indices) {
+    field = current[index];
+    current = field.children || [];
+  }
+
+  return field;
+};
+
 // 显示添加字段对话框
 const showAddFieldDialog = () => {
   newField.value = {
@@ -420,6 +393,12 @@ const showAddFieldDialog = () => {
     possibleValues: '',
     children: []
   };
+
+  // 获取所有Object类型字段
+  objectFields.value = [];
+  getObjectFields(config.value.fieldStruct);
+
+  selectedParentFieldId.value = '';
   currentParent.value = null;
   addFieldDialogVisible.value = true;
 };
@@ -429,30 +408,32 @@ const confirmAddField = () => {
   fieldFormRef.value?.validate((valid) => {
     if (valid) {
       const fieldToAdd = { ...newField.value };
-      
+
       // 如果是对象类型，确保有children数组
       if (fieldToAdd.fieldType === FieldTypeEnum.Object && !fieldToAdd.children) {
         fieldToAdd.children = [];
       }
-      
-      if (currentParent.value) {
-        // 添加为子字段
-        if (!currentParent.value.children) {
-          currentParent.value.children = [];
+
+      // 根据选择的父字段确定添加位置
+      if (selectedParentFieldId.value) {
+        const parentField = getFieldByPath(selectedParentFieldId.value);
+        if (parentField) {
+          if (!parentField.children) {
+            parentField.children = [];
+          }
+          parentField.children.push(fieldToAdd);
         }
-        currentParent.value.children.push(fieldToAdd);
       } else {
         // 添加为根级字段
         config.value.fieldStruct.push(fieldToAdd);
       }
-      
+
       addFieldDialogVisible.value = false;
       updateJsonFromStruct();
       ElMessage.success('字段添加成功');
     }
   });
 };
-
 
 // 确认编辑字段
 const confirmEditField = () => {
@@ -470,7 +451,7 @@ const confirmEditField = () => {
             }
             return true;
           }
-          
+
           if (arr[i].children && arr[i].children.length) {
             if (updateField(arr[i].children, fieldId)) {
               return true;
@@ -479,7 +460,7 @@ const confirmEditField = () => {
         }
         return false;
       };
-      
+
       updateField(config.value.fieldStruct, currentEditField.value.fieldName);
       editFieldDialogVisible.value = false;
       updateJsonFromStruct();
@@ -495,7 +476,7 @@ const importTemplate = async () => {
       multiple: false,
       filters: [{ name: 'JSON', extensions: ['json'] }]
     }) as string;
-    
+
     if (filePath) {
       const templateContent = await invoke('read_file', { path: filePath });
       try {
@@ -557,10 +538,10 @@ onMounted(() => {
     border-radius: var(--el-border-radius-base);
     overflow: hidden;
     box-shadow: var(--el-box-shadow-light);
-    
+
     :deep(.el-table__row) {
       transition: all 0.2s;
-      
+
       &:hover {
         background-color: var(--el-fill-color-light) !important;
       }
@@ -571,12 +552,12 @@ onMounted(() => {
     display: flex;
     align-items: center;
     gap: 8px;
-    
+
     .el-icon {
       font-size: 16px;
       color: var(--el-text-color-regular);
     }
-    
+
     span {
       font-weight: 500;
     }
@@ -589,7 +570,7 @@ onMounted(() => {
     border-radius: var(--el-border-radius-small);
     cursor: pointer;
     transition: all 0.2s;
-    
+
     &:hover {
       background-color: var(--el-color-primary-light-9);
     }
@@ -597,16 +578,16 @@ onMounted(() => {
 
   .edit-input {
     width: 100%;
-    
+
     :deep(.el-input__inner) {
       padding: 6px 8px;
     }
   }
-  
+
   .actions-cell {
     display: flex;
     justify-content: center;
-    
+
     .el-button {
       padding: 6px;
       margin: 0 2px;
@@ -621,7 +602,7 @@ onMounted(() => {
         margin: 8px 0;
         line-height: 1.5;
       }
-      
+
       .el-tag {
         margin-right: 8px;
       }

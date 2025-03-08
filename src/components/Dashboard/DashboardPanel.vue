@@ -108,11 +108,11 @@
           style="width: 100%"
           size="small"
         >
-          <el-table-column prop="id" label="客户端ID" min-width="120" />
-          <el-table-column prop="status" label="状态" min-width="100">
+          <el-table-column prop="clientId" label="客户端ID" min-width="120" />
+          <el-table-column prop="isConnected" label="状态" min-width="100">
             <template #default="scope">
-              <el-tag :type="scope.row.status === 'connected' ? 'success' : scope.row.status === 'connecting' ? 'warning' : 'danger'">
-                {{ scope.row.status === 'connected' ? '已连接' : scope.row.status === 'connecting' ? '连接中' : '断开连接' }}
+              <el-tag :type="scope.row.isConnected ? 'success' : scope.row.isConnected === 'connecting' ? 'warning' : 'danger'">
+                {{ scope.row.isConnected ? '已连接' : scope.row.isConnected === 'connecting' ? '连接中' : '断开连接' }}
               </el-tag>
             </template>
           </el-table-column>
@@ -176,13 +176,8 @@ const lastTime = ref(Date.now());
 const ratePerSecond = ref(0);
 
 // 模拟的客户端数据
-const clientsTableData = ref([
-  { id: 'client-001', status: 'connected', messages: 256, lastSeen: '2023-05-20 14:32:10' },
-  { id: 'client-002', status: 'connected', messages: 192, lastSeen: '2023-05-20 14:32:05' },
-  { id: 'client-003', status: 'disconnected', messages: 43, lastSeen: '2023-05-20 14:31:47' },
-  { id: 'client-004', status: 'connecting', messages: 0, lastSeen: '2023-05-20 14:32:15' },
-  { id: 'client-005', status: 'connected', messages: 187, lastSeen: '2023-05-20 14:32:08' },
-]);
+
+const clientsTableData = inject<any>('clientConnectionInfo');
 
 // 模拟的日志数据
 const testLogs = ref([

@@ -2,6 +2,7 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 extern crate paho_mqtt as mqtt;
+
 use svroll::{
     model::{
         tauri_com::{self},
@@ -9,18 +10,16 @@ use svroll::{
     },
     AsyncProcInputTx,
 };
-use tauri::{AppHandle, Emitter, Manager};
+use tauri::{AppHandle, Emitter};
 use tokio::sync::{mpsc, Mutex};
 use tracing::info;
 
 #[tokio::main]
 async fn main() {
     tracing_subscriber::fmt::init();
-
     let (async_proc_output_tx, mut async_proc_output_rx) = mpsc::channel(1);
 
     tauri::Builder::default()
-        .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())
         .manage(AsyncProcInputTx {
@@ -33,6 +32,7 @@ async fn main() {
             tauri_com::process_client_file,
             tauri_com::write_file,
             tauri_com::load_config,
+            tauri_com::get_mqtt_clients
         ])
         .setup(|app| {
             let app_handle = app.handle().to_owned();
@@ -43,6 +43,7 @@ async fn main() {
                     }
                 }
             });
+
             info!("Tauri app started");
             Ok(())
         })

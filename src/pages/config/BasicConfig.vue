@@ -11,6 +11,49 @@
     >
       <div class="form-section">
         <h3 class="section-title">
+          协议设置
+        </h3>
+        <el-divider />
+        <el-form-item label="协议类型" prop="protocol">
+          <el-radio-group v-model="config.protocol">
+            <el-radio-button label="MQTT" value="Mqtt" />
+            <el-radio-button label="TCP" value="Tcp" />
+          </el-radio-group>
+        </el-form-item>
+        
+        <el-form-item label="注册包机制" prop="enableRegister">
+          <el-radio-group v-model="config.enableRegister">
+            <el-radio-button label="关闭" :value="false" />
+            <el-radio-button label="启动" :value="true" />
+          </el-radio-group>
+        </el-form-item>
+        
+        <el-form-item
+          v-if="config.enableRegister && config.protocol === 'Mqtt'"
+          class="topic"
+          label="主题配置"
+          prop="topicConfig.register"
+        >
+          <el-card class="topic-card">
+            <template v-for="(key, value) in config.topicConfig.register" :key="value">
+              <div v-if="config.topicConfig.register[value]" class="topic-row">
+                <div class="form-label">
+                  {{ value === "publish" ? "发布" : "订阅" }}
+                </div>
+                <div class="form-content">
+                  <template v-for="(column, index) in tableColumn" :key="`reg-${column.label}-${index}`">
+                    <el-input v-model="config.topicConfig.register[value][column.prop]" :placeholder="column.label" />
+                  </template>
+                </div>
+              </div>
+            </template>
+          </el-card>
+        </el-form-item>
+      </div>
+
+
+      <div class="form-section">
+        <h3 class="section-title">
           连接设置
         </h3>
         <el-divider />
@@ -30,7 +73,7 @@
           </el-input>
         </el-form-item>
         
-        <el-form-item class="topic" label="消息主题" prop="topicConfig.data">
+        <el-form-item v-if="config.protocol === 'Mqtt'" class="topic" label="消息主题" prop="topicConfig.data">
           <el-card class="topic-card">
             <template v-for="(key, value) in config.topicConfig.data" :key="value">
               <div v-if="config.topicConfig.data[value]" class="topic-row">
@@ -40,48 +83,6 @@
                 <div class="form-content">
                   <template v-for="(column, index) in tableColumn" :key="`data-${column.label}-${index}`">
                     <el-input v-model="config.topicConfig.data[value][column.prop]" :placeholder="column.label" />
-                  </template>
-                </div>
-              </div>
-            </template>
-          </el-card>
-        </el-form-item>
-      </div>
-      
-      <div class="form-section">
-        <h3 class="section-title">
-          协议设置
-        </h3>
-        <el-divider />
-        <el-form-item label="协议类型" prop="protocol">
-          <el-radio-group v-model="config.protocol">
-            <el-radio-button label="MQTT" value="Mqtt" />
-            <el-radio-button label="TCP" value="Tcp" />
-          </el-radio-group>
-        </el-form-item>
-        
-        <el-form-item label="注册包机制" prop="enableRegister">
-          <el-radio-group v-model="config.enableRegister">
-            <el-radio-button label="关闭" :value="false" />
-            <el-radio-button label="启动" :value="true" />
-          </el-radio-group>
-        </el-form-item>
-        
-        <el-form-item
-          v-if="config.enableRegister"
-          class="topic"
-          label="主题配置"
-          prop="topicConfig.register"
-        >
-          <el-card class="topic-card">
-            <template v-for="(key, value) in config.topicConfig.register" :key="value">
-              <div v-if="config.topicConfig.register[value]" class="topic-row">
-                <div class="form-label">
-                  {{ value === "publish" ? "发布" : "订阅" }}
-                </div>
-                <div class="form-content">
-                  <template v-for="(column, index) in tableColumn" :key="`reg-${column.label}-${index}`">
-                    <el-input v-model="config.topicConfig.register[value][column.prop]" :placeholder="column.label" />
                   </template>
                 </div>
               </div>

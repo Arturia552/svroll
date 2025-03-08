@@ -20,7 +20,8 @@ use tokio::{
 use tracing::{error, info};
 
 use crate::{
-    benchmark_param::BenchmarkConfig, model::tauri_com::Task, MqttSendData, TopicWrap,
+    benchmark_param::BenchmarkConfig, model::tauri_com::Task,
+    mqtt::device_data::process_fields, MqttSendData, TopicWrap,
     MQTT_CLIENT_CONTEXT,
 };
 
@@ -145,6 +146,19 @@ impl Client<MqttSendData, MqttClientData> for MqttClient {
             cli.set_message_callback(move |client, message| {
                 Self::on_message_callback(&mqtt_client, client, message);
             });
+            cli.set_connected_callback(|client| {
+                let client_id = client.client_id().to_string();
+                MQTT_CLIENT_CONTEXT.entry(client_id).and_modify(|v| {
+                    v.set_is_connected(true);
+                });
+            });
+
+            cli.set_disconnected_callback(|client, _, _| {
+                let client_id: String = client.client_id().to_string();
+                MQTT_CLIENT_CONTEXT.entry(client_id).and_modify(|v| {
+                    v.set_is_connected(false);
+                });
+            });
 
             let mqtt_client = self.clone();
             clients.push(cli.clone());
@@ -231,7 +245,6 @@ impl Client<MqttSendData, MqttClientData> for MqttClient {
         // 确定每个线程处理的客户端数量
         let clients_per_thread = (clients.len() + config.thread_size - 1) / config.thread_size;
         let clients_group: std::slice::Chunks<'_, AsyncClient> = clients.chunks(clients_per_thread);
-        /// 存放每个线程的JoinHandle
         let mut handles: Vec<JoinHandle<()>> = vec![];
 
         for group in clients_group {
@@ -271,9 +284,8 @@ impl Client<MqttSendData, MqttClientData> for MqttClient {
                         }
                         let real_topic =
                             topic.get_publish_real_topic(Some(client_data.get_device_key()));
-
                         let mut msg_value = (*send_data).clone();
-                        msg_value.process_fields(enable_random);
+                        process_fields(&mut msg_value.data, &msg_value.fields, enable_random);
                         let json_msg = match serde_json::to_string(&msg_value.data) {
                             Ok(msg) => msg,
                             Err(e) => {
@@ -319,6 +331,9 @@ pub struct MqttClientData {
     pub password: String,
     #[serde(skip)]
     pub device_key: String,
+    #[serde(default)]
+    #[serde(rename = "isConnected")]
+    pub is_connected: bool,
 }
 
 impl MqttClientData {
@@ -342,6 +357,9 @@ impl MqttClientData {
         self.client_id = client_id;
     }
 
+    pub fn set_is_connected(&mut self, is_connected: bool) {
+        self.is_connected = is_connected
+    }
     pub fn set_device_key(&mut self, device_key: String) {
         self.device_key = device_key;
     }

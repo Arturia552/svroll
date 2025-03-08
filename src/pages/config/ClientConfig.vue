@@ -65,6 +65,7 @@
         :data="filteredClients"
         style="width: 100%"
         max-height="500"
+        size="small"
         border
         stripe
       >

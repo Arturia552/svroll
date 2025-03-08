@@ -4,7 +4,7 @@ use std::{
 };
 
 use crate::{
-    benchmark_param::BenchmarkConfig, model::tauri_com::Task, mqtt::Client, TCP_CLIENT_CONTEXT,
+    benchmark_param::BenchmarkConfig, model::tauri_com::Task, mqtt::Client, TCP_CLIENT_CONTEXT
 };
 use anyhow::{Error, Result};
 use serde::Deserialize;

@@ -1,8 +1,5 @@
 use crate::{
-    benchmark_param::{init_mqtt_context, read_from_csv_into_struct, Protocol},
-    model::Rs2JsEntity,
-    tcp::tcp_client::{TcpClient, TcpClientData},
-    AsyncProcInputTx,
+    benchmark_param::{init_mqtt_context, read_from_csv_into_struct, Protocol}, model::Rs2JsEntity, tcp::tcp_client::{TcpClient, TcpClientData}, AsyncProcInputTx, MQTT_CLIENT_CONTEXT
 };
 use std::{
     sync::{
@@ -265,6 +262,7 @@ pub async fn stop_task() -> Result<String, String> {
             task.status.store(false, Ordering::SeqCst);
             return Ok("任务已中断".to_string());
         }
+        MQTT_CLIENT_CONTEXT.clear();
     }
     Err("没有正在运行的任务".to_string())
 }
@@ -273,4 +271,12 @@ async fn reset_task(task: Arc<Mutex<Task>>) {
     let task = task.lock().await;
     task.status.store(true, Ordering::SeqCst);
     task.counter.store(0, Ordering::SeqCst);
+}
+
+#[command]
+pub async fn get_mqtt_clients() -> Result<Vec<MqttClientData>, String> {
+    Ok(MQTT_CLIENT_CONTEXT
+        .iter()
+        .map(|entry| entry.value().clone())
+        .collect())
 }
