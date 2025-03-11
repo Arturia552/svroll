@@ -264,8 +264,8 @@ const receive = () => {
         console.error("解析客户端信息失败:", e);
       }
     }
+    console.log(event.payload);
     const clients = await invoke("get_mqtt_clients")
-    console.log(clients)
     clientConnectionInfo.value = clients
   });
 };

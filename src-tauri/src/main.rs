@@ -1,8 +1,6 @@
 // Prevents additional console window on Windows in release, DO NOT REMOVE!!
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
-extern crate paho_mqtt as mqtt;
-
 use svroll::{
     model::{
         tauri_com::{self},

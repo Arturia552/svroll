@@ -61,40 +61,18 @@
         />
       </div>
       
-      <el-table
-        :data="filteredClients"
-        style="width: 100%"
-        max-height="500"
-        size="small"
-        border
-        stripe
-      >
-        <el-table-column prop="clientId" label="客户端ID" sortable />
-        <el-table-column prop="username" label="用户名" />
-        <el-table-column prop="password" label="密码" />
-        <el-table-column label="操作" width="120">
-          <template #default="scope">
-            <el-button type="danger" link size="small" @click="removeClient(scope.$index)">
-              <el-icon><Delete /></el-icon>
-            </el-button>
-          </template>
-        </el-table-column>
-        
-        <template #empty>
-          <div class="empty-data">
-            <el-empty description="暂无客户端数据" />
-          </div>
-        </template>
-      </el-table>
-      
-      <div v-if="config.clients.length > 0" class="pagination-container">
-        <el-pagination
-          background
-          layout="prev, pager, next"
-          :total="config.clients.length"
-          :page-size="10"
-        />
+      <div v-if="filteredClients.length === 0" class="empty-data">
+        <el-empty description="暂无客户端数据" />
       </div>
+      <el-table-v2
+        v-else
+        :data="filteredClients"
+        :columns="columns"
+        :width="tableWidth"
+        :height="500"
+        :row-height="40"
+        fixed
+      />
     </div>
   </div>
 </template>
@@ -103,10 +81,68 @@ import { MqttClient, MqttConfig } from "@/types/mqttConfig";
 import { open } from "@tauri-apps/plugin-dialog";
 import { invoke } from "@tauri-apps/api/core";
 import { ElMessage } from "element-plus";
+import { h, ref, computed, inject, onMounted } from 'vue';
+import { Delete } from '@element-plus/icons-vue';
 
 const generateSize = ref(100);
 const config = ref(inject<MqttConfig>("config"))
 const searchQuery = ref('');
+const tableWidth = ref(0);
+
+// 根据窗口大小计算表格宽度
+onMounted(() => {
+  tableWidth.value = document.querySelector('.table-section')?.clientWidth || 1000;
+  window.addEventListener('resize', () => {
+    tableWidth.value = document.querySelector('.table-section')?.clientWidth || 1000;
+  });
+});
+
+// 定义表格列
+const columns = computed(() => [
+  {
+    key: 'clientId',
+    dataKey: 'clientId',
+    title: '客户端ID',
+    width: tableWidth.value * 0.28,
+    sortable: true,
+  },
+  {
+    key: 'username',
+    dataKey: 'username',
+    title: '用户名',
+    width: tableWidth.value * 0.3,
+  },
+  {
+    key: 'password',
+    dataKey: 'password',
+    title: '密码',
+    width: tableWidth.value * 0.3,
+  },
+  {
+    key: 'action',
+    dataKey: 'action',
+    title: '操作',
+    width: tableWidth.value * 0.1,
+    cellRenderer: ({ rowIndex }) => {
+      return h('div', {
+        style: { display: 'flex', justifyContent: 'center' }
+      }, [
+        h('el-button', {
+          style: {
+            border: 'none',
+            width: '20px',
+            background: 'transparent',
+            color: 'var(--el-color-danger)',
+            cursor: 'pointer',
+          },
+          onClick: () => removeClient(rowIndex)
+        }, [
+          h(Delete)
+        ])
+      ]);
+    }
+  }
+]);
 
 const filteredClients = computed(() => {
   if (!searchQuery.value) return config.value.clients;
@@ -196,6 +232,7 @@ const removeClient = (index: number) => {
 
 .table-section {
   margin-top: 16px;
+  width: 100%;
   
   .table-header {
     display: flex;
@@ -203,10 +240,17 @@ const removeClient = (index: number) => {
     align-items: center;
     font-size: 16px;
     color: var(--el-text-color-regular);
+    margin-bottom: 16px;
     
     .search-input {
       width: 240px;
     }
+  }
+
+  .empty-data {
+    display: flex;
+    justify-content: center;
+    padding: 40px 0;
   }
 }
 
@@ -214,11 +258,5 @@ const removeClient = (index: number) => {
   display: flex;
   justify-content: flex-end;
   gap: 8px;
-}
-
-.pagination-container {
-  margin-top: 16px;
-  display: flex;
-  justify-content: center;
 }
 </style>

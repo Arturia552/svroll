@@ -103,22 +103,16 @@
             </el-tag>
           </div>
         </template>
-        <el-table
-          :data="clientsTableData"
-          style="width: 100%"
-          size="small"
-        >
-          <el-table-column prop="clientId" label="客户端ID" min-width="120" />
-          <el-table-column prop="isConnected" label="状态" min-width="100">
-            <template #default="scope">
-              <el-tag :type="scope.row.isConnected ? 'success' : scope.row.isConnected === 'connecting' ? 'warning' : 'danger'">
-                {{ scope.row.isConnected ? '已连接' : scope.row.isConnected === 'connecting' ? '连接中' : '断开连接' }}
-              </el-tag>
-            </template>
-          </el-table-column>
-          <el-table-column prop="messages" label="消息数" min-width="100" />
-          <el-table-column prop="lastSeen" label="最后活动时间" min-width="180" />
-        </el-table>
+        <div ref="tableContainer" style="width: 100%; height: 300px;">
+          <el-table-v2
+            :columns="columns"
+            :data="clientsTableData"
+            :width="tableWidth || 400"
+            :height="tableHeight"
+            :row-height="40"
+            fixed
+          />
+        </div>
       </el-card>
       
       <el-card class="log-card" style="flex: 1;">
@@ -142,12 +136,14 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref, watch, onBeforeUnmount, PropType } from 'vue';
+import { onMounted, ref, watch, onBeforeUnmount, PropType, h, inject } from 'vue';
 import { ArrowUp } from '@element-plus/icons-vue';
 import * as echarts from 'echarts/core';
 import { LineChart } from 'echarts/charts';
 import { GridComponent, TooltipComponent, TitleComponent, LegendComponent } from 'echarts/components';
 import { CanvasRenderer } from 'echarts/renderers';
+import { ElTableV2 } from 'element-plus';
+import type { TableV2Props } from 'element-plus';
 
 echarts.use([GridComponent, LineChart, TooltipComponent, TitleComponent, LegendComponent, CanvasRenderer]);
 
@@ -178,6 +174,53 @@ const ratePerSecond = ref(0);
 // 模拟的客户端数据
 
 const clientsTableData = inject<any>('clientConnectionInfo');
+
+// 表格容器引用和尺寸
+const tableContainer = ref<HTMLElement | null>(null);
+const tableHeight = ref(300);
+const tableWidth = ref(0);
+
+// 定义列配置
+const columns = ref<TableV2Props['columns']>([
+  {
+    key: 'clientId',
+    dataKey: 'clientId',
+    title: '客户端ID',
+    width: 120,
+  },
+  {
+    key: 'isConnected',
+    dataKey: 'isConnected',
+    title: '状态',
+    width: 100,
+    cellRenderer: ({ rowData }) => {
+      let type, text;
+      if (rowData.isConnected === true) {
+        type = 'success';
+        text = '已连接';
+      } else if (rowData.isConnected === 'connecting') {
+        type = 'warning';
+        text = '连接中';
+      } else {
+        type = 'danger';
+        text = '断开连接';
+      }
+      return h('el-tag', { type }, text);
+    }
+  },
+  {
+    key: 'messages',
+    dataKey: 'messages',
+    title: '消息数',
+    width: 100,
+  },
+  {
+    key: 'lastSeen',
+    dataKey: 'lastSeen',
+    title: '最后活动时间',
+    width: 180,
+  }
+]);
 
 // 模拟的日志数据
 const testLogs = ref([
@@ -315,6 +358,25 @@ onMounted(() => {
   // 初始化历史数据
   for (let i = 0; i < 10; i++) {
     messageRateHistory.value.push(0);
+  }
+
+  // 计算表格容器宽度
+  if (tableContainer.value) {
+    tableWidth.value = tableContainer.value.clientWidth;
+    
+    // 监听容器大小变化
+    const resizeObserver = new ResizeObserver(entries => {
+      for (const entry of entries) {
+        tableWidth.value = entry.contentRect.width;
+      }
+    });
+    
+    resizeObserver.observe(tableContainer.value);
+    
+    // 清理观察器
+    onBeforeUnmount(() => {
+      resizeObserver.disconnect();
+    });
   }
 });
 

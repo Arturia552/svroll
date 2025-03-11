@@ -1,5 +1,8 @@
 use crate::{
-    benchmark_param::{init_mqtt_context, read_from_csv_into_struct, Protocol}, model::Rs2JsEntity, tcp::tcp_client::{TcpClient, TcpClientData}, AsyncProcInputTx, MQTT_CLIENT_CONTEXT
+    benchmark_param::{init_mqtt_context, read_from_csv_into_struct, Protocol},
+    model::Rs2JsEntity,
+    tcp::tcp_client::{TcpClient, TcpClientData},
+    AsyncProcInputTx, MQTT_CLIENT_CONTEXT,
 };
 use std::{
     sync::{
@@ -47,8 +50,6 @@ pub async fn write_file(file_path: String, content: String) -> Result<(), String
 
 #[command]
 pub async fn load_config(file_path: String) -> Result<ConnectParam, String> {
-    info!(file_path);
-
     let config_str = fs::read_to_string(file_path)
         .await
         .map_err(|e| e.to_string())?;
@@ -62,7 +63,6 @@ pub async fn start_task(
     param: ConnectParam,
     async_proc_output_tx: State<'_, AsyncProcInputTx>,
 ) -> Result<String, String> {
-    info!(?param);
     match param.protocol {
         Protocol::Mqtt => {
             let config = param.into_config().await.unwrap();
@@ -91,14 +91,13 @@ async fn start_mqtt(
     async_proc_output_tx: State<'_, AsyncProcInputTx>,
 ) -> Result<String, String> {
     let tx = async_proc_output_tx.inner.lock().await.clone();
-
     tx.send(Rs2JsEntity::new(
         Rs2JsMsgType::Terminal,
         "开始初始化MQTT客户端...".to_string(),
     ))
     .await
     .unwrap();
-
+    info!("开始初始化MQTT客户端...");
     let mqtt_config = topic_config.unwrap_or_else(|| TopicConfig::default());
 
     tx.send(Rs2JsEntity::new(
@@ -107,7 +106,7 @@ async fn start_mqtt(
     ))
     .await
     .unwrap();
-
+    info!("初始化MQTT客户端成功");
     let mqtt_client = init_mqtt_context(&param, mqtt_config).map_err(|e| e.to_string())?;
 
     tx.send(Rs2JsEntity::new(
@@ -116,7 +115,7 @@ async fn start_mqtt(
     ))
     .await
     .unwrap();
-
+    info!("初始化客户端...");
     let mut clients = mqtt_client
         .setup_clients(&param)
         .await
@@ -128,7 +127,7 @@ async fn start_mqtt(
     ))
     .await
     .unwrap();
-
+    info!("等待连接...");
     // 等待所有客户端连接成功
     mqtt_client.wait_for_connections(&mut clients).await;
 
@@ -138,7 +137,7 @@ async fn start_mqtt(
     ))
     .await
     .unwrap();
-
+    info!("客户端已全部连接!");
     let task = TASK.get_or_init(|| {
         Arc::new(Mutex::new(Task {
             task_handle: None,
@@ -151,6 +150,7 @@ async fn start_mqtt(
     reset_task(task.clone()).await;
 
     tokio::spawn(async move {
+        info!("开始发送消息...");
         let task = task.clone();
         let task_handle = mqtt_client
             .spawn_message(clients, &*task.lock().await, &param)
@@ -247,23 +247,73 @@ async fn start_tcp(
 #[command]
 pub async fn stop_task() -> Result<String, String> {
     if let Some(task) = TASK.get() {
-        let mut task = task.lock().await;
-        if let Some(handle) = task.task_handle.take() {
-            info!("stop_task: handle.take()");
-            for h in handle {
+        // 第一步：停止任务状态，避免新的消息发送
+        let mut task_lock = task.lock().await;
+        task_lock.status.store(false, Ordering::SeqCst);
+        info!("已将任务状态设置为停止");
+
+        // 第二步：停止事件循环句柄（最关键的修复）
+        info!("正在终止所有 MQTT 事件循环...");
+        for entry in MQTT_CLIENT_CONTEXT.iter() {
+            if let Some(event_handle) = &entry.value().event_loop_handle {
+                if let Some(handle) = event_handle.lock().await.take() {
+                    info!("正在终止客户端 {} 的事件循环", entry.key());
+                    handle.abort();
+                }
+            }
+        }
+
+        // 等待短暂时间确保事件循环已停止
+        sleep(Duration::from_millis(500)).await;
+
+        // 第三步：主动断开所有 MQTT 客户端连接
+        info!("正在断开所有 MQTT 客户端连接...");
+        let mut disconnect_futures = Vec::new();
+
+        for entry in MQTT_CLIENT_CONTEXT.iter() {
+            let client_entry = entry.value().clone();
+            disconnect_futures.push(tokio::spawn(async move {
+                let _ = client_entry.safe_disconnect().await;
+            }));
+        }
+
+        // 等待所有断开连接的任务完成（最多等待 5 秒）
+        if !disconnect_futures.is_empty() {
+            info!("等待所有断开连接操作完成...");
+            let _ = tokio::time::timeout(Duration::from_secs(5), async {
+                for future in disconnect_futures {
+                    let _ = future.await;
+                }
+            })
+            .await;
+        }
+
+        // 第四步：中止任务和计数句柄
+        if let Some(handles) = task_lock.task_handle.take() {
+            info!("正在停止消息发送任务句柄...");
+            for h in handles {
                 h.abort();
             }
-            task.status.store(false, Ordering::SeqCst);
         }
+
+        // 等待一段时间确保资源释放
         sleep(Duration::from_secs(1)).await;
-        if let Some(handle) = task.count_handle.take() {
-            info!("stop_task: handle.take()");
+
+        if let Some(handle) = task_lock.count_handle.take() {
+            info!("正在停止计数器句柄...");
             handle.abort();
-            task.status.store(false, Ordering::SeqCst);
-            return Ok("任务已中断".to_string());
         }
+
+        // 第五步：清理上下文数据
+        info!("清理 MQTT 客户端上下文...");
         MQTT_CLIENT_CONTEXT.clear();
+
+        return Ok("任务已完全中断，所有连接已断开".to_string());
     }
+
+    // 没有任务时也清理上下文，以防万一
+    info!("没有找到运行中的任务，清理 MQTT 客户端上下文...");
+    MQTT_CLIENT_CONTEXT.clear();
     Err("没有正在运行的任务".to_string())
 }
 

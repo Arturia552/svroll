@@ -1,5 +1,6 @@
 use std::borrow::Cow;
 
+use rumqttc::QoS;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
@@ -49,12 +50,22 @@ impl TopicWrap {
             .map(|sub_topic| sub_topic.get_topic())
     }
 
-    pub fn get_publish_qos(&self) -> i32 {
-        self.publish.get_qos()
+    pub fn get_publish_qos(&self) -> QoS {
+       match self.publish.get_qos() {
+        0 => QoS::AtMostOnce,
+        1 => QoS::AtLeastOnce,
+        2 => QoS::ExactlyOnce,
+        _ => QoS::AtMostOnce,
+       }
     }
 
-    pub fn get_subscribe_qos(&self) -> i32 {
-        self.subscribe.as_ref().unwrap().qos
+    pub fn get_subscribe_qos(&self) -> QoS {
+       match self.subscribe.as_ref().unwrap().qos{
+        0 => QoS::AtMostOnce,
+        1 => QoS::AtLeastOnce,
+        2 => QoS::ExactlyOnce,
+        _ => QoS::AtMostOnce,
+       }
     }
 
     pub fn get_publish_real_topic<'a>(&'a self, key_value: Option<&str>) -> Cow<'a, str> {
