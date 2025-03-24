@@ -30,7 +30,7 @@ async fn main() {
             tauri_com::process_client_file,
             tauri_com::write_file,
             tauri_com::load_config,
-            tauri_com::get_mqtt_clients
+            tauri_com::get_mqtt_clients,
         ])
         .setup(|app| {
             let app_handle = app.handle().to_owned();

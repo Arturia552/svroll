@@ -4,30 +4,46 @@ use std::{
 };
 
 use crate::{
-    benchmark_param::BenchmarkConfig, model::tauri_com::Task, mqtt::Client, TCP_CLIENT_CONTEXT
+    benchmark_param::BenchmarkConfig, model::tauri_com::Task, mqtt::Client, TCP_CLIENT_CONTEXT,
 };
 use anyhow::{Error, Result};
-use serde::Deserialize;
+use serde::{Deserialize, Deserializer};
 use tokio::{
     io::AsyncWriteExt,
     net::{tcp::OwnedReadHalf, TcpStream},
     sync::Semaphore,
-    time::Instant,
+    time::{sleep, Instant},
 };
 use tokio_stream::StreamExt;
 use tokio_util::codec::FramedRead;
-use tracing::error;
+use tracing::{error, info};
 
 use super::RequestCodec;
 
+#[derive(Debug, Clone, Deserialize)]
+pub struct TcpSendData {
+    #[serde(deserialize_with = "deserialize_bytes")]
+    pub data: Vec<u8>,
+}
+
+pub fn deserialize_bytes<'de, D>(deserializer: D) -> Result<Vec<u8>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let s = String::deserialize(deserializer)?;
+    let bytes = hex::decode(s)
+        .map_err(|e| serde::de::Error::custom(format!("无效的十六进制字符串: {}", e)))?;
+    Ok(bytes)
+}
+
 #[derive(Debug, Clone)]
-pub struct TcpClient {
-    pub send_data: Arc<Vec<u8>>,
+pub struct TcpClientContext {
+    pub send_data: Arc<TcpSendData>,
     pub enable_register: bool,
 }
 
-impl TcpClient {
-    pub fn new(send_data: Arc<Vec<u8>>, enable_register: bool) -> Self {
+impl TcpClientContext {
+    pub fn new(send_data: Arc<TcpSendData>, enable_register: bool) -> Self {
         Self {
             send_data,
             enable_register,
@@ -61,13 +77,16 @@ impl TcpClient {
 }
 
 #[derive(Debug, Clone, Deserialize)]
-pub struct TcpClientData {
+pub struct TcpClient {
+    #[serde(rename = "clientId")]
     pub mac: String,
+    #[serde(skip)]
     pub is_connected: bool,
+    #[serde(skip)]
     pub is_register: bool,
 }
 
-impl TcpClientData {
+impl TcpClient {
     pub fn new(mac: String) -> Self {
         Self {
             mac,
@@ -101,38 +120,64 @@ impl TcpClientData {
     }
 }
 
-impl Client<Vec<u8>, TcpClientData> for TcpClient {
-    type Item = TcpClientData;
+impl Client<TcpSendData, TcpClient> for TcpClientContext {
+    type Item = TcpClient;
 
     async fn setup_clients(
         &self,
-        config: &BenchmarkConfig<Vec<u8>, TcpClientData>,
-    ) -> Result<Vec<TcpClientData>, Error> {
-        let clients = vec![];
+        config: &BenchmarkConfig<TcpSendData, TcpClient>,
+    ) -> Result<Vec<TcpClient>, Error> {
+        let mut clients = config.get_clients().clone();
+        let max_conn_per_second = config.get_max_connect_per_second();
+        let (tx, mut rx) = tokio::sync::mpsc::channel(clients.len());
 
-        let semaphore = Arc::new(Semaphore::new(config.get_max_connect_per_second()));
+        // 使用令牌桶算法控制连接速率
+        let mut interval =
+            tokio::time::interval(Duration::from_millis(1000 / max_conn_per_second as u64));
 
-        for client in config.get_clients() {
-            let semaphore = Arc::clone(&semaphore);
-            let permit = semaphore.acquire().await.unwrap();
+        for (idx, client) in clients.iter().enumerate() {
+            interval.tick().await; // 等待下一个令牌
 
-            let start = Instant::now();
-            let conn = TcpStream::connect(config.get_broker()).await?;
+            let broker = config.broker.clone();
+            let client_mac = client.get_mac();
+            let tx = tx.clone();
 
-            let (reader, writer) = conn.into_split();
-
-            TCP_CLIENT_CONTEXT.insert(client.get_mac(), writer);
+            let start_time = Instant::now();
 
             tokio::spawn(async move {
-                Self::process_read(reader).await;
+                match TcpStream::connect(broker).await {
+                    Ok(conn) => {
+                        let (reader, writer) = conn.into_split();
+                        TCP_CLIENT_CONTEXT.insert(client_mac.clone(), writer);
+                        tokio::spawn(async move {
+                            Self::process_read(reader).await;
+                        });
+
+                        // 记录连接耗时
+                        let elapsed = start_time.elapsed();
+                        if elapsed > Duration::from_secs(1) {
+                            error!("TCP连接耗时过长: {:?}, 客户端: {}", elapsed, client_mac);
+                        }
+
+                        // 发送连接成功信号
+                        let _ = tx.send((idx, true)).await;
+                    }
+                    Err(e) => {
+                        error!("TCP连接失败: {}, 客户端: {}", e, client_mac);
+                        // 发送连接失败信号
+                        let _ = tx.send((idx, false)).await;
+                    }
+                }
             });
+        }
 
-            let elapsed = start.elapsed();
-            if elapsed < Duration::from_secs(1) {
-                tokio::time::sleep(Duration::from_secs(1) - elapsed).await;
+        drop(tx);
+
+        // 处理连接结果
+        while let Some((idx, success)) = rx.recv().await {
+            if success {
+                clients[idx].set_is_connected(true);
             }
-
-            drop(permit);
         }
 
         Ok(clients)
@@ -140,20 +185,11 @@ impl Client<Vec<u8>, TcpClientData> for TcpClient {
 
     async fn wait_for_connections(&self, clients: &mut [Self::Item]) {
         for client in clients {
-            if let Some(writer) = TCP_CLIENT_CONTEXT.get(&client.get_mac()) {
-                match writer.writable().await {
-                    Ok(_) => {
-                        self.on_connect_success(client).await;
-                    }
-                    Err(e) => {
-                        error!("{}", format!("连接失败: {}", e));
-                    }
-                }
-            }
+            let _ = self.on_connect_success(client).await;
         }
     }
 
-    async fn on_connect_success(&self, client: &mut TcpClientData) -> Result<(), Error> {
+    async fn on_connect_success(&self, client: &mut TcpClient) -> Result<(), Error> {
         if let Some(mut writer) = TCP_CLIENT_CONTEXT.get_mut(&client.get_mac()) {
             if self.get_enable_register() {
                 // 发送注册包
@@ -168,9 +204,9 @@ impl Client<Vec<u8>, TcpClientData> for TcpClient {
 
     async fn spawn_message(
         &self,
-        clients: Vec<TcpClientData>,
+        clients: Vec<TcpClient>,
         task: &Task,
-        config: &BenchmarkConfig<Vec<u8>, TcpClientData>,
+        config: &BenchmarkConfig<TcpSendData, TcpClient>,
     ) -> Result<Vec<tokio::task::JoinHandle<()>>, Error> {
         // 确定每个线程处理的客户端数量
         let startup_thread_size = clients.len() / config.thread_size
@@ -188,7 +224,6 @@ impl Client<Vec<u8>, TcpClientData> for TcpClient {
             let msg_value = Arc::clone(&self.send_data);
             let counter = task.counter.clone();
             let send_interval = config.send_interval;
-            let enable_register = config.enable_register;
 
             let handle = tokio::spawn(async move {
                 let mut interval = tokio::time::interval(Duration::from_secs(send_interval));
@@ -196,8 +231,8 @@ impl Client<Vec<u8>, TcpClientData> for TcpClient {
                     interval.tick().await;
                     for client in groups.iter_mut() {
                         if let Some(mut writer) = TCP_CLIENT_CONTEXT.get_mut(&client.get_mac()) {
-                            if enable_register && writer.writable().await.is_ok() {
-                                let _ = writer.write(&msg_value).await;
+                            if writer.writable().await.is_ok() {
+                                let _ = writer.write_all(&msg_value.data).await;
                                 counter.fetch_add(1, Ordering::SeqCst);
                             }
                         }
@@ -206,6 +241,6 @@ impl Client<Vec<u8>, TcpClientData> for TcpClient {
             });
             hanldes.push(handle);
         }
-        anyhow::Result::Ok(hanldes)
+        Ok(hanldes)
     }
 }

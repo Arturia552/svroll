@@ -29,7 +29,7 @@
         </template>
         <client-config ref="clientConfigRef" />
       </el-tab-pane>
-      <el-tab-pane label="数据配置" name="data">
+      <el-tab-pane v-if="configForm.protocol === 'Mqtt'" label="数据配置" name="data">
         <template #label>
           <div class="tab-label">
             <el-icon>
@@ -61,10 +61,10 @@ import { ref, reactive } from 'vue';
 import DataModel from './DataModel.vue';
 import ClientConfig from './ClientConfig.vue';
 import BasicConfig from './BasicConfig.vue';
-import { MqttConfig } from '@/types/mqttConfig';
+import { ConnectConfig } from '@/types/mqttConfig';
 import { ElMessage } from 'element-plus';
 
-const configForm = defineModel<MqttConfig>('configForm');
+const configForm = defineModel<ConnectConfig>('configForm');
 // 添加对valid状态的双向绑定
 const valid = defineModel<boolean>('valid', { default: false });
 
@@ -106,6 +106,10 @@ const validateClientConfig = (): boolean => {
 
 // 检查数据配置
 const validateDataConfig = (): boolean => {
+    if(configForm.value.protocol !== 'Mqtt') {
+        return true;
+    }
+
     // 检查是否有字段结构
     if (!configForm.value.fieldStruct || configForm.value.fieldStruct.length === 0) {
         formErrors.data = true;

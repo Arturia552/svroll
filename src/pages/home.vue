@@ -5,60 +5,69 @@
       <div class="header">
         <div class="func-button-group">
           <el-button type="success" size="default" :disabled="isRunning" @click="showNewConfig">
-            <el-icon><Edit /></el-icon>编辑配置
+            <el-icon>
+              <Edit />
+            </el-icon>编辑配置
           </el-button>
           <el-button type="primary" :disabled="!valid || isRunning" @click="exportConfig">
-            <el-icon><Download /></el-icon>导出配置
+            <el-icon>
+              <Download />
+            </el-icon>导出配置
           </el-button>
           <el-button type="primary" :disabled="isRunning" @click="loadConfig">
-            <el-icon><Upload /></el-icon>导入配置
+            <el-icon>
+              <Upload />
+            </el-icon>导入配置
           </el-button>
         </div>
       </div>
 
       <div class="editor-section">
         <!-- 根据测试状态显示编辑器或仪表盘 -->
-        <code-editor
-          v-if="!isRunning"
-          v-model:jsonEdit="config.sendData"
-          class="json-edit-container"
-        />
-        <dashboard-panel
-          v-else
-          :counter="counter"
-          :client-info="clientInfo"
-          class="dashboard-container"
-        />
+        <div v-if="!isRunning" class="editor-wrapper">
+          <div class="editor-controls">
+            <div class="editor-mode-controls">
+              <el-button v-if="editorMode === 'hex'" size="small" type="primary" @click="formatHexText">
+                格式化Hex
+              </el-button>
+              <el-radio-group v-model="editorMode" size="small">
+                <el-radio-button label="json">
+                  JSON
+                </el-radio-button>
+                <el-radio-button label="hex">
+                  HEX
+                </el-radio-button>
+              </el-radio-group>
+            </div>
+          </div>
+          <code-editor ref="codeEditorRef" v-model:jsonEdit="config.sendData" class="json-edit-container"
+                       :language="editorMode"
+          />
+        </div>
+        <dashboard-panel v-else :counter="counter" :client-info="clientInfo" class="dashboard-container" />
       </div>
 
       <div class="control-section">
         <div class="controls">
           <el-button type="primary" size="large" :disabled="!valid || isRunning" @click="start">
-            <el-icon><VideoPlay /></el-icon>开始测试
+            <el-icon>
+              <VideoPlay />
+            </el-icon>开始测试
           </el-button>
           <el-button type="danger" size="large" @click="stop">
-            <el-icon><VideoPause /></el-icon>停止测试
+            <el-icon>
+              <VideoPause />
+            </el-icon>停止测试
           </el-button>
         </div>
       </div>
     </el-card>
   </div>
-  <el-drawer
-    v-model="configDrawerVisible"
-    class="basic-drawer"
-    direction="rtl"
-    size="100%"
-    :destroy-on-close="false"
-    :wrapper-closable="true"
-    :show-close="false"
-    :close-on-click-modal="false"
+  <el-drawer v-model="configDrawerVisible" class="basic-drawer" direction="rtl" size="100%" :destroy-on-close="false"
+             :wrapper-closable="true" :show-close="false" :close-on-click-modal="false"
   >
-    <tabs-config
-      v-if="configDrawerVisible"
-      v-model:config-form="config"
-      v-model:valid="valid"
-      @close="closeConfigDrawer"
-      @submit="handleConfigSubmit"
+    <tabs-config v-if="configDrawerVisible" v-model:config-form="config" v-model:valid="valid"
+                 @close="closeConfigDrawer" @submit="handleConfigSubmit"
     />
   </el-drawer>
 </template>
@@ -67,7 +76,7 @@ import { invoke } from "@tauri-apps/api/core";
 import CodeEditor from "@/components/CodeEditor/index.vue";
 import TabsConfig from "@/pages/config/TabsConfig.vue";
 import DashboardPanel from "@/components/Dashboard/DashboardPanel.vue";
-import { convert2Type, MqttConfig, rs2JsEntity } from "@/types/mqttConfig";
+import { convert2Type, ConnectConfig, rs2JsEntity } from "@/types/mqttConfig";
 import { listen } from "@tauri-apps/api/event";
 import { open, save } from "@tauri-apps/plugin-dialog";
 import { writeTextFile } from "@tauri-apps/plugin-fs";
@@ -80,8 +89,11 @@ const clientInfo = ref<any>({
   failed: 0,
   connecting: 0
 });
-const clientConnectionInfo = ref<any>([])
-const config = ref<MqttConfig>({
+const clientConnectionInfo = ref<any>([]);
+const editorMode = ref<string>("json"); // 编辑器模式切换状态
+const codeEditorRef = ref<InstanceType<typeof CodeEditor> | null>(null);
+
+const config = ref<ConnectConfig>({
   sendData: "",
   protocol: "Mqtt",
   clients: [],
@@ -120,7 +132,7 @@ const config = ref<MqttConfig>({
 provide("config", config);
 provide("clientConnectionInfo", clientConnectionInfo)
 
-const mqttConfigTypeDef: MqttConfig = {
+const connectConfigTypeDef: ConnectConfig = {
   sendData: "",
   protocol: "",
   clients: [],
@@ -167,7 +179,7 @@ const exportConfig = async () => {
     filters: [{ name: "JSON 文件", extensions: ["json"] }],
     title: "导出配置",
   });
-  convert2Type(config.value, mqttConfigTypeDef);
+  convert2Type(config.value, connectConfigTypeDef);
   if (!filePath || filePath?.trim() === "") return;
   const content = JSON.stringify(config.value);
   try {
@@ -178,7 +190,6 @@ const exportConfig = async () => {
   }
 };
 
-
 const loadConfig = async () => {
   const filePath = await open({
     filters: [{ name: "JSON 文件", extensions: ["json"] }],
@@ -186,9 +197,14 @@ const loadConfig = async () => {
   });
   if (!filePath || filePath === "") return;
   try {
-    config.value = await invoke<MqttConfig>("load_config", { filePath });    
-    convertType(config.value, mqttConfigTypeDef);
-    console.log(config.value)
+    config.value = await invoke<ConnectConfig>("load_config", { filePath });
+    convertType(config.value, connectConfigTypeDef);
+
+    if (config.value.sendData && /^[0-9A-Fa-f\s]+$/.test(config.value.sendData)) {
+      editorMode.value = "hex";
+    } else {
+      editorMode.value = "json";
+    }
     valid.value = true;
     ElMessage.success("导入成功");
   } catch (e) {
@@ -197,17 +213,29 @@ const loadConfig = async () => {
 };
 
 const start = async () => {
-  counter.value = 0;
-  convertType(config.value, mqttConfigTypeDef);
-  console.log(config.value)
-  const msg = await invoke("start_task", { param: config.value as MqttConfig });
-  ElMessage.success(msg);
-  isRunning.value = true;
-  receive();
+  try {
+    counter.value = 0;
+    convertType(config.value, connectConfigTypeDef);
+
+    // 如果是hex模式，需要进行预处理
+    if (editorMode.value === "hex") {
+      // 移除所有空格，确保最终发送的是连续的hex字符串
+      config.value.sendData = config.value.sendData.replace(/\s+/g, '');
+    }
+
+    console.log(config.value);
+    isRunning.value = true;
+    const msg = await invoke("start_task", { param: config.value as ConnectConfig });
+    ElMessage.success(msg);
+    receive();
+  } catch (e) {
+    ElMessage.error(e);
+    isRunning.value = false;
+  }
 };
 
 const stop = async () => {
-  const msg = await invoke("stop_task");
+  const msg = await invoke("stop_task", {protocol: config.value.protocol});
   ElMessage.success(msg);
   isRunning.value = false;
 };
@@ -222,6 +250,13 @@ const handleConfigSubmit = () => {
   nextTick(() => {
     console.log("配置已提交，表单验证状态:", valid.value);
   })
+};
+
+// 格式化Hex文本
+const formatHexText = () => {
+  if (codeEditorRef.value && editorMode.value === 'hex') {
+    codeEditorRef.value.formatHex();
+  }
 };
 
 function convertType(obj: any, typeDef: any): void {
@@ -273,28 +308,35 @@ const receive = () => {
 <style lang="scss" scoped>
 .home {
   padding: 10px;
-  height: 100vh; /* 使用视口高度 */
-  box-sizing: border-box; /* 确保padding不增加元素总高度 */
+  height: 100vh;
+  /* 使用视口高度 */
+  box-sizing: border-box;
+  /* 确保padding不增加元素总高度 */
   display: flex;
   flex-direction: column;
-  overflow: hidden; /* 防止出现滚动条导致布局抖动 */
+  overflow: hidden;
+  /* 防止出现滚动条导致布局抖动 */
   background-color: var(--el-bg-color-page);
 }
 
 .main-card {
   border-radius: var(--el-border-radius-base);
   box-shadow: var(--el-box-shadow);
-  flex: 1; /* 占用所有可用空间 */
+  flex: 1;
+  /* 占用所有可用空间 */
   display: flex;
   flex-direction: column;
-  overflow: hidden; /* 防止内容溢出 */
-  
+  overflow: hidden;
+  /* 防止内容溢出 */
+
   :deep(.el-card__body) {
     padding: 24px;
     display: flex;
     flex-direction: column;
-    height: 100%; /* 确保卡片体占满卡片容器 */
-    overflow: auto; /* 内容过多时允许滚动 */
+    height: 100%;
+    /* 确保卡片体占满卡片容器 */
+    overflow: auto;
+    /* 内容过多时允许滚动 */
   }
 }
 
@@ -305,8 +347,9 @@ const receive = () => {
   margin-bottom: 24px;
   border-bottom: 1px solid var(--el-border-color-light);
   padding-bottom: 16px;
-  flex-shrink: 0; /* 防止头部被压缩 */
-  
+  flex-shrink: 0;
+  /* 防止头部被压缩 */
+
   .title {
     margin: 0;
     color: var(--el-text-color-primary);
@@ -317,13 +360,13 @@ const receive = () => {
 .func-button-group {
   display: flex;
   gap: 12px;
-  
+
   .el-button {
     display: flex;
     align-items: center;
     gap: 6px;
     transition: all 0.3s;
-    
+
     &:hover {
       transform: translateY(-2px);
     }
@@ -332,11 +375,13 @@ const receive = () => {
 
 .editor-section {
   margin-bottom: 24px;
-  flex: 1; /* 编辑区域占用剩余空间 */
-  min-height: 200px; /* 设置最小高度 */
+  flex: 1;
+  /* 编辑区域占用剩余空间 */
+  min-height: 200px;
+  /* 设置最小高度 */
   display: flex;
   flex-direction: column;
-  
+
   .section-title {
     font-size: 16px;
     font-weight: 500;
@@ -345,13 +390,35 @@ const receive = () => {
   }
 }
 
+.editor-wrapper {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.editor-controls {
+  display: flex;
+  justify-content: flex-end;
+  padding: 0 0 10px 0;
+}
+
+.editor-mode-controls {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
 .json-edit-container {
-  height: 100%; /* 使用100%高度填充父容器 */
-  min-height: 260px; /* 保持最小高度 */
+  height: 100%;
+  /* 使用100%高度填充父容器 */
+  min-height: 260px;
+  /* 保持最小高度 */
   border-radius: var(--el-border-radius-base);
   overflow: hidden;
   box-shadow: var(--el-box-shadow-light);
-  flex: 1; /* 占用编辑区域的所有剩余空间 */
+  flex: 1;
+  /* 占用编辑区域的所有剩余空间 */
 }
 
 .dashboard-container {
@@ -369,13 +436,15 @@ const receive = () => {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-top: auto; /* 将控制区域推到底部 */
-  flex-shrink: 0; /* 防止控制区域被压缩 */
-  
+  margin-top: auto;
+  /* 将控制区域推到底部 */
+  flex-shrink: 0;
+  /* 防止控制区域被压缩 */
+
   .controls {
     display: flex;
     gap: 16px;
-    
+
     .el-button {
       padding: 12px 24px;
       font-weight: 500;
@@ -383,17 +452,17 @@ const receive = () => {
       align-items: center;
       gap: 8px;
       transition: all 0.3s;
-      
+
       &:hover {
         transform: translateY(-2px);
       }
-      
+
       .el-icon {
         margin-right: 4px;
       }
     }
   }
-  
+
   .status-panel {
     .counter-card {
       background-color: var(--el-fill-color-light);
@@ -402,13 +471,13 @@ const receive = () => {
       text-align: center;
       min-width: 150px;
       box-shadow: var(--el-box-shadow-light);
-      
+
       .counter-label {
         font-size: 14px;
         color: var(--el-color-success);
         margin-bottom: 8px;
       }
-      
+
       .counter-value {
         font-size: 28px;
         font-weight: 600;

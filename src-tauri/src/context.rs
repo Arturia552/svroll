@@ -1,8 +1,7 @@
 use dashmap::DashMap;
 use once_cell::sync::Lazy;
-use tracing::info;
-use std::sync::Mutex;
-use tokio::{net::tcp::OwnedWriteHalf, sync::mpsc};
+
+use tokio::net::tcp::OwnedWriteHalf;
 
 use crate::MqttClientData;
 

@@ -77,7 +77,7 @@
   </div>
 </template>
 <script setup lang="ts">
-import { MqttClient, MqttConfig } from "@/types/mqttConfig";
+import { ClientInfo, ConnectConfig } from "@/types/mqttConfig";
 import { open } from "@tauri-apps/plugin-dialog";
 import { invoke } from "@tauri-apps/api/core";
 import { ElMessage } from "element-plus";
@@ -85,7 +85,7 @@ import { h, ref, computed, inject, onMounted } from 'vue';
 import { Delete } from '@element-plus/icons-vue';
 
 const generateSize = ref(100);
-const config = ref(inject<MqttConfig>("config"))
+const config = ref(inject<ConnectConfig>("config"))
 const searchQuery = ref('');
 const tableWidth = ref(0);
 
@@ -172,7 +172,7 @@ const resolveClientFile = async () => {
     })) as string;
 
     if (filePath) {
-      const clients: MqttClient[] = await invoke("process_client_file", { filePath });
+      const clients: ClientInfo[] = await invoke("process_client_file", { filePath });
       config.value.clients = clients;
       ElMessage.success(`成功导入 ${clients.length} 个客户端`);
     }
@@ -182,7 +182,7 @@ const resolveClientFile = async () => {
 }
 
 const generateRandom = (size: number) => {
-  const clients: MqttClient[] = [];
+  const clients: ClientInfo[] = [];
   for (let i = 0; i < size; i++) {
     clients.push({
       clientId: `client_${i}`,
@@ -198,9 +198,6 @@ const removeClient = (index: number) => {
 }
 </script>
 <style scoped lang="scss">
-.client-config {
-  
-}
 
 .actions-bar {
   display: flex;

@@ -1,8 +1,8 @@
-export interface MqttConfig {
+export interface ConnectConfig {
   sendData?: string;
   clientFilePath?: string;
   protocol: string;
-  clients?: MqttClient[];
+  clients?: ClientInfo[];
   threadSize?: number;
   enableRegister?: boolean;
   enableRandom?: boolean;
@@ -13,8 +13,7 @@ export interface MqttConfig {
   topicConfig?: TopicConfig;
 }
 
-
-export const mqttConfigTypeDef: MqttConfig = {
+export const connectConfigTypeDef: ConnectConfig = {
   sendData: "",
   protocol: "",
   clients: [],
@@ -131,9 +130,8 @@ export enum FieldTypeEnum {
   Unknown = "Unknown",
 }
 
-export interface MqttClient {
+export interface ClientInfo {
   clientId: string;
   username: string;
   password: string;
 }
-

@@ -210,7 +210,7 @@ impl Client<MqttSendData, MqttClientData> for MqttClient {
 
             // 启动事件循环处理
             let client_id = client.client_id.clone();
-            let event_loop_handle =
+            let event_loop_handle: JoinHandle<()> =
                 Self::handle_event_loop(client_id.clone(), event_loop, Arc::clone(&self_arc)).await;
             client.event_loop_handle = Some(Arc::new(Mutex::new(Some(event_loop_handle))));
             client.set_client(Some(cli.clone()));

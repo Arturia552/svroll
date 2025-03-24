@@ -64,7 +64,7 @@
             { required: true, message: '请输入broker地址', trigger: 'blur' },
           ]"
         >
-          <el-input v-model="config.broker" placeholder="如 mqtt://broker.example.com:1883">
+          <el-input v-model="config.broker">
             <template #append>
               <el-button @click="validateUrl">
                 测试连通
@@ -122,12 +122,12 @@
 </template>
 
 <script setup lang="ts" name="BasicConfig">
-import { MqttConfig } from '@/types/mqttConfig';
+import { ConnectConfig } from '@/types/mqttConfig';
 import { ElMessage, FormRules, type FormInstance } from 'element-plus';
 import { invoke } from '@tauri-apps/api/core';
 import { getNestedValue, isJsonValueNull } from '@/hooks/processJsonStruct';
 
-const config = ref(inject<MqttConfig>("config"));
+const config = ref(inject<ConnectConfig>("config"));
 const basicFormRef = ref<FormInstance>();
 
 // 验证主题配置
@@ -150,7 +150,7 @@ const tableColumn = ref([
 ]);
 
 const rules = ref<FormRules>({
-  broker: [{ required: true, message: "请输入broker地址", trigger: "blur" }],
+  broker: [{ required: true, message: "请输入服务端地址", trigger: "blur" }],
   "topicConfig.data": [{ validator: validateTopic, trigger: "blur" }],
   "topicConfig.register": [{ validator: validateTopic, trigger: "blur" }],
 });

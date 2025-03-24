@@ -1,19 +1,20 @@
 use crate::{
     benchmark_param::{BenchmarkConfig, Protocol},
     mqtt::{MqttFieldStruct, TopicConfig},
-    tcp::tcp_client::TcpClientData,
+    tcp::tcp_client::{TcpClient, TcpSendData},
     MqttClientData, MqttSendData,
 };
 use anyhow::{Context, Ok, Result};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use tracing::info;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ConnectParam {
     #[serde(rename = "sendData")]
     pub send_data: String,
     #[serde(rename = "clients")]
-    pub clients: Vec<MqttClientData>,
+    pub clients: Vec<Value>,
     pub protocol: Protocol,
     #[serde(rename = "threadSize")]
     pub thread_size: usize,
@@ -41,10 +42,18 @@ impl ConnectParam {
             data,
             fields: self.field_struct.clone(),
         };
+
+        let mut clients = vec![];
+        for client in self.clients.iter() {
+            let client_data: MqttClientData =
+                serde_json::from_value(client.clone()).with_context(|| "客户端数据格式错误")?;
+            clients.push(client_data);
+        }
+
         Ok(BenchmarkConfig {
             send_data,
             protocol_type: Protocol::Mqtt,
-            clients: self.clients.clone(),
+            clients: clients,
             thread_size: self.thread_size,
             enable_register: self.enable_register,
             enable_random: self.enable_random,
@@ -58,16 +67,19 @@ impl ConnectParam {
         self.send_data = send_data;
     }
 
-    pub async fn into_tcp_config(&self) -> Result<BenchmarkConfig<Vec<u8>, TcpClientData>> {
-        let client_file_content = " ".to_string();
-        let client_data: Vec<TcpClientData> = serde_json::from_str(client_file_content.as_str())
-            .with_context(|| "客户端文件格式错误")?;
-
+    pub async fn into_tcp_config(&self) -> Result<BenchmarkConfig<TcpSendData, TcpClient>> {
         let send_data = hex::decode(&self.send_data).with_context(|| "发送数据格式错误")?;
 
+        let mut clients = vec![];
+        for client in self.clients.iter() {
+            let client_data: TcpClient =
+                serde_json::from_value(client.clone()).with_context(|| "客户端数据格式错误")?;
+            clients.push(client_data);
+        }
+
         Ok(BenchmarkConfig::new(
-            send_data,
-            client_data,
+            TcpSendData { data: send_data },
+            clients,
             Protocol::Tcp,
             self.thread_size,
             self.enable_register,
