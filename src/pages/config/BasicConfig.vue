@@ -64,13 +64,7 @@
             { required: true, message: '请输入broker地址', trigger: 'blur' },
           ]"
         >
-          <el-input v-model="config.broker">
-            <template #append>
-              <el-button @click="validateUrl">
-                测试连通
-              </el-button>
-            </template>
-          </el-input>
+          <el-input v-model="config.broker" />
         </el-form-item>
         
         <el-form-item v-if="config.protocol === 'Mqtt'" class="topic" label="消息主题" prop="topicConfig.data">
@@ -123,8 +117,7 @@
 
 <script setup lang="ts" name="BasicConfig">
 import { ConnectConfig } from '@/types/mqttConfig';
-import { ElMessage, FormRules, type FormInstance } from 'element-plus';
-import { invoke } from '@tauri-apps/api/core';
+import { FormRules, type FormInstance } from 'element-plus';
 import { getNestedValue, isJsonValueNull } from '@/hooks/processJsonStruct';
 
 const config = ref(inject<ConnectConfig>("config"));
@@ -142,6 +135,7 @@ const validateTopic = (rule: any, value: any, callback: any) => {
   callback();
 };
 
+
 const tableColumn = ref([
   { label: "主题", prop: "topic", },
   { label: "QoS", prop: "qos", },
@@ -155,23 +149,9 @@ const rules = ref<FormRules>({
   "topicConfig.register": [{ validator: validateTopic, trigger: "blur" }],
 });
 
-// 验证URL
-const validateUrl = async () => {
-  try {
-    const msg = await invoke("validate_mqtt_url", {
-      url: config.value.broker,
-    });
-    ElMessage.success(msg);
-  } catch (error) {
-    ElMessage.error(String(error));
-  }
-};
-
-// 对外暴露验证表单方法
 const validateForm = () => {
   return new Promise<boolean>((resolve) => {
     basicFormRef.value?.validate((valid) => {
-        
       resolve(valid);
     });
   });

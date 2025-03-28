@@ -2,11 +2,9 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 use svroll::{
-    model::{
-        tauri_com::{self},
-        Rs2JsEntity,
-    },
-    AsyncProcInputTx,
+    context, model::{
+        db_com, tauri_com::{self}, Rs2JsEntity
+    }, AsyncProcInputTx
 };
 use tauri::{AppHandle, Emitter};
 use tokio::sync::{mpsc, Mutex};
@@ -31,9 +29,22 @@ async fn main() {
             tauri_com::write_file,
             tauri_com::load_config,
             tauri_com::get_mqtt_clients,
+            db_com::get_history_config,
+            db_com::load_history_config,
+            db_com::clear_history_config,
         ])
         .setup(|app| {
             let app_handle = app.handle().to_owned();
+
+            let db_app_handle = app_handle.clone();
+            tokio::spawn(async move {
+                if let Err(e) = context::init_database(&db_app_handle).await {
+                    tracing::error!("无法初始化数据库: {}", e);
+                } else {
+                    info!("数据库初始化成功");
+                }
+            });
+
             tokio::spawn(async move {
                 loop {
                     if let Some(output) = async_proc_output_rx.recv().await {

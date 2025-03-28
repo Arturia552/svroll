@@ -110,8 +110,9 @@ export interface JsonStruct {
 }
 
 export interface rs2JsEntity {
-  msgType: 'counter' | 'clientInfo' | 'error' | 'log';
+  msgType: 'counter' | 'clientInfo' | 'error' | 'terminal';
   msg: string;
+  time: string;
 }
 
 export enum FieldTypeEnum {

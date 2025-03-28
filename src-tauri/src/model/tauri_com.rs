@@ -1,6 +1,7 @@
 use crate::{
     benchmark_param::{init_mqtt_context, read_from_csv_into_struct, Protocol},
-    model::Rs2JsEntity,
+    context,
+    model::{database::HistoryConfig, Rs2JsEntity},
     tcp::tcp_client::{TcpClient, TcpClientContext, TcpSendData},
     AsyncProcInputTx, MQTT_CLIENT_CONTEXT, TCP_CLIENT_CONTEXT,
 };
@@ -65,14 +66,25 @@ pub async fn start_task(
 ) -> Result<String, String> {
     match param.protocol {
         Protocol::Mqtt => {
+            let topic_config = param.topic_config.clone();
             let config = param.into_config().await.unwrap();
-            start_mqtt(config, param.topic_config, async_proc_output_tx).await?;
+            start_mqtt(config, topic_config, async_proc_output_tx).await?;
         }
         Protocol::Tcp => {
             let config = param.into_tcp_config().await.unwrap();
             start_tcp(config, async_proc_output_tx).await?;
         }
     }
+    // 保存到数据库
+    let db = context::get_database().await;
+    let db_lock = db.lock().await;
+    let config = serde_json::to_value(param).map_err(|e| e.to_string())?;
+    let history_config = HistoryConfig::new("mqtt", &config).map_err(|e| e.to_string())?;
+    db_lock
+        .save_config(&history_config)
+        .await
+        .map_err(|e| e.to_string())?;
+
     Ok("开始发送消息...".to_string())
 }
 
@@ -93,11 +105,11 @@ async fn start_mqtt(
     let tx = async_proc_output_tx.inner.lock().await.clone();
     tx.send(Rs2JsEntity::new(
         Rs2JsMsgType::Terminal,
-        "开始初始化MQTT客户端...".to_string(),
+        "开始初始化MQTT配置...".to_string(),
     ))
     .await
     .unwrap();
-    info!("开始初始化MQTT客户端...");
+    info!("开始初始化MQTT配置...");
     let mqtt_config = topic_config.unwrap_or_else(|| TopicConfig::default());
 
     tx.send(Rs2JsEntity::new(
@@ -161,7 +173,12 @@ async fn start_mqtt(
     let tx_clone = tx.clone();
     let count_handle = tokio::spawn(async move {
         let counter = task.lock().await.counter.clone();
+        let status = task.lock().await.status.clone();
         loop {
+            if !status.load(Ordering::SeqCst) {
+                break;
+            }
+            
             tx_clone
                 .send(Rs2JsEntity::new(
                     Rs2JsMsgType::Counter,
@@ -243,7 +260,12 @@ async fn start_tcp(
 
     let count_handle = tokio::spawn(async move {
         let counter = task.lock().await.counter.clone();
+        let status = task.lock().await.status.clone();
         loop {
+            if !status.load(Ordering::SeqCst) {
+                break;
+            }
+            
             tx.send(Rs2JsEntity::new(
                 Rs2JsMsgType::Counter,
                 counter.load(Ordering::SeqCst).to_string(),
@@ -345,7 +367,7 @@ pub async fn stop_task(
                 .await
                 .unwrap();
                 MQTT_CLIENT_CONTEXT.clear();
-            },
+            }
             Some(Protocol::Tcp) => {
                 // TCP 连接断开逻辑
                 for mut entry in TCP_CLIENT_CONTEXT.iter_mut() {
@@ -379,7 +401,7 @@ pub async fn stop_task(
         Some(Protocol::Mqtt) | None => MQTT_CLIENT_CONTEXT.clear(),
         Some(Protocol::Tcp) => TCP_CLIENT_CONTEXT.clear(),
     }
-    
+
     Err("没有正在运行的任务".to_string())
 }
 

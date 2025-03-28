@@ -5,32 +5,45 @@
       <div class="header">
         <div class="func-button-group">
           <el-button type="success" size="default" :disabled="isRunning" @click="showNewConfig">
-            <el-icon>
-              <Edit />
-            </el-icon>编辑配置
+            <template #icon>
+              <el-icon :size="16">
+                <Edit />
+              </el-icon>
+            </template>编辑配置
           </el-button>
           <el-button type="primary" :disabled="!valid || isRunning" @click="exportConfig">
-            <el-icon>
-              <Download />
-            </el-icon>导出配置
+            <template #icon>
+              <el-icon :size="16">
+                <upload />
+              </el-icon>
+            </template>导出配置
           </el-button>
           <el-button type="primary" :disabled="isRunning" @click="loadConfig">
-            <el-icon>
-              <Upload />
-            </el-icon>导入配置
+            <template #icon>
+              <el-icon :size="16">
+                <download />
+              </el-icon>
+            </template>导入配置
+          </el-button>
+          <el-button type="info" :disabled="isRunning" @click="showHistory">
+            <template #icon>
+              <el-icon :size="16">
+                <clock />
+              </el-icon>
+            </template>历史配置
           </el-button>
         </div>
       </div>
 
       <div class="editor-section">
         <!-- 根据测试状态显示编辑器或仪表盘 -->
-        <div v-if="!isRunning" class="editor-wrapper">
+        <div v-if="!isRunning && !showDashboard" class="editor-wrapper">
           <div class="editor-controls">
             <div class="editor-mode-controls">
-              <el-button v-if="editorMode === 'hex'" size="small" type="primary" @click="formatHexText">
+              <el-button v-if="editorMode === 'hex'" type="primary" @click="formatHexText">
                 格式化Hex
               </el-button>
-              <el-radio-group v-model="editorMode" size="small">
+              <el-radio-group v-model="editorMode">
                 <el-radio-button label="json">
                   JSON
                 </el-radio-button>
@@ -44,20 +57,38 @@
                        :language="editorMode"
           />
         </div>
-        <dashboard-panel v-else :counter="counter" :client-info="clientInfo" class="dashboard-container" />
+        <dashboard-panel 
+          v-if="showDashboard"
+          :counter="counter" 
+          :terminal-log="terminalLog" 
+          :client-info="clientInfo" 
+          class="dashboard-container" 
+          @return-to-editor="returnToEditor"
+        />
       </div>
 
       <div class="control-section">
         <div class="controls">
-          <el-button type="primary" size="large" :disabled="!valid || isRunning" @click="start">
-            <el-icon>
-              <VideoPlay />
-            </el-icon>开始测试
+          <el-button v-if="!isRunning && !showDashboard" type="primary" size="large" :disabled="!valid || isRunning" @click="start">
+            <template #icon>
+              <el-icon :size="20">
+                <VideoPlay />
+              </el-icon>
+            </template>
+            开始
           </el-button>
-          <el-button type="danger" size="large" @click="stop">
+          <el-button type="danger" size="large" :loading="stopping" @click="stop">
+            <template #icon>
+              <el-icon :size="20">
+                <VideoPause />
+              </el-icon>
+            </template>
+            停止
+          </el-button>
+          <el-button v-if="showDashboard" type="warning" size="large" :disabled="isRunning" @click="returnToEditor">
             <el-icon>
-              <VideoPause />
-            </el-icon>停止测试
+              <back />
+            </el-icon>返回编辑器
           </el-button>
         </div>
       </div>
@@ -70,16 +101,22 @@
                  @close="closeConfigDrawer" @submit="handleConfigSubmit"
     />
   </el-drawer>
+  
+  <el-drawer v-model="historyDrawerVisible" title="历史配置" direction="rtl" size="400px" :with-header="false" destroy-on-close>
+    <history-component @load-config="handleHistoryConfigLoad" />
+  </el-drawer>
 </template>
 <script setup lang="ts" name="Home">
 import { invoke } from "@tauri-apps/api/core";
 import CodeEditor from "@/components/CodeEditor/index.vue";
 import TabsConfig from "@/pages/config/TabsConfig.vue";
 import DashboardPanel from "@/components/Dashboard/DashboardPanel.vue";
+import HistoryComponent from "@/components/History/index.vue";
 import { convert2Type, ConnectConfig, rs2JsEntity } from "@/types/mqttConfig";
 import { listen } from "@tauri-apps/api/event";
 import { open, save } from "@tauri-apps/plugin-dialog";
 import { writeTextFile } from "@tauri-apps/plugin-fs";
+import { Clock, Back } from '@element-plus/icons-vue';
 
 const valid = ref<boolean>(false);
 const isRunning = ref<boolean>(false);
@@ -89,10 +126,13 @@ const clientInfo = ref<any>({
   failed: 0,
   connecting: 0
 });
+
+const terminalLog = ref<rs2JsEntity[]>([]); 
 const clientConnectionInfo = ref<any>([]);
 const editorMode = ref<string>("json"); // 编辑器模式切换状态
 const codeEditorRef = ref<InstanceType<typeof CodeEditor> | null>(null);
-
+const stopping = ref<boolean>(false);
+const showDashboard = ref<boolean>(false);
 const config = ref<ConnectConfig>({
   sendData: "",
   protocol: "Mqtt",
@@ -168,10 +208,29 @@ const connectConfigTypeDef: ConnectConfig = {
   },
 };
 const configDrawerVisible = ref<boolean>(false);
+const historyDrawerVisible = ref<boolean>(false);
 const counter = ref<number>(0);
 
 const showNewConfig = () => {
   configDrawerVisible.value = true;
+};
+
+const showHistory = () => {
+  historyDrawerVisible.value = true;
+};
+
+const handleHistoryConfigLoad = (historyConfig: ConnectConfig) => {
+  config.value = historyConfig;
+  convertType(config.value, connectConfigTypeDef);
+  
+  if (config.value.sendData && /^[0-9A-Fa-f\s]+$/.test(config.value.sendData)) {
+    editorMode.value = "hex";
+  } else {
+    editorMode.value = "json";
+  }
+  
+  valid.value = true;
+  historyDrawerVisible.value = false;
 };
 
 const exportConfig = async () => {
@@ -214,20 +273,18 @@ const loadConfig = async () => {
 
 const start = async () => {
   try {
+    receive();
+    terminalLog.value = [];
     counter.value = 0;
     convertType(config.value, connectConfigTypeDef);
 
-    // 如果是hex模式，需要进行预处理
     if (editorMode.value === "hex") {
-      // 移除所有空格，确保最终发送的是连续的hex字符串
       config.value.sendData = config.value.sendData.replace(/\s+/g, '');
     }
-
-    console.log(config.value);
     isRunning.value = true;
+    showDashboard.value = true;
     const msg = await invoke("start_task", { param: config.value as ConnectConfig });
     ElMessage.success(msg);
-    receive();
   } catch (e) {
     ElMessage.error(e);
     isRunning.value = false;
@@ -235,18 +292,28 @@ const start = async () => {
 };
 
 const stop = async () => {
-  const msg = await invoke("stop_task", {protocol: config.value.protocol});
-  ElMessage.success(msg);
-  isRunning.value = false;
+  stopping.value = true;
+  try {
+    const msg = await invoke("stop_task", {protocol: config.value.protocol});
+    ElMessage.success(msg);
+  } catch (e) {
+    ElMessage.error(String(e));
+  } finally {
+    isRunning.value = false;
+    stopping.value = false;
+  }
+};
+
+// 新增返回编辑器视图的方法
+const returnToEditor = () => {
+  showDashboard.value = false;
 };
 
 const closeConfigDrawer = () => {
   configDrawerVisible.value = false;
 };
 
-// 此方法可以保留，但主要通过v-model:valid实现状态传递
 const handleConfigSubmit = () => {
-  // valid.value已经通过v-model双向绑定自动更新
   nextTick(() => {
     console.log("配置已提交，表单验证状态:", valid.value);
   })
@@ -298,8 +365,13 @@ const receive = () => {
       } catch (e) {
         console.error("解析客户端信息失败:", e);
       }
+    }else if (entity.msgType === "terminal") {
+      terminalLog.value.push(entity);
+      if (terminalLog.value.length > 100) {
+        terminalLog.value.shift(); 
+      }
+      console.log("终端日志:", entity);
     }
-    console.log(event.payload);
     const clients = await invoke("get_mqtt_clients")
     clientConnectionInfo.value = clients
   });

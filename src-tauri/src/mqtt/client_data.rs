@@ -13,7 +13,7 @@ use serde::{Deserialize, Serialize};
 use tokio::{
     sync::{Mutex, Semaphore},
     task::JoinHandle,
-    time::{sleep, Instant},
+    time::sleep,
 };
 use tracing::{error, info};
 

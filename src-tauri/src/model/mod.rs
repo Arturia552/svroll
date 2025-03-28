@@ -2,6 +2,8 @@ use serde::{Deserialize, Serialize};
 
 pub mod connect_param;
 pub mod tauri_com;
+pub mod database;
+pub mod db_com;
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct Rs2JsEntity {

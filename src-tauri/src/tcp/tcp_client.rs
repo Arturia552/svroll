@@ -11,12 +11,11 @@ use serde::{Deserialize, Deserializer};
 use tokio::{
     io::AsyncWriteExt,
     net::{tcp::OwnedReadHalf, TcpStream},
-    sync::Semaphore,
-    time::{sleep, Instant},
+    time::Instant,
 };
 use tokio_stream::StreamExt;
 use tokio_util::codec::FramedRead;
-use tracing::{error, info};
+use tracing::error;
 
 use super::RequestCodec;
 

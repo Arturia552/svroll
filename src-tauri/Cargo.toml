@@ -1,7 +1,6 @@
 [package]
 name = "svroll"
 version = "0.1.0"
-description = "A Tauri App"
 authors = ["you"]
 edition = "2021"
 
@@ -30,6 +29,8 @@ hex = "0.4"
 tauri-plugin-fs = "2"
 tauri-plugin-dialog = "2"
 rumqttc = "0.24.0"
+sqlx = { version = "0.8.3", features = ["runtime-tokio", "sqlite", "json", "chrono"] }
+
 [dev-dependencies]
 tempfile = "3"
 [features]

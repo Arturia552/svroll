@@ -125,9 +125,9 @@
           </div>
         </template>
         <div class="log-content">
-          <div v-for="(log, index) in testLogs" :key="index" class="log-item" :class="log.type">
+          <div v-for="(log, index) in terminalLog" :key="index" class="log-item">
             <span class="log-time">{{ log.time }}</span>
-            <span class="log-message">{{ log.message }}</span>
+            <span class="log-message">{{ log.msg }}</span>
           </div>
         </div>
       </el-card>
@@ -144,6 +144,8 @@ import { GridComponent, TooltipComponent, TitleComponent, LegendComponent } from
 import { CanvasRenderer } from 'echarts/renderers';
 import { ElTableV2 } from 'element-plus';
 import type { TableV2Props } from 'element-plus';
+import { rs2JsEntity } from '@/types/mqttConfig';
+
 
 echarts.use([GridComponent, LineChart, TooltipComponent, TitleComponent, LegendComponent, CanvasRenderer]);
 
@@ -160,6 +162,10 @@ const props = defineProps({
       failed: 0,
       connecting: 0
     })
+  },
+  terminalLog: {
+    type: Array as PropType<rs2JsEntity[]>,
+    default: () => []
   }
 });
 
@@ -222,14 +228,6 @@ const columns = ref<TableV2Props['columns']>([
   }
 ]);
 
-// 模拟的日志数据
-const testLogs = ref([
-  { time: '14:32:10', message: '客户端 client-001 已连接', type: 'info' },
-  { time: '14:32:05', message: '客户端 client-002 已连接', type: 'info' },
-  { time: '14:31:47', message: '客户端 client-003 连接断开: 网络超时', type: 'error' },
-  { time: '14:31:30', message: '开始测试，初始化100个客户端连接', type: 'info' },
-  { time: '14:31:20', message: '测试配置已加载', type: 'info' },
-]);
 
 const calculatePercentage = (type: string): number => {
   if (!props.clientInfo) return 0;
@@ -379,6 +377,7 @@ onMounted(() => {
     });
   }
 });
+
 
 onBeforeUnmount(() => {
   window.removeEventListener('resize', handleResize);

@@ -7,7 +7,6 @@ use crate::{
 use anyhow::{Context, Ok, Result};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use tracing::info;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ConnectParam {
@@ -53,7 +52,7 @@ impl ConnectParam {
         Ok(BenchmarkConfig {
             send_data,
             protocol_type: Protocol::Mqtt,
-            clients: clients,
+            clients,
             thread_size: self.thread_size,
             enable_register: self.enable_register,
             enable_random: self.enable_random,
