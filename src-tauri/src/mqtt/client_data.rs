@@ -18,8 +18,7 @@ use tokio::{
 use tracing::{error, info};
 
 use crate::{
-    benchmark_param::BenchmarkConfig, model::tauri_com::Task, mqtt::device_data::process_fields,
-    MqttSendData, TopicWrap, MQTT_CLIENT_CONTEXT,
+    benchmark_param::BenchmarkConfig, context::get_app_state, model::tauri_com::Task, mqtt::device_data::process_fields, ConnectionState, MqttSendData, TopicWrap
 };
 
 use super::Client;
@@ -96,7 +95,7 @@ impl MqttClient {
 
                 if let Some(device_key) = data.get(extra_key) {
                     if let Some(device_key_str) = device_key.as_str() {
-                        MQTT_CLIENT_CONTEXT.entry(mac.to_string()).and_modify(|v| {
+                        get_app_state().mqtt_clients().entry(mac.to_string()).and_modify(|v| {
                             v.set_device_key(device_key_str.to_string());
                         });
                     }
@@ -111,11 +110,12 @@ impl MqttClient {
         mut event_loop: EventLoop,
         self_clone: Arc<MqttClient>,
     ) -> JoinHandle<()> {
+        let app_state = get_app_state();
         // 返回JoinHandle以便后续可以取消
         tokio::spawn(async move {
             loop {
                 // 每次循环前检查客户端是否还存在
-                if !MQTT_CLIENT_CONTEXT.contains_key(&client_id) {
+                if !app_state.mqtt_clients().contains_key(&client_id) {
                     break;
                 }
 
@@ -124,20 +124,21 @@ impl MqttClient {
                         self_clone.on_message_callback(&publish.topic, &publish.payload);
                     }
                     Ok(Event::Incoming(Packet::ConnAck(_))) => {
-                        if let Some(mut client) = MQTT_CLIENT_CONTEXT.get_mut(&client_id) {
+                        if let Some(mut client) = app_state.mqtt_clients().get_mut(&client_id) {
                             match self_clone.on_connect_success(&mut client).await {
                                 Ok(_) => {
-                                    client.set_is_connected(true);
+                                    client.set_connection_state(ConnectionState::Connected);
                                 }
                                 Err(e) => {
                                     error!("连接初始化失败: {:?}", e);
+                                    client.set_connection_state(ConnectionState::Failed);
                                 }
                             }
                         }
                     }
                     Err(e) => {
-                        if let Some(mut client_entry) = MQTT_CLIENT_CONTEXT.get_mut(&client_id) {
-                            client_entry.set_is_connected(false);
+                        if let Some(mut client_entry) = app_state.mqtt_clients().get_mut(&client_id) {
+                            client_entry.set_connection_state(ConnectionState::Failed);
 
                             if !client_entry.disconnecting.load(Ordering::SeqCst) {
                                 error!("MQTT事件循环错误: {:?}", e);
@@ -154,7 +155,7 @@ impl MqttClient {
                             error!("MQTT事件循环错误: {:?}", e);
                         }
 
-                        if !MQTT_CLIENT_CONTEXT.contains_key(&client_id) {
+                        if !app_state.mqtt_clients().contains_key(&client_id) {
                             break;
                         }
                         sleep(Duration::from_secs(2)).await;
@@ -162,8 +163,8 @@ impl MqttClient {
                     _ => {}
                 }
             }
-            if let Some(mut client) = MQTT_CLIENT_CONTEXT.get_mut(&client_id) {
-                client.set_is_connected(false);
+            if let Some(mut client) = app_state.mqtt_clients().get_mut(&client_id) {
+                client.set_connection_state(ConnectionState::Failed);
                 if client.client.is_some() {
                     client.client = None;
                 }
@@ -181,6 +182,7 @@ impl Client<MqttSendData, MqttClientData> for MqttClient {
     ) -> Result<Vec<MqttClientData>, Error> {
         let mut clients = vec![];
 
+        let app_state = get_app_state();
         let self_arc = Arc::new(self.clone());
         let broker = config.get_broker();
         let semaphore = Arc::new(Semaphore::new(config.get_max_connect_per_second()));
@@ -207,14 +209,14 @@ impl Client<MqttSendData, MqttClientData> for MqttClient {
 
             // 创建客户端和事件循环
             let (cli, event_loop) = AsyncClient::new(mqtt_options, 10);
-
             // 启动事件循环处理
             let client_id = client.client_id.clone();
             let event_loop_handle: JoinHandle<()> =
                 Self::handle_event_loop(client_id.clone(), event_loop, Arc::clone(&self_arc)).await;
             client.event_loop_handle = Some(Arc::new(Mutex::new(Some(event_loop_handle))));
             client.set_client(Some(cli.clone()));
-            MQTT_CLIENT_CONTEXT.insert(client.get_client_id().to_string(), client.clone());
+           
+            app_state.add_mqtt_client(client.get_client_id().to_string(), client.clone());
             clients.push(client.clone());
 
             drop(permit);
@@ -296,7 +298,7 @@ impl Client<MqttSendData, MqttClientData> for MqttClient {
         let clients_per_thread = (clients.len() + config.thread_size - 1) / config.thread_size;
         let clients_group = clients.chunks(clients_per_thread);
         let mut handles: Vec<JoinHandle<()>> = vec![];
-
+        let app_state = get_app_state();
         let self_arc = Arc::new(self.clone());
 
         for group in clients_group {
@@ -323,11 +325,11 @@ impl Client<MqttSendData, MqttClientData> for MqttClient {
                     // 遍历每个组中的客户端
                     for cli in &group {
                         let client_id = cli.get_client_id().to_string();
-                        let Some(client_data) = MQTT_CLIENT_CONTEXT.get(&client_id) else {
+                        let Some(client_data) = app_state.mqtt_clients().get(&client_id) else {
                             continue;
                         };
 
-                        if !client_data.is_connected {
+                        if !client_data.is_connected() {
                             continue;
                         }
 
@@ -375,7 +377,7 @@ impl Client<MqttSendData, MqttClientData> for MqttClient {
 
     async fn wait_for_connections(&self, clients: &mut [MqttClientData]) {
         let mut futures = Vec::with_capacity(clients.len());
-
+        let app_state = get_app_state();
         for client in clients.iter() {
             let client_id = client.get_client_id().to_string();
             futures.push(tokio::spawn(async move {
@@ -383,8 +385,8 @@ impl Client<MqttSendData, MqttClientData> for MqttClient {
                 const MAX_ATTEMPTS: usize = 100; // 10秒超时
 
                 while attempts < MAX_ATTEMPTS {
-                    if let Some(client_data) = MQTT_CLIENT_CONTEXT.get(&client_id) {
-                        if client_data.is_connected {
+                    if let Some(client_data) = app_state.mqtt_clients().get(&client_id) {
+                        if client_data.is_connected() {
                             break;
                         }
                     }
@@ -416,8 +418,8 @@ pub struct MqttClientData {
     #[serde(skip)]
     pub device_key: String,
     #[serde(default)]
-    #[serde(rename = "isConnected")]
-    pub is_connected: bool,
+    #[serde(rename = "connectionState")]
+    pub connection_state: ConnectionState,
     #[serde(skip)]
     pub client: Option<AsyncClient>,
     #[serde(skip)]
@@ -447,9 +449,18 @@ impl MqttClientData {
         self.client_id = client_id;
     }
 
-    pub fn set_is_connected(&mut self, is_connected: bool) {
-        self.is_connected = is_connected
+    pub fn get_connection_state(&self) -> &ConnectionState {
+        &self.connection_state
     }
+    
+    pub fn set_connection_state(&mut self, state: ConnectionState) {
+        self.connection_state = state;
+    }
+    
+    pub fn is_connected(&self) -> bool {
+        self.connection_state == ConnectionState::Connected
+    }
+
     pub fn set_device_key(&mut self, device_key: String) {
         self.device_key = device_key;
     }

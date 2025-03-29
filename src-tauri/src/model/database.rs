@@ -9,6 +9,7 @@ use sqlx::{
 use tauri::Manager;
 use tracing::{error, info};
 
+#[derive(Debug)]
 pub struct Database {
     pool: Pool<Sqlite>,
 }

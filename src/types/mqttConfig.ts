@@ -135,4 +135,11 @@ export interface ClientInfo {
   clientId: string;
   username: string;
   password: string;
+  connectionState?: ConnectionState
+}
+
+export enum ConnectionState {
+  Connected = "Connected",
+  Connecting = "Connecting",
+  Failed = "Failed",
 }

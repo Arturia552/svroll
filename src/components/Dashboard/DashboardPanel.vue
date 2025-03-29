@@ -17,7 +17,7 @@
           </div>
         </el-card>
       </el-col>
-      
+
       <el-col :xs="24" :sm="12" :md="5">
         <el-card class="metric-card">
           <div class="metric-label">
@@ -27,16 +27,13 @@
             {{ clientInfo?.connected || 0 }}
           </div>
           <div class="metric-chart">
-            <el-progress 
-              :percentage="calculatePercentage('connected')" 
-              :stroke-width="8" 
-              :show-text="false"
-              status="success"
+            <el-progress :percentage="calculatePercentage('connected')" :stroke-width="8" :show-text="false"
+                         status="success"
             />
           </div>
         </el-card>
       </el-col>
-      
+
       <el-col :xs="24" :sm="12" :md="5">
         <el-card class="metric-card">
           <div class="metric-label">
@@ -46,16 +43,13 @@
             {{ clientInfo?.failed || 0 }}
           </div>
           <div class="metric-chart">
-            <el-progress 
-              :percentage="calculatePercentage('failed')" 
-              :stroke-width="8" 
-              :show-text="false"
-              status="exception"
+            <el-progress :percentage="calculatePercentage('failed')" :stroke-width="8" :show-text="false"
+                         status="exception"
             />
           </div>
         </el-card>
       </el-col>
-      
+
       <el-col :xs="24" :sm="12" :md="5">
         <el-card class="metric-card">
           <div class="metric-label">
@@ -65,17 +59,14 @@
             {{ clientInfo?.connecting || 0 }}
           </div>
           <div class="metric-chart">
-            <el-progress 
-              :percentage="calculatePercentage('connecting')" 
-              :stroke-width="8" 
-              :show-text="false"
-              status="warning"
+            <el-progress :percentage="calculatePercentage('connecting')" :stroke-width="8" :show-text="false"
+                         status="warning"
             />
           </div>
         </el-card>
       </el-col>
     </el-row>
-    
+
     <el-row :gutter="0" class="chart-container">
       <el-col :span="24">
         <el-card class="chart-card">
@@ -92,29 +83,21 @@
         </el-card>
       </el-col>
     </el-row>
-    
+
     <el-row :gutter="0" style="gap: 20px">
       <el-card class="clients-card">
         <template #header>
           <div class="card-header">
             <span>客户端连接状态</span>
-            <el-tag type="success">
-              在线: {{ clientInfo?.connected || 0 }}
-            </el-tag>
           </div>
         </template>
         <div ref="tableContainer" style="width: 100%; height: 300px;">
-          <el-table-v2
-            :columns="columns"
-            :data="clientsTableData"
-            :width="tableWidth || 400"
-            :height="tableHeight"
-            :row-height="40"
-            fixed
+          <el-table-v2 :columns="columns" :data="clientsTableData" :width="tableWidth || 400" :height="tableHeight"
+                       :row-height="40" fixed
           />
         </div>
       </el-card>
-      
+
       <el-card class="log-card" style="flex: 1;">
         <template #header>
           <div class="card-header">
@@ -195,24 +178,41 @@ const columns = ref<TableV2Props['columns']>([
     width: 120,
   },
   {
-    key: 'isConnected',
-    dataKey: 'isConnected',
+    key: 'connectionState',
+    dataKey: 'connectionState',
     title: '状态',
     width: 100,
     cellRenderer: ({ rowData }) => {
       let type, text;
-      if (rowData.isConnected === true) {
-        type = 'success';
-        text = '已连接';
-      } else if (rowData.isConnected === 'connecting') {
-        type = 'warning';
-        text = '连接中';
-      } else {
-        type = 'danger';
-        text = '断开连接';
+      switch (rowData.connectionState) {
+        case 'Connected':
+          type = 'success';
+          text = '已连接';
+          break;
+        case 'Connecting':
+          type = 'warning';
+          text = '连接中';
+          break;
+        case 'Failed':
+          type = 'danger';
+          text = '连接失败';
+          break;
+        case 'Disconnected':
+          type = 'info';
+          text = '已断开';
+          break;
+        default:
+          type = 'info';
+          text = '未知';
       }
       return h('el-tag', { type }, text);
     }
+  },
+  {
+    key: 'username',
+    dataKey: 'username',
+    title: '用户名',
+    width: 120,
   },
   {
     key: 'messages',
@@ -249,16 +249,16 @@ const initChart = () => {
 
 const updateChart = () => {
   if (!messageChart.value) return;
-  
+
   const now = new Date();
   const xAxisData = [];
   const times = messageRateHistory.value.length;
-  
+
   for (let i = times - 1; i >= 0; i--) {
     const time = new Date(now.getTime() - i * 1000);
     xAxisData.push(`${time.getHours()}:${time.getMinutes().toString().padStart(2, '0')}:${time.getSeconds().toString().padStart(2, '0')}`);
   }
-  
+
   const option = {
     title: {
       text: '',
@@ -320,7 +320,7 @@ const updateChart = () => {
       containLabel: true
     }
   };
-  
+
   messageChart.value.setOption(option);
 };
 
@@ -328,17 +328,17 @@ const updateChart = () => {
 watch(() => props.counter, (newVal) => {
   const currentTime = Date.now();
   const elapsedSeconds = (currentTime - lastTime.value) / 1000;
-  
+
   if (elapsedSeconds > 0.5) {  // 至少间隔0.5秒更新一次速率
     ratePerSecond.value = (newVal - lastCounter.value) / elapsedSeconds;
     lastCounter.value = newVal;
     lastTime.value = currentTime;
-    
+
     messageRateHistory.value.push(Math.round(ratePerSecond.value));
     if (messageRateHistory.value.length > 60) { // 保持最多60个数据点
       messageRateHistory.value.shift();
     }
-    
+
     updateChart();
   }
 });
@@ -352,7 +352,7 @@ onMounted(() => {
   initChart();
   lastTime.value = Date.now();
   window.addEventListener('resize', handleResize);
-  
+
   // 初始化历史数据
   for (let i = 0; i < 10; i++) {
     messageRateHistory.value.push(0);
@@ -361,16 +361,16 @@ onMounted(() => {
   // 计算表格容器宽度
   if (tableContainer.value) {
     tableWidth.value = tableContainer.value.clientWidth;
-    
+
     // 监听容器大小变化
     const resizeObserver = new ResizeObserver(entries => {
       for (const entry of entries) {
         tableWidth.value = entry.contentRect.width;
       }
     });
-    
+
     resizeObserver.observe(tableContainer.value);
-    
+
     // 清理观察器
     onBeforeUnmount(() => {
       resizeObserver.disconnect();
@@ -386,6 +386,10 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped lang="scss">
+:deep(.el-card__body) {
+  padding: 16px !important;
+}
+
 .dashboard-panel {
   padding: 10px 0;
   height: 100%;
@@ -405,50 +409,49 @@ onBeforeUnmount(() => {
 
 .metric-card {
   padding: 10px;
-  height: 120px;
-  
+
   .metric-label {
     font-size: 14px;
     color: var(--el-text-color-secondary);
     margin-bottom: 8px;
   }
-  
+
   .metric-value {
     font-size: 32px;
     font-weight: 600;
     margin-bottom: 16px;
-    
+
     &.primary {
       color: var(--el-color-primary);
     }
-    
+
     &.success {
       color: var(--el-color-success);
     }
-    
+
     &.warning {
       color: var(--el-color-warning);
     }
-    
+
     &.danger {
       color: var(--el-color-danger);
     }
   }
-  
+
   .metric-chart {
     .trend-indicator {
       display: flex;
       align-items: center;
       font-size: 14px;
-      
+
       &.positive {
         color: var(--el-color-success);
       }
-      
+
       &.negative {
         color: var(--el-color-danger);
       }
-      
+
       .el-icon {
         margin-right: 4px;
       }
@@ -466,20 +469,21 @@ onBeforeUnmount(() => {
       justify-content: space-between;
       align-items: center;
     }
-    
+
     .chart {
       height: 200px;
     }
   }
 }
 
-.clients-card, .log-card {
-  
+.clients-card,
+.log-card {
+
   .card-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    
+
     .el-tag {
       margin-left: 8px;
     }
@@ -488,28 +492,28 @@ onBeforeUnmount(() => {
 
 .log-content {
   overflow-y: auto;
-  
+
   .log-item {
     padding: 4px 0;
     border-bottom: 1px dashed var(--el-border-color-lighter);
     font-size: 12px;
-    
+
     &:last-child {
       border-bottom: none;
     }
-    
+
     &.info {
       color: var(--el-text-color-regular);
     }
-    
+
     &.error {
       color: var(--el-color-danger);
     }
-    
+
     &.warning {
       color: var(--el-color-warning);
     }
-    
+
     .log-time {
       color: var(--el-text-color-secondary);
       margin-right: 10px;

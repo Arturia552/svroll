@@ -28,7 +28,7 @@ async fn main() {
             tauri_com::process_client_file,
             tauri_com::write_file,
             tauri_com::load_config,
-            tauri_com::get_mqtt_clients,
+            tauri_com::get_clients,
             db_com::get_history_config,
             db_com::load_history_config,
             db_com::clear_history_config,
@@ -38,7 +38,7 @@ async fn main() {
 
             let db_app_handle = app_handle.clone();
             tokio::spawn(async move {
-                if let Err(e) = context::init_database(&db_app_handle).await {
+                if let Err(e) = context::init_app_state(&db_app_handle).await {
                     tracing::error!("无法初始化数据库: {}", e);
                 } else {
                     info!("数据库初始化成功");

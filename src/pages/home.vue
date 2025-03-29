@@ -112,7 +112,7 @@ import CodeEditor from "@/components/CodeEditor/index.vue";
 import TabsConfig from "@/pages/config/TabsConfig.vue";
 import DashboardPanel from "@/components/Dashboard/DashboardPanel.vue";
 import HistoryComponent from "@/components/History/index.vue";
-import { convert2Type, ConnectConfig, rs2JsEntity } from "@/types/mqttConfig";
+import { convert2Type, ConnectConfig, rs2JsEntity, ClientInfo, ConnectionState } from "@/types/mqttConfig";
 import { listen } from "@tauri-apps/api/event";
 import { open, save } from "@tauri-apps/plugin-dialog";
 import { writeTextFile } from "@tauri-apps/plugin-fs";
@@ -273,7 +273,6 @@ const loadConfig = async () => {
 
 const start = async () => {
   try {
-    receive();
     terminalLog.value = [];
     counter.value = 0;
     convertType(config.value, connectConfigTypeDef);
@@ -283,6 +282,7 @@ const start = async () => {
     }
     isRunning.value = true;
     showDashboard.value = true;
+    startClientInfoTimer()
     const msg = await invoke("start_task", { param: config.value as ConnectConfig });
     ElMessage.success(msg);
   } catch (e) {
@@ -301,6 +301,7 @@ const stop = async () => {
   } finally {
     isRunning.value = false;
     stopping.value = false;
+    stopClientInfoTimer();
   }
 };
 
@@ -370,12 +371,60 @@ const receive = () => {
       if (terminalLog.value.length > 100) {
         terminalLog.value.shift(); 
       }
-      console.log("终端日志:", entity);
     }
-    const clients = await invoke("get_mqtt_clients")
-    clientConnectionInfo.value = clients
   });
 };
+
+let clientInfoTimerId: number | null = null;
+
+// 抽离获取客户端信息的函数
+const getClientInfo = async () => {
+  try {
+    const clients: ClientInfo[] = await invoke("get_clients",{ protocol: config.value.protocol });
+
+    clientInfo.value = {
+      connected: 0,
+      disconnected: 0,
+      failed: 0,
+      connecting: 0
+    };
+    
+    clients.forEach((client: ClientInfo) => {
+      if (client.connectionState === ConnectionState.Connected) {
+        clientInfo.value.connected += 1;
+      } else if (client.connectionState === ConnectionState.Failed) {
+        clientInfo.value.Failed += 1;
+      } else if (client.connectionState === ConnectionState.Connecting) {
+        clientInfo.value.connecting += 1;
+      }
+    });
+  } catch (error) {
+    console.error("获取客户端信息失败:", error);
+  }
+};
+
+// 启动客户端信息定时查询
+const startClientInfoTimer = () => {
+  stopClientInfoTimer(); // 确保先停止已有的定时器
+  clientInfoTimerId = window.setInterval(getClientInfo, 500);
+};
+
+// 停止客户端信息定时查询
+const stopClientInfoTimer = () => {
+  if (clientInfoTimerId !== null) {
+    clearInterval(clientInfoTimerId);
+    clientInfoTimerId = null;
+  }
+};
+
+onMounted(() => {
+  receive();
+});
+
+onUnmounted(() => {
+  stopClientInfoTimer();
+});
+
 </script>
 <style lang="scss" scoped>
 .home {

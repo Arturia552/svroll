@@ -1,5 +1,6 @@
 use crate::{
     benchmark_param::{BenchmarkConfig, Protocol},
+    context::get_app_state,
     mqtt::{MqttFieldStruct, TopicConfig},
     tcp::tcp_client::{TcpClient, TcpSendData},
     MqttClientData, MqttSendData,
@@ -46,9 +47,12 @@ impl ConnectParam {
         for client in self.clients.iter() {
             let client_data: MqttClientData =
                 serde_json::from_value(client.clone()).with_context(|| "客户端数据格式错误")?;
+            let app_state = get_app_state();
+            app_state
+                .mqtt_clients()
+                .insert(client_data.get_client_id().to_string(), client_data.clone());
             clients.push(client_data);
         }
-
         Ok(BenchmarkConfig {
             send_data,
             protocol_type: Protocol::Mqtt,
@@ -73,6 +77,11 @@ impl ConnectParam {
         for client in self.clients.iter() {
             let client_data: TcpClient =
                 serde_json::from_value(client.clone()).with_context(|| "客户端数据格式错误")?;
+            let app_state = get_app_state();
+            app_state.tcp_clients().insert(
+                client_data.get_mac().to_string(),
+                (client_data.clone(), None),
+            );
             clients.push(client_data);
         }
 

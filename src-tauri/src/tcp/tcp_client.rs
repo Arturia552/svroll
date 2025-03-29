@@ -4,14 +4,14 @@ use std::{
 };
 
 use crate::{
-    benchmark_param::BenchmarkConfig, model::tauri_com::Task, mqtt::Client, TCP_CLIENT_CONTEXT,
+    benchmark_param::BenchmarkConfig, context::get_app_state, model::tauri_com::Task, mqtt::Client,
+    ConnectionState,
 };
 use anyhow::{Error, Result};
-use serde::{Deserialize, Deserializer};
+use bytes::buf::Writer;
+use serde::{Deserialize, Deserializer, Serialize};
 use tokio::{
-    io::AsyncWriteExt,
-    net::{tcp::OwnedReadHalf, TcpStream},
-    time::Instant,
+    io::AsyncWriteExt, net::{tcp::OwnedReadHalf, TcpStream}, sync::Semaphore, time::{sleep, Instant}
 };
 use tokio_stream::StreamExt;
 use tokio_util::codec::FramedRead;
@@ -75,25 +75,18 @@ impl TcpClientContext {
     }
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 pub struct TcpClient {
     #[serde(rename = "clientId")]
     pub mac: String,
-    #[serde(skip)]
-    pub is_connected: bool,
+    #[serde(default)]
+    #[serde(rename = "connectionState")]
+    pub connection_state: ConnectionState,
     #[serde(skip)]
     pub is_register: bool,
 }
 
 impl TcpClient {
-    pub fn new(mac: String) -> Self {
-        Self {
-            mac,
-            is_connected: false,
-            is_register: false,
-        }
-    }
-
     pub fn set_mac(&mut self, mac: String) {
         self.mac = mac;
     }
@@ -102,12 +95,19 @@ impl TcpClient {
         self.mac.clone()
     }
 
-    pub fn set_is_connected(&mut self, is_connected: bool) {
-        self.is_connected = is_connected;
+    // 添加新方法获取连接状态
+    pub fn get_connection_state(&self) -> &ConnectionState {
+        &self.connection_state
     }
 
-    pub fn get_is_connected(&self) -> bool {
-        self.is_connected
+    // 添加新方法设置连接状态
+    pub fn set_connection_state(&mut self, state: ConnectionState) {
+        self.connection_state = state;
+    }
+
+    // 添加辅助方法判断是否已连接
+    pub fn is_connected(&self) -> bool {
+        self.connection_state == ConnectionState::Connected
     }
 
     pub fn set_is_register(&mut self, is_register: bool) {
@@ -127,6 +127,7 @@ impl Client<TcpSendData, TcpClient> for TcpClientContext {
         config: &BenchmarkConfig<TcpSendData, TcpClient>,
     ) -> Result<Vec<TcpClient>, Error> {
         let mut clients = config.get_clients().clone();
+        let app_state = get_app_state();
         let max_conn_per_second = config.get_max_connect_per_second();
         let (tx, mut rx) = tokio::sync::mpsc::channel(clients.len());
 
@@ -147,7 +148,14 @@ impl Client<TcpSendData, TcpClient> for TcpClientContext {
                 match TcpStream::connect(broker).await {
                     Ok(conn) => {
                         let (reader, writer) = conn.into_split();
-                        TCP_CLIENT_CONTEXT.insert(client_mac.clone(), writer);
+                        let tcp_client = TcpClient {
+                            mac: client_mac.clone(),
+                            connection_state: ConnectionState::Connected,
+                            is_register: false,
+                        };
+                        app_state
+                            .tcp_clients()
+                            .insert(client_mac.clone(), (tcp_client, Some(writer)));
                         tokio::spawn(async move {
                             Self::process_read(reader).await;
                         });
@@ -175,7 +183,9 @@ impl Client<TcpSendData, TcpClient> for TcpClientContext {
         // 处理连接结果
         while let Some((idx, success)) = rx.recv().await {
             if success {
-                clients[idx].set_is_connected(true);
+                clients[idx].set_connection_state(ConnectionState::Connected);
+            } else {
+                clients[idx].set_connection_state(ConnectionState::Failed);
             }
         }
 
@@ -189,12 +199,15 @@ impl Client<TcpSendData, TcpClient> for TcpClientContext {
     }
 
     async fn on_connect_success(&self, client: &mut TcpClient) -> Result<(), Error> {
-        if let Some(mut writer) = TCP_CLIENT_CONTEXT.get_mut(&client.get_mac()) {
-            if self.get_enable_register() {
-                // 发送注册包
-                match writer.write("abc".as_bytes()).await {
-                    Ok(_) => todo!(),
-                    Err(_) => todo!(),
+        let app_state = get_app_state();
+        if let Some(mut client_ref) = app_state.tcp_clients().get_mut(&client.get_mac()) {
+            if let Some(writer) = client_ref.1.as_mut() {
+                if self.get_enable_register() {
+                    // 发送注册包
+                    match writer.write("abc".as_bytes()).await {
+                        Ok(_) => todo!(),
+                        Err(_) => todo!(),
+                    }
                 }
             }
         }
@@ -207,6 +220,7 @@ impl Client<TcpSendData, TcpClient> for TcpClientContext {
         task: &Task,
         config: &BenchmarkConfig<TcpSendData, TcpClient>,
     ) -> Result<Vec<tokio::task::JoinHandle<()>>, Error> {
+        let app_state = get_app_state();
         // 确定每个线程处理的客户端数量
         let startup_thread_size = clients.len() / config.thread_size
             + if clients.len() % config.thread_size != 0 {
@@ -229,10 +243,14 @@ impl Client<TcpSendData, TcpClient> for TcpClientContext {
                 loop {
                     interval.tick().await;
                     for client in groups.iter_mut() {
-                        if let Some(mut writer) = TCP_CLIENT_CONTEXT.get_mut(&client.get_mac()) {
-                            if writer.writable().await.is_ok() {
-                                let _ = writer.write_all(&msg_value.data).await;
-                                counter.fetch_add(1, Ordering::SeqCst);
+                        if let Some(mut client_ref) =
+                            app_state.tcp_clients().get_mut(&client.get_mac())
+                        {
+                            if let Some(writer) = client_ref.1.as_mut() {
+                                if writer.writable().await.is_ok() {
+                                    let _ = writer.write_all(&msg_value.data).await;
+                                    counter.fetch_add(1, Ordering::SeqCst);
+                                }
                             }
                         }
                     }

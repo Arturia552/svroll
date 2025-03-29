@@ -1,9 +1,9 @@
 use crate::{
     benchmark_param::{init_mqtt_context, read_from_csv_into_struct, Protocol},
-    context,
+    context::{self, get_app_state},
     model::{database::HistoryConfig, Rs2JsEntity},
     tcp::tcp_client::{TcpClient, TcpClientContext, TcpSendData},
-    AsyncProcInputTx, MQTT_CLIENT_CONTEXT, TCP_CLIENT_CONTEXT,
+    AsyncProcInputTx,
 };
 use std::{
     sync::{
@@ -14,6 +14,7 @@ use std::{
 };
 
 use once_cell::sync::OnceCell;
+use serde_json::Value;
 use tauri::{command, State};
 use tokio::{fs, io::AsyncWriteExt, sync::Mutex, task::JoinHandle, time::sleep};
 use tracing::info;
@@ -30,7 +31,8 @@ static TASK: OnceCell<Arc<Mutex<Task>>> = OnceCell::new();
 
 #[derive(Debug)]
 pub struct Task {
-    pub task_handle: Option<Vec<JoinHandle<()>>>,
+    pub task_handle: Option<JoinHandle<()>>,
+    pub message_handle: Option<Vec<JoinHandle<()>>>,
     pub count_handle: Option<JoinHandle<()>>,
     pub status: Arc<AtomicBool>,
     pub counter: Arc<AtomicU32>,
@@ -64,21 +66,38 @@ pub async fn start_task(
     param: ConnectParam,
     async_proc_output_tx: State<'_, AsyncProcInputTx>,
 ) -> Result<String, String> {
-    match param.protocol {
-        Protocol::Mqtt => {
-            let topic_config = param.topic_config.clone();
-            let config = param.into_config().await.unwrap();
-            start_mqtt(config, topic_config, async_proc_output_tx).await?;
+    let task = TASK.get_or_init(|| {
+        Arc::new(Mutex::new(Task {
+            task_handle: None,
+            message_handle: None,
+            count_handle: None,
+            status: Arc::new(AtomicBool::new(true)),
+            counter: Arc::new(AtomicU32::new(0)),
+        }))
+    });
+    let tx: tauri::async_runtime::Sender<Rs2JsEntity> =
+        async_proc_output_tx.inner.lock().await.clone();
+    let param_clone = param.clone();
+    let handle = tokio::spawn(async move {
+        match param.protocol {
+            Protocol::Mqtt => {
+                let topic_config = param.topic_config.clone();
+                let config = param.into_config().await.unwrap();
+
+                start_mqtt(config, topic_config, tx).await.unwrap();
+            }
+            Protocol::Tcp => {
+                let config = param.into_tcp_config().await.unwrap();
+                start_tcp(config, tx).await.unwrap();
+            }
         }
-        Protocol::Tcp => {
-            let config = param.into_tcp_config().await.unwrap();
-            start_tcp(config, async_proc_output_tx).await?;
-        }
-    }
+    });
+    task.lock().await.task_handle = Some(handle);
+
     // 保存到数据库
     let db = context::get_database().await;
     let db_lock = db.lock().await;
-    let config = serde_json::to_value(param).map_err(|e| e.to_string())?;
+    let config = serde_json::to_value(param_clone).map_err(|e| e.to_string())?;
     let history_config = HistoryConfig::new("mqtt", &config).map_err(|e| e.to_string())?;
     db_lock
         .save_config(&history_config)
@@ -100,9 +119,8 @@ pub async fn process_client_file(file_path: String) -> Result<Vec<MqttClientData
 async fn start_mqtt(
     param: BenchmarkConfig<MqttSendData, MqttClientData>,
     topic_config: Option<TopicConfig>,
-    async_proc_output_tx: State<'_, AsyncProcInputTx>,
+    tx: tauri::async_runtime::Sender<Rs2JsEntity>,
 ) -> Result<String, String> {
-    let tx = async_proc_output_tx.inner.lock().await.clone();
     tx.send(Rs2JsEntity::new(
         Rs2JsMsgType::Terminal,
         "开始初始化MQTT配置...".to_string(),
@@ -153,6 +171,7 @@ async fn start_mqtt(
     let task = TASK.get_or_init(|| {
         Arc::new(Mutex::new(Task {
             task_handle: None,
+            message_handle: None,
             count_handle: None,
             status: Arc::new(AtomicBool::new(true)),
             counter: Arc::new(AtomicU32::new(0)),
@@ -168,7 +187,7 @@ async fn start_mqtt(
             .spawn_message(clients, &*task.lock().await, &param)
             .await
             .unwrap();
-        task.lock().await.task_handle = Some(task_handle);
+        task.lock().await.message_handle = Some(task_handle);
     });
     let tx_clone = tx.clone();
     let count_handle = tokio::spawn(async move {
@@ -178,7 +197,7 @@ async fn start_mqtt(
             if !status.load(Ordering::SeqCst) {
                 break;
             }
-            
+
             tx_clone
                 .send(Rs2JsEntity::new(
                     Rs2JsMsgType::Counter,
@@ -200,15 +219,13 @@ async fn start_mqtt(
     .await
     .unwrap();
 
-    Ok("开始发送消息...".to_string())
+    Ok("".to_string())
 }
 
 async fn start_tcp(
     benchmark_config: BenchmarkConfig<TcpSendData, TcpClient>,
-    async_proc_output_tx: State<'_, AsyncProcInputTx>,
+    tx: tauri::async_runtime::Sender<Rs2JsEntity>,
 ) -> Result<String, String> {
-    let tx = async_proc_output_tx.inner.lock().await.clone();
-
     let tcp_client = TcpClientContext::new(
         Arc::new(benchmark_config.send_data.clone()),
         benchmark_config.enable_register,
@@ -237,6 +254,7 @@ async fn start_tcp(
     let task = TASK.get_or_init(|| {
         Arc::new(Mutex::new(Task {
             task_handle: None,
+            message_handle: None,
             count_handle: None,
             status: Arc::new(AtomicBool::new(true)),
             counter: Arc::new(AtomicU32::new(0)),
@@ -245,15 +263,13 @@ async fn start_tcp(
 
     reset_task(task.clone()).await;
 
-    let tx = async_proc_output_tx.inner.lock().await.clone();
-
     tokio::spawn(async move {
         let task = task.clone();
         let handles = tcp_client
             .spawn_message(clients, &*task.lock().await, &benchmark_config)
             .await
             .unwrap();
-        task.lock().await.task_handle = Some(handles);
+        task.lock().await.message_handle = Some(handles);
     });
 
     let tx_clone = tx.clone();
@@ -265,7 +281,7 @@ async fn start_tcp(
             if !status.load(Ordering::SeqCst) {
                 break;
             }
-            
+
             tx.send(Rs2JsEntity::new(
                 Rs2JsMsgType::Counter,
                 counter.load(Ordering::SeqCst).to_string(),
@@ -287,7 +303,7 @@ async fn start_tcp(
         .await
         .unwrap();
 
-    Ok("开始发送消息...".to_string())
+    Ok("".to_string())
 }
 
 #[command]
@@ -295,10 +311,17 @@ pub async fn stop_task(
     protocol: Option<Protocol>,
     async_proc_output_tx: State<'_, AsyncProcInputTx>,
 ) -> Result<String, String> {
+    let app_state = get_app_state();
+
     if let Some(task) = TASK.get() {
         let tx = async_proc_output_tx.inner.lock().await.clone();
         // 第一步：停止任务状态，避免新的消息发送
         let mut task_lock = task.lock().await;
+
+        task_lock.task_handle.take().map(|handle| {
+            handle.abort();
+        });
+
         task_lock.status.store(false, Ordering::SeqCst);
         info!("已将任务状态设置为停止");
 
@@ -321,7 +344,7 @@ pub async fn stop_task(
                 .await
                 .unwrap();
 
-                for entry in MQTT_CLIENT_CONTEXT.iter() {
+                for entry in app_state.mqtt_clients().iter() {
                     if let Some(event_handle) = &entry.value().event_loop_handle {
                         if let Some(handle) = event_handle.lock().await.take() {
                             handle.abort();
@@ -341,7 +364,7 @@ pub async fn stop_task(
 
                 let mut disconnect_futures = Vec::new();
 
-                for entry in MQTT_CLIENT_CONTEXT.iter() {
+                for entry in app_state.mqtt_clients().iter() {
                     let client_entry = entry.value().clone();
                     disconnect_futures.push(tokio::spawn(async move {
                         let _ = client_entry.safe_disconnect().await;
@@ -366,19 +389,21 @@ pub async fn stop_task(
                 ))
                 .await
                 .unwrap();
-                MQTT_CLIENT_CONTEXT.clear();
+                app_state.mqtt_clients().clear();
             }
             Some(Protocol::Tcp) => {
                 // TCP 连接断开逻辑
-                for mut entry in TCP_CLIENT_CONTEXT.iter_mut() {
-                    let client = entry.value_mut();
-                    let _ = client.shutdown().await;
+                for mut entry in app_state.tcp_clients().iter_mut() {
+                    let client_ref = entry.value_mut();
+                    if let Some(writer) = client_ref.1.as_mut() {
+                        let _ = writer.shutdown().await;
+                    }
                 }
             }
         }
 
         // 停止任务句柄，适用于所有类型的任务
-        if let Some(handles) = task_lock.task_handle.take() {
+        if let Some(handles) = task_lock.message_handle.take() {
             info!("正在停止消息发送任务句柄...");
             for h in handles {
                 h.abort();
@@ -397,10 +422,7 @@ pub async fn stop_task(
 
     info!("没有找到运行中的任务");
     // 清理可能残留的上下文
-    match protocol {
-        Some(Protocol::Mqtt) | None => MQTT_CLIENT_CONTEXT.clear(),
-        Some(Protocol::Tcp) => TCP_CLIENT_CONTEXT.clear(),
-    }
+    app_state.clear_clients(protocol.unwrap());
 
     Err("没有正在运行的任务".to_string())
 }
@@ -412,9 +434,23 @@ async fn reset_task(task: Arc<Mutex<Task>>) {
 }
 
 #[command]
-pub async fn get_mqtt_clients() -> Result<Vec<MqttClientData>, String> {
-    Ok(MQTT_CLIENT_CONTEXT
-        .iter()
-        .map(|entry| entry.value().clone())
-        .collect())
+pub async fn get_clients(protocol: Protocol) -> Result<Vec<Value>, String> {
+    match protocol {
+        Protocol::Mqtt => {
+            let client = get_app_state().get_mqtt_client_list();
+            let client_json: Vec<Value> = client
+                .iter()
+                .map(|entry| serde_json::to_value(entry).unwrap())
+                .collect();
+            Ok(client_json)
+        }
+        Protocol::Tcp => {
+            let client = get_app_state().get_tcp_client_list();
+            let client_json: Vec<Value> = client
+                .iter()
+                .map(|entry| serde_json::to_value(entry).unwrap())
+                .collect();
+            Ok(client_json)
+        }
+    }
 }
