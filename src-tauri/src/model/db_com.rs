@@ -5,17 +5,31 @@ use crate::context;
 
 use super::{connect_param::ConnectParam, database::HistoryConfig};
 
+/// 获取所有历史配置
+/// 
+/// 用于前端显示历史配置列表
+/// 
+/// # 返回
+/// 成功返回历史配置记录列表，失败返回错误信息
 #[command]
 pub async fn get_history_config() -> Result<Vec<HistoryConfig>, String> {
     let db = context::get_database().await;
     let db_lock = db.lock().await;
-    // 返回所有配置记录，如果没有记录，则返回自定义错误
     db_lock
         .get_configs()
         .await
         .map_err(|_| "没有找到配置记录".to_string())
 }
 
+/// 加载特定的历史配置
+/// 
+/// 通过ID获取并转换为连接参数
+/// 
+/// # 参数
+/// * `id` - 配置记录ID
+/// 
+/// # 返回
+/// 成功返回连接参数，失败返回错误信息
 #[command]
 pub async fn load_history_config(id: i64) -> Result<ConnectParam, String> {
     let db = context::get_database().await;
@@ -32,6 +46,12 @@ pub async fn load_history_config(id: i64) -> Result<ConnectParam, String> {
     Ok(connect_param)
 }
 
+/// 清除所有历史配置
+/// 
+/// 删除数据库中的所有配置记录
+/// 
+/// # 返回
+/// 成功返回true，失败返回错误信息
 #[command]
 pub async fn clear_history_config() -> Result<bool, String> {
     let db = context::get_database().await;

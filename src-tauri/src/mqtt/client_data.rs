@@ -18,20 +18,35 @@ use tokio::{
 use tracing::{error, info};
 
 use crate::{
-    benchmark_param::BenchmarkConfig, context::get_app_state, model::tauri_com::Task, mqtt::device_data::process_fields, ConnectionState, MqttSendData, TopicWrap
+    param::BasicConfig, context::get_app_state, model::task_com::Task, mqtt::device_data::process_fields, ConnectionState, MqttSendData, TopicWrap
 };
 
 use super::Client;
 
+/// MQTT客户端
+/// 
+/// 处理MQTT连接、消息发送和事件处理
+/// 负责客户端的创建、连接管理和消息收发
 #[derive(Clone)]
 pub struct MqttClient {
+    /// 要发送的数据模板
     pub send_data: Arc<MqttSendData>,
+    /// 是否启用设备注册流程
     pub enable_register: bool,
+    /// 注册主题配置
     pub register_topic: Arc<Option<TopicWrap>>,
+    /// 数据发送主题配置
     pub data_topic: Arc<TopicWrap>,
 }
 
 impl MqttClient {
+    /// 创建新的MQTT客户端实例
+    /// 
+    /// # 参数
+    /// * `send_data` - 要发送的数据模板
+    /// * `enable_register` - 是否启用设备注册
+    /// * `register_topic` - 注册主题配置
+    /// * `data_topic` - 数据发送主题配置
     pub fn new(
         send_data: MqttSendData,
         enable_register: bool,
@@ -62,6 +77,16 @@ impl MqttClient {
         self.register_topic.as_ref().as_ref()
     }
 
+    /// 解析主题中的MAC地址
+    /// 
+    /// 从主题路径中提取设备标识
+    /// 
+    /// # 参数
+    /// * `topic` - MQTT主题字符串
+    /// * `key_index` - MAC地址在主题路径中的索引位置
+    /// 
+    /// # 返回
+    /// 返回不含MAC地址的主题路径和提取出的MAC地址
     fn parse_topic_mac(topic: &str, key_index: usize) -> (String, String) {
         let topic = topic.to_string();
         let mut topic = topic.split('/').collect::<Vec<&str>>();
@@ -69,6 +94,13 @@ impl MqttClient {
         (topic.join("/"), mac.to_string())
     }
 
+    /// 处理接收到的MQTT消息
+    /// 
+    /// 根据消息内容处理设备注册信息
+    /// 
+    /// # 参数
+    /// * `topic` - 消息的主题
+    /// * `payload` - 消息的内容
     fn on_message_callback(&self, topic: &str, payload: &[u8]) {
         if let Ok(data) = serde_json::from_slice::<serde_json::Value>(payload) {
             if self.get_enable_register() {
@@ -104,17 +136,25 @@ impl MqttClient {
         }
     }
 
-    // 处理事件循环
+    /// 处理MQTT事件循环
+    /// 
+    /// 持续监听和处理MQTT连接事件
+    /// 
+    /// # 参数
+    /// * `client_id` - 客户端ID
+    /// * `event_loop` - MQTT事件循环
+    /// * `self_clone` - 客户端实例的克隆
+    /// 
+    /// # 返回
+    /// 返回任务句柄
     async fn handle_event_loop(
         client_id: String,
         mut event_loop: EventLoop,
         self_clone: Arc<MqttClient>,
     ) -> JoinHandle<()> {
         let app_state = get_app_state();
-        // 返回JoinHandle以便后续可以取消
         tokio::spawn(async move {
             loop {
-                // 每次循环前检查客户端是否还存在
                 if !app_state.mqtt_clients().contains_key(&client_id) {
                     break;
                 }
@@ -173,12 +213,13 @@ impl MqttClient {
     }
 }
 
+/// 实现Client trait，定义MQTT客户端的核心功能
 impl Client<MqttSendData, MqttClientData> for MqttClient {
     type Item = MqttClientData;
 
     async fn setup_clients(
         &self,
-        config: &BenchmarkConfig<MqttSendData, MqttClientData>,
+        config: &BasicConfig<MqttSendData, MqttClientData>,
     ) -> Result<Vec<MqttClientData>, Error> {
         let mut clients = vec![];
 
@@ -187,7 +228,6 @@ impl Client<MqttSendData, MqttClientData> for MqttClient {
         let broker = config.get_broker();
         let semaphore = Arc::new(Semaphore::new(config.get_max_connect_per_second()));
 
-        // 解析broker地址和端口
         let broker_parts: Vec<&str> = broker.split(':').collect();
         let host = broker_parts[0].trim_start_matches("tcp://");
         let port = broker_parts
@@ -207,9 +247,7 @@ impl Client<MqttSendData, MqttClientData> for MqttClient {
             mqtt_options.set_credentials(&client.client_id, client.get_password());
             mqtt_options.set_request_channel_capacity(10);
 
-            // 创建客户端和事件循环
             let (cli, event_loop) = AsyncClient::new(mqtt_options, 10);
-            // 启动事件循环处理
             let client_id = client.client_id.clone();
             let event_loop_handle: JoinHandle<()> =
                 Self::handle_event_loop(client_id.clone(), event_loop, Arc::clone(&self_arc)).await;
@@ -221,7 +259,6 @@ impl Client<MqttSendData, MqttClientData> for MqttClient {
 
             drop(permit);
 
-            // 添加小延迟确保连接速率控制更平滑
             if clients.len() % config.get_max_connect_per_second() == 0 {
                 sleep(Duration::from_secs(1)).await;
             }
@@ -235,12 +272,10 @@ impl Client<MqttSendData, MqttClientData> for MqttClient {
             .get_client()
             .ok_or_else(|| Error::msg("客户端未初始化"))?;
 
-        // 注册包机制启用判断
         if self.get_enable_register() {
             let register_topic = match self.get_register_topic() {
                 Some(topic) => topic,
                 None => {
-                    // 断开连接并返回错误
                     if let Err(e) = client.disconnect().await {
                         error!("断开连接失败: {:?}", e);
                     }
@@ -248,11 +283,9 @@ impl Client<MqttSendData, MqttClientData> for MqttClient {
                 }
             };
 
-            // 检查 extra_key
             let extra_key = match &register_topic.publish.extra_key {
                 Some(key) => key,
                 None => {
-                    // 断开连接并返回错误
                     if let Err(e) = client.disconnect().await {
                         error!("断开连接失败: {:?}", e);
                     }
@@ -260,7 +293,6 @@ impl Client<MqttSendData, MqttClientData> for MqttClient {
                 }
             };
 
-            // 订阅主题处理
             if register_topic.is_exist_subscribe() {
                 let sub_topic_str = register_topic.get_subscribe_real_topic(Some(&cli.client_id));
                 let qos = register_topic.get_subscribe_qos();
@@ -271,7 +303,6 @@ impl Client<MqttSendData, MqttClientData> for MqttClient {
                 }
             }
 
-            // 发布注册消息
             let pub_topic_str = register_topic.get_publish_topic();
             let register_json_str = format!(r#"{{"{}": "{}"}}"#, extra_key, cli.client_id);
             let qos = register_topic.get_publish_qos();
@@ -291,10 +322,10 @@ impl Client<MqttSendData, MqttClientData> for MqttClient {
         &self,
         clients: Vec<Self::Item>,
         task: &Task,
-        config: &BenchmarkConfig<MqttSendData, MqttClientData>,
+        config: &BasicConfig<MqttSendData, MqttClientData>,
     ) -> Result<Vec<JoinHandle<()>>, Error> {
         info!("开始发送消息...");
-        // 确定每个线程处理的客户端数量
+
         let clients_per_thread = (clients.len() + config.thread_size - 1) / config.thread_size;
         let clients_group = clients.chunks(clients_per_thread);
         let mut handles: Vec<JoinHandle<()>> = vec![];
@@ -320,9 +351,7 @@ impl Client<MqttSendData, MqttClientData> for MqttClient {
                         break;
                     }
 
-                    // 等待指定的间隔时间再进行下一次发送
                     interval.tick().await;
-                    // 遍历每个组中的客户端
                     for cli in &group {
                         let client_id = cli.get_client_id().to_string();
                         let Some(client_data) = app_state.mqtt_clients().get(&client_id) else {
@@ -382,7 +411,7 @@ impl Client<MqttSendData, MqttClientData> for MqttClient {
             let client_id = client.get_client_id().to_string();
             futures.push(tokio::spawn(async move {
                 let mut attempts = 0;
-                const MAX_ATTEMPTS: usize = 100; // 10秒超时
+                const MAX_ATTEMPTS: usize = 100;
 
                 while attempts < MAX_ATTEMPTS {
                     if let Some(client_data) = app_state.mqtt_clients().get(&client_id) {
@@ -401,7 +430,6 @@ impl Client<MqttSendData, MqttClientData> for MqttClient {
         }
 
         for future in futures {
-            // 更好的错误处理
             if let Err(e) = future.await {
                 error!("等待连接任务失败: {:?}", e);
             }
@@ -409,21 +437,33 @@ impl Client<MqttSendData, MqttClientData> for MqttClient {
     }
 }
 
+/// MQTT客户端数据结构
+/// 
+/// 存储MQTT客户端的连接信息和状态
+/// 管理单个MQTT连接实例的生命周期
 #[derive(Debug, Deserialize, Clone, Serialize)]
 pub struct MqttClientData {
+    /// 客户端唯一标识符
     #[serde(rename = "clientId")]
     pub client_id: String,
+    /// MQTT连接用户名
     pub username: String,
+    /// MQTT连接密码
     pub password: String,
+    /// 设备密钥，用于消息发布
     #[serde(skip)]
     pub device_key: String,
+    /// 连接状态
     #[serde(default)]
     #[serde(rename = "connectionState")]
     pub connection_state: ConnectionState,
+    /// MQTT异步客户端实例
     #[serde(skip)]
     pub client: Option<AsyncClient>,
+    /// 事件循环处理任务句柄
     #[serde(skip)]
     pub event_loop_handle: Option<Arc<Mutex<Option<JoinHandle<()>>>>>,
+    /// 是否正在断开连接
     #[serde(skip)]
     pub disconnecting: Arc<AtomicBool>,
 }
@@ -476,8 +516,13 @@ impl MqttClientData {
         self.client.clone()
     }
 
+    /// 安全断开连接
+    /// 
+    /// 确保只执行一次断开操作
+    /// 
+    /// # 返回
+    /// 成功断开返回Ok，失败返回错误
     pub async fn safe_disconnect(&self) -> Result<(), Error> {
-        // 仅当未在断开连接状态时执行
         if !self.disconnecting.swap(true, Ordering::SeqCst) {
             if let Some(client) = &self.client {
                 client.disconnect().await?;

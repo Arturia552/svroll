@@ -3,7 +3,7 @@ use std::sync::Arc;
 use dashmap::DashMap;
 use tokio::{net::tcp::OwnedWriteHalf, sync::Mutex};
 
-use crate::{benchmark_param::Protocol, tcp::tcp_client::TcpClient, Database, MqttClientData};
+use crate::{param::Protocol, tcp::tcp_client::TcpClient, Database, MqttClientData};
 
 #[derive(Debug)]
 pub struct AppState {

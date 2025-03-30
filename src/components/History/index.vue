@@ -12,8 +12,8 @@
         </template> 清空历史
       </el-button>
     </div>
-    <el-empty v-if="historyList.length === 0" description="暂无历史记录" />
-    <div v-else class="history-list">
+    <el-empty v-if="historyList.length === 0 && loading === false" description="暂无历史记录" />
+    <div v-else v-loading="loading" class="history-list">
       <div
         v-for="(item, index) in historyList" 
         :key="index" 
@@ -52,10 +52,12 @@ interface HistoryItem {
   created_at: string;
 }
 
+const loading = ref(true);
 const historyList = ref<HistoryItem[]>([]);
 const emit = defineEmits(['load-config']);
 
 onMounted(async () => {
+  loading.value = true;
   await fetchHistoryList();
 });
 
@@ -64,6 +66,8 @@ const fetchHistoryList = async () => {
     historyList.value = await invoke<HistoryItem[]>("get_history_config");
   } catch (error) {
     ElMessage.error(`获取历史配置失败: ${error}`);
+  } finally {
+    loading.value = false;
   }
 };
 

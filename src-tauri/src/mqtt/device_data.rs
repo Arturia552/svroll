@@ -3,23 +3,43 @@ use rand::Rng;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
+/// MQTT发送数据结构
+/// 
+/// 包含要发送的JSON数据和字段定义，用于构建MQTT消息内容
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct MqttSendData {
+    /// 要发送的实际数据，以JSON格式存储
     pub data: Value,
+    /// 数据字段定义列表，在序列化时忽略
     #[serde(skip)]
     pub fields: Vec<MqttFieldStruct>,
 }
 
 impl MqttSendData {
+    /// 获取数据内容
+    /// 
+    /// 返回数据的引用
     pub fn get_data(&self) -> &Value {
         &self.data
     }
 
+    /// 设置数据字段定义
+    /// 
+    /// # 参数
+    /// * `fields` - 字段定义列表
     pub fn set_fields(&mut self, fields: Vec<MqttFieldStruct>) {
         self.fields = fields;
     }
 }
 
+/// 处理字段值，根据字段类型和配置设置数据
+/// 
+/// 支持多种数据类型的处理，包括时间戳、日期时间、整数、浮点数、布尔值和对象
+/// 
+/// # 参数
+/// * `data` - 要处理的JSON数据
+/// * `fields` - 字段定义列表
+/// * `enable_random` - 是否启用随机值生成
 pub fn process_fields(data: &mut Value, fields: &Vec<MqttFieldStruct>, enable_random: bool) {
     let mut rng = rand::thread_rng();
     fields.iter().for_each(|field| match field.field_type {
@@ -64,35 +84,61 @@ pub fn process_fields(data: &mut Value, fields: &Vec<MqttFieldStruct>, enable_ra
     })
 }
 
+/// MQTT字段结构体
+/// 
+/// 描述字段的属性，包括名称、类型、取值范围等
+/// 用于定义MQTT消息的数据结构
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct MqttFieldStruct {
+    /// 字段名称
     #[serde(rename = "fieldName")]
     pub field_name: String,
+    /// 字段数据类型
     #[serde(rename = "fieldType")]
     pub field_type: FieldType,
+    /// 最小值（对数值类型有效）
     #[serde(rename = "minValue")]
     pub min_value: Option<f64>,
+    /// 最大值（对数值类型有效）
     #[serde(rename = "maxValue")]
     pub max_value: Option<f64>,
+    /// 可能的取值列表（对枚举类型有效）
     #[serde(rename = "possibleValues")]
     pub possible_values: Value,
+    /// 子字段列表（对对象类型有效）
     #[serde(rename = "children", default)]
     pub child: Option<Vec<MqttFieldStruct>>,
 }
 
+/// 字段类型枚举
+/// 
+/// 定义支持的各种数据类型，用于指定字段的数据格式
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub enum FieldType {
+    /// 时间戳格式（毫秒级Unix时间戳）
     Timestamp,
+    /// 字符串类型
     String,
+    /// 整数类型
     Integer,
+    /// 浮点数类型
     Float,
+    /// 布尔类型
     Boolean,
+    /// 日期时间格式（如：2023-01-01 12:34:56.789）
     DateTime,
+    /// 仅日期格式
     Date,
+    /// 仅时间格式
     Time,
+    /// 枚举类型，从预定义的选项中选择
     Enum,
+    /// 数组类型
     Array,
+    /// 对象类型，包含子字段
     Object,
+    /// 空值
     Null,
+    /// 未定义类型
     Unknown,
 }

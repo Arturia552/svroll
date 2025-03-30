@@ -3,10 +3,9 @@
 
 use svroll::{
     context, model::{
-        db_com, tauri_com::{self}, Rs2JsEntity
-    }, AsyncProcInputTx
+        db_com, task_com::{self}
+    }, rs2js, AsyncProcInputTx
 };
-use tauri::{AppHandle, Emitter};
 use tokio::sync::{mpsc, Mutex};
 use tracing::info;
 
@@ -22,13 +21,13 @@ async fn main() {
             inner: Mutex::new(async_proc_output_tx),
         })
         .invoke_handler(tauri::generate_handler![
-            tauri_com::receive_file,
-            tauri_com::start_task,
-            tauri_com::stop_task,
-            tauri_com::process_client_file,
-            tauri_com::write_file,
-            tauri_com::load_config,
-            tauri_com::get_clients,
+            task_com::receive_file,
+            task_com::start_task,
+            task_com::stop_task,
+            task_com::process_client_file,
+            task_com::write_file,
+            task_com::load_config,
+            task_com::get_clients,
             db_com::get_history_config,
             db_com::load_history_config,
             db_com::clear_history_config,
@@ -60,8 +59,3 @@ async fn main() {
         .expect("error while running tauri application");
 }
 
-fn rs2js<R: tauri::Runtime>(message: Rs2JsEntity, manager: &AppHandle<R>) {
-    info!(?message, "rs2js");
-    let payload = serde_json::to_string(&message).unwrap();
-    manager.emit("rs2js", payload).unwrap();
-}

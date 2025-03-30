@@ -4,14 +4,13 @@ use std::{
 };
 
 use crate::{
-    benchmark_param::BenchmarkConfig, context::get_app_state, model::tauri_com::Task, mqtt::Client,
+    param::BasicConfig, context::get_app_state, model::task_com::Task, mqtt::Client,
     ConnectionState,
 };
 use anyhow::{Error, Result};
-use bytes::buf::Writer;
 use serde::{Deserialize, Deserializer, Serialize};
 use tokio::{
-    io::AsyncWriteExt, net::{tcp::OwnedReadHalf, TcpStream}, sync::Semaphore, time::{sleep, Instant}
+    io::AsyncWriteExt, net::{tcp::OwnedReadHalf, TcpStream}, time::Instant
 };
 use tokio_stream::StreamExt;
 use tokio_util::codec::FramedRead;
@@ -19,12 +18,22 @@ use tracing::error;
 
 use super::RequestCodec;
 
+/// TCP发送数据结构
+/// 
+/// 包含要通过TCP发送的二进制数据
 #[derive(Debug, Clone, Deserialize)]
 pub struct TcpSendData {
     #[serde(deserialize_with = "deserialize_bytes")]
     pub data: Vec<u8>,
 }
 
+/// 反序列化十六进制字符串为字节数组的辅助函数
+/// 
+/// # 参数
+/// * `deserializer` - 反序列化器
+/// 
+/// # 返回
+/// 成功返回字节数组，失败返回反序列化错误
 pub fn deserialize_bytes<'de, D>(deserializer: D) -> Result<Vec<u8>, D::Error>
 where
     D: Deserializer<'de>,
@@ -35,13 +44,23 @@ where
     Ok(bytes)
 }
 
+/// TCP客户端上下文
+/// 
+/// 管理TCP客户端配置和数据发送
 #[derive(Debug, Clone)]
 pub struct TcpClientContext {
+    /// 要发送的数据
     pub send_data: Arc<TcpSendData>,
+    /// 是否启用注册流程
     pub enable_register: bool,
 }
 
 impl TcpClientContext {
+    /// 创建新的TCP客户端上下文
+    /// 
+    /// # 参数
+    /// * `send_data` - 要发送的数据模板
+    /// * `enable_register` - 是否启用注册流程
     pub fn new(send_data: Arc<TcpSendData>, enable_register: bool) -> Self {
         Self {
             send_data,
@@ -49,14 +68,20 @@ impl TcpClientContext {
         }
     }
 
+    /// 获取是否启用注册流程
     pub fn get_enable_register(&self) -> bool {
         self.enable_register
     }
 
+    /// 设置是否启用注册流程
     pub fn set_enable_register(&mut self, enable_register: bool) {
         self.enable_register = enable_register
     }
 
+    /// 处理读取的数据
+    /// 
+    /// # 参数
+    /// * `reader` - TCP流的读取端
     async fn process_read(reader: OwnedReadHalf) {
         let mut frame_reader = FramedRead::new(reader, RequestCodec);
         loop {
@@ -75,68 +100,78 @@ impl TcpClientContext {
     }
 }
 
+/// TCP客户端
+/// 
+/// 表示单个TCP连接客户端
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 pub struct TcpClient {
+    /// 客户端MAC地址标识
     #[serde(rename = "clientId")]
     pub mac: String,
+    /// 连接状态
     #[serde(default)]
     #[serde(rename = "connectionState")]
     pub connection_state: ConnectionState,
+    /// 是否已完成注册
     #[serde(skip)]
     pub is_register: bool,
 }
 
 impl TcpClient {
+    /// 设置MAC地址
     pub fn set_mac(&mut self, mac: String) {
         self.mac = mac;
     }
 
+    /// 获取MAC地址
     pub fn get_mac(&self) -> String {
         self.mac.clone()
     }
 
-    // 添加新方法获取连接状态
+    /// 获取连接状态
     pub fn get_connection_state(&self) -> &ConnectionState {
         &self.connection_state
     }
 
-    // 添加新方法设置连接状态
+    /// 设置连接状态
     pub fn set_connection_state(&mut self, state: ConnectionState) {
         self.connection_state = state;
     }
 
-    // 添加辅助方法判断是否已连接
+    /// 判断是否已连接
     pub fn is_connected(&self) -> bool {
         self.connection_state == ConnectionState::Connected
     }
 
+    /// 设置是否已注册
     pub fn set_is_register(&mut self, is_register: bool) {
         self.is_register = is_register;
     }
 
+    /// 获取是否已注册状态
     pub fn get_is_register(&self) -> bool {
         self.is_register
     }
 }
 
+/// 实现Client trait，定义TCP客户端的核心功能
 impl Client<TcpSendData, TcpClient> for TcpClientContext {
     type Item = TcpClient;
 
     async fn setup_clients(
         &self,
-        config: &BenchmarkConfig<TcpSendData, TcpClient>,
+        config: &BasicConfig<TcpSendData, TcpClient>,
     ) -> Result<Vec<TcpClient>, Error> {
         let mut clients = config.get_clients().clone();
         let app_state = get_app_state();
         let max_conn_per_second = config.get_max_connect_per_second();
         let (tx, mut rx) = tokio::sync::mpsc::channel(clients.len());
 
-        // 使用令牌桶算法控制连接速率
         let mut interval =
             tokio::time::interval(Duration::from_millis(1000 / max_conn_per_second as u64));
 
         for (idx, client) in clients.iter().enumerate() {
-            interval.tick().await; // 等待下一个令牌
+            interval.tick().await;
 
             let broker = config.broker.clone();
             let client_mac = client.get_mac();
@@ -160,18 +195,15 @@ impl Client<TcpSendData, TcpClient> for TcpClientContext {
                             Self::process_read(reader).await;
                         });
 
-                        // 记录连接耗时
                         let elapsed = start_time.elapsed();
                         if elapsed > Duration::from_secs(1) {
                             error!("TCP连接耗时过长: {:?}, 客户端: {}", elapsed, client_mac);
                         }
 
-                        // 发送连接成功信号
                         let _ = tx.send((idx, true)).await;
                     }
                     Err(e) => {
                         error!("TCP连接失败: {}, 客户端: {}", e, client_mac);
-                        // 发送连接失败信号
                         let _ = tx.send((idx, false)).await;
                     }
                 }
@@ -180,7 +212,6 @@ impl Client<TcpSendData, TcpClient> for TcpClientContext {
 
         drop(tx);
 
-        // 处理连接结果
         while let Some((idx, success)) = rx.recv().await {
             if success {
                 clients[idx].set_connection_state(ConnectionState::Connected);
@@ -203,7 +234,6 @@ impl Client<TcpSendData, TcpClient> for TcpClientContext {
         if let Some(mut client_ref) = app_state.tcp_clients().get_mut(&client.get_mac()) {
             if let Some(writer) = client_ref.1.as_mut() {
                 if self.get_enable_register() {
-                    // 发送注册包
                     match writer.write("abc".as_bytes()).await {
                         Ok(_) => todo!(),
                         Err(_) => todo!(),
@@ -218,17 +248,15 @@ impl Client<TcpSendData, TcpClient> for TcpClientContext {
         &self,
         clients: Vec<TcpClient>,
         task: &Task,
-        config: &BenchmarkConfig<TcpSendData, TcpClient>,
+        config: &BasicConfig<TcpSendData, TcpClient>,
     ) -> Result<Vec<tokio::task::JoinHandle<()>>, Error> {
         let app_state = get_app_state();
-        // 确定每个线程处理的客户端数量
         let startup_thread_size = clients.len() / config.thread_size
             + if clients.len() % config.thread_size != 0 {
                 1
             } else {
                 0
             };
-        // 按线程大小将客户端分组
         let clients_group = clients.chunks(startup_thread_size);
         let mut hanldes = vec![];
 

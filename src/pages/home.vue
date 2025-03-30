@@ -36,18 +36,24 @@
       </div>
 
       <div class="editor-section">
-        <!-- 根据测试状态显示编辑器或仪表盘 -->
         <div v-if="!isRunning && !showDashboard" class="editor-wrapper">
           <div class="editor-controls">
+            <el-button type="danger" :disabled="isRunning" @click="resetConfig">
+              <template #icon>
+                <el-icon :size="16">
+                  <delete />
+                </el-icon>
+              </template>重置表单
+            </el-button>
             <div class="editor-mode-controls">
               <el-button v-if="editorMode === 'hex'" type="primary" @click="formatHexText">
                 格式化Hex
               </el-button>
               <el-radio-group v-model="editorMode">
-                <el-radio-button label="json">
+                <el-radio-button value="json">
                   JSON
                 </el-radio-button>
-                <el-radio-button label="hex">
+                <el-radio-button value="hex">
                   HEX
                 </el-radio-button>
               </el-radio-group>
@@ -116,7 +122,7 @@ import { convert2Type, ConnectConfig, rs2JsEntity, ClientInfo, ConnectionState }
 import { listen } from "@tauri-apps/api/event";
 import { open, save } from "@tauri-apps/plugin-dialog";
 import { writeTextFile } from "@tauri-apps/plugin-fs";
-import { Clock, Back } from '@element-plus/icons-vue';
+import { Clock, Back, Delete } from '@element-plus/icons-vue';
 
 const valid = ref<boolean>(false);
 const isRunning = ref<boolean>(false);
@@ -327,6 +333,55 @@ const formatHexText = () => {
   }
 };
 
+const resetConfig = () => {
+  ElMessageBox.confirm('确定要清空当前配置吗？', '提示', {
+    confirmButtonText: '确定',
+    cancelButtonText: '取消',
+    type: 'warning',
+  }).then(() => {
+    config.value = {
+      sendData: "",
+      protocol: "Mqtt",
+      clients: [],
+      threadSize: 100,
+      enableRegister: false,
+      enableRandom: false,
+      broker: "",
+      maxConnectPerSecond: 100,
+      sendInterval: 1,
+      fieldStruct: [],
+      topicConfig: {
+        data: {
+          publish: {
+            topic: null,
+            qos: null,
+            keyIndex: null,
+          },
+        },
+        register: {
+          publish: {
+            topic: null,
+            qos: null,
+            keyIndex: null,
+            extraKey: null
+          },
+          subscribe: {
+            topic: null,
+            qos: null,
+            keyIndex: null,
+            extraKey: null
+          },
+        }
+      },
+    };
+    valid.value = false;
+    editorMode.value = "json";
+    ElMessage.success('配置已清空');
+  }).catch(() => {
+    // 用户取消操作
+  });
+};
+
 function convertType(obj: any, typeDef: any): void {
   if (typeof obj !== typeof typeDef) {
     return;
@@ -520,7 +575,7 @@ onUnmounted(() => {
 
 .editor-controls {
   display: flex;
-  justify-content: flex-end;
+  justify-content: space-between;
   padding: 0 0 10px 0;
 }
 

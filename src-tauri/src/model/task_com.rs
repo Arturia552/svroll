@@ -1,5 +1,5 @@
 use crate::{
-    benchmark_param::{init_mqtt_context, read_from_csv_into_struct, Protocol},
+    param::{init_mqtt_context, read_from_csv_into_struct, Protocol},
     context::{self, get_app_state},
     model::{database::HistoryConfig, Rs2JsEntity},
     tcp::tcp_client::{TcpClient, TcpClientContext, TcpSendData},
@@ -20,30 +20,58 @@ use tokio::{fs, io::AsyncWriteExt, sync::Mutex, task::JoinHandle, time::sleep};
 use tracing::info;
 
 use crate::{
-    benchmark_param::BenchmarkConfig,
+    param::BasicConfig,
     mqtt::{basic::TopicConfig, Client},
     MqttClientData, MqttSendData,
 };
 
 use super::{connect_param::ConnectParam, Rs2JsMsgType};
 
+/// 全局任务单例，用于管理当前运行的任务实例
 static TASK: OnceCell<Arc<Mutex<Task>>> = OnceCell::new();
 
+/// 任务结构体
+/// 
+/// 管理通信任务的执行状态和相关句柄，包括主任务、消息发送任务和计数任务
 #[derive(Debug)]
 pub struct Task {
+    /// 主任务句柄，负责整体任务协调
     pub task_handle: Option<JoinHandle<()>>,
+    /// 消息发送任务句柄列表，负责具体的消息发送
     pub message_handle: Option<Vec<JoinHandle<()>>>,
+    /// 计数任务句柄，负责统计和报告已发送消息数
     pub count_handle: Option<JoinHandle<()>>,
+    /// 任务执行状态标志，true表示正在运行，false表示已停止
     pub status: Arc<AtomicBool>,
+    /// 消息计数器，记录已发送的消息数量
     pub counter: Arc<AtomicU32>,
 }
 
+/// 接收文件命令
+/// 
+/// 处理前端选择的文件，并确认文件已被成功接收
+/// 
+/// # 参数
+/// * `file_path` - 选择的文件路径
+/// 
+/// # 返回
+/// 成功返回选择成功消息，失败返回错误信息
 #[command]
 pub async fn receive_file(file_path: String) -> Result<String, String> {
     info!(file_path);
     Ok("选择成功".to_string())
 }
 
+/// 写入文件命令
+/// 
+/// 将内容写入指定文件路径
+/// 
+/// # 参数
+/// * `file_path` - 目标文件路径
+/// * `content` - 要写入的文件内容
+/// 
+/// # 返回
+/// 成功返回Ok(()), 失败返回错误信息
 #[command]
 pub async fn write_file(file_path: String, content: String) -> Result<(), String> {
     fs::write(&file_path, content)
@@ -51,6 +79,15 @@ pub async fn write_file(file_path: String, content: String) -> Result<(), String
         .map_err(|e| e.to_string())
 }
 
+/// 加载配置文件命令
+/// 
+/// 从指定路径加载JSON格式的连接配置文件
+/// 
+/// # 参数
+/// * `file_path` - 配置文件路径
+/// 
+/// # 返回
+/// 成功返回连接参数对象，失败返回错误信息
 #[command]
 pub async fn load_config(file_path: String) -> Result<ConnectParam, String> {
     let config_str = fs::read_to_string(file_path)
@@ -61,6 +98,16 @@ pub async fn load_config(file_path: String) -> Result<ConnectParam, String> {
     Ok(config)
 }
 
+/// 启动通信任务命令
+/// 
+/// 根据连接参数启动MQTT或TCP通信任务，并保存配置到数据库
+/// 
+/// # 参数
+/// * `param` - 连接参数配置
+/// * `async_proc_output_tx` - 异步消息发送通道
+/// 
+/// # 返回
+/// 成功返回启动成功消息，失败返回错误信息
 #[command]
 pub async fn start_task(
     param: ConnectParam,
@@ -97,8 +144,8 @@ pub async fn start_task(
     // 保存到数据库
     let db = context::get_database().await;
     let db_lock = db.lock().await;
-    let config = serde_json::to_value(param_clone).map_err(|e| e.to_string())?;
-    let history_config = HistoryConfig::new("mqtt", &config).map_err(|e| e.to_string())?;
+    let config = serde_json::to_value(&param_clone).map_err(|e| e.to_string())?;
+    let history_config = HistoryConfig::new(param_clone.protocol, &config).map_err(|e| e.to_string())?;
     db_lock
         .save_config(&history_config)
         .await
@@ -107,6 +154,15 @@ pub async fn start_task(
     Ok("开始发送消息...".to_string())
 }
 
+/// 处理客户端CSV文件
+/// 
+/// 解析CSV文件中的客户端配置数据
+/// 
+/// # 参数
+/// * `file_path` - CSV文件路径
+/// 
+/// # 返回
+/// 成功返回客户端数据列表，失败返回错误信息
 #[command]
 pub async fn process_client_file(file_path: String) -> Result<Vec<MqttClientData>, String> {
     info!(file_path);
@@ -116,8 +172,19 @@ pub async fn process_client_file(file_path: String) -> Result<Vec<MqttClientData
     Ok(client_data)
 }
 
+/// 启动MQTT客户端
+/// 
+/// 初始化MQTT配置、创建客户端连接并启动消息发送
+/// 
+/// # 参数
+/// * `param` - MQTT配置参数
+/// * `topic_config` - 主题配置
+/// * `tx` - 状态消息发送通道
+/// 
+/// # 返回
+/// 成功返回Ok，失败返回错误信息
 async fn start_mqtt(
-    param: BenchmarkConfig<MqttSendData, MqttClientData>,
+    param: BasicConfig<MqttSendData, MqttClientData>,
     topic_config: Option<TopicConfig>,
     tx: tauri::async_runtime::Sender<Rs2JsEntity>,
 ) -> Result<String, String> {
@@ -158,7 +225,6 @@ async fn start_mqtt(
     .await
     .unwrap();
     info!("等待连接...");
-    // 等待所有客户端连接成功
     mqtt_client.wait_for_connections(&mut clients).await;
 
     tx.send(Rs2JsEntity::new(
@@ -222,8 +288,18 @@ async fn start_mqtt(
     Ok("".to_string())
 }
 
+/// 启动TCP客户端
+/// 
+/// 初始化TCP配置、创建客户端连接并启动消息发送
+/// 
+/// # 参数
+/// * `benchmark_config` - TCP配置参数
+/// * `tx` - 状态消息发送通道
+/// 
+/// # 返回
+/// 成功返回Ok，失败返回错误信息
 async fn start_tcp(
-    benchmark_config: BenchmarkConfig<TcpSendData, TcpClient>,
+    benchmark_config: BasicConfig<TcpSendData, TcpClient>,
     tx: tauri::async_runtime::Sender<Rs2JsEntity>,
 ) -> Result<String, String> {
     let tcp_client = TcpClientContext::new(
@@ -306,6 +382,16 @@ async fn start_tcp(
     Ok("".to_string())
 }
 
+/// 停止通信任务命令
+/// 
+/// 停止当前运行的通信任务，断开所有连接，清理资源
+/// 
+/// # 参数
+/// * `protocol` - 协议类型，指定要停止的任务类型
+/// * `async_proc_output_tx` - 异步消息发送通道
+/// 
+/// # 返回
+/// 成功返回停止成功消息，失败返回错误信息
 #[command]
 pub async fn stop_task(
     protocol: Option<Protocol>,
@@ -314,9 +400,13 @@ pub async fn stop_task(
     let app_state = get_app_state();
 
     if let Some(task) = TASK.get() {
+
         let tx = async_proc_output_tx.inner.lock().await.clone();
-        // 第一步：停止任务状态，避免新的消息发送
         let mut task_lock = task.lock().await;
+
+        if task_lock.status.load(Ordering::SeqCst) == false {
+            return Ok("无正在运行的任务".to_string());
+        }
 
         task_lock.task_handle.take().map(|handle| {
             handle.abort();
@@ -332,10 +422,8 @@ pub async fn stop_task(
         .await
         .unwrap();
 
-        // 根据协议类型处理不同的连接断开逻辑
         match protocol {
             Some(Protocol::Mqtt) | None => {
-                // MQTT 连接断开逻辑
                 info!("正在终止所有 MQTT 事件循环...");
                 tx.send(Rs2JsEntity::new(
                     Rs2JsMsgType::Terminal,
@@ -371,7 +459,6 @@ pub async fn stop_task(
                     }));
                 }
 
-                // 等待所有断开连接的任务完成（最多等待 5 秒）
                 if !disconnect_futures.is_empty() {
                     info!("等待所有断开连接操作完成...");
                     let _ = tokio::time::timeout(Duration::from_secs(5), async {
@@ -392,7 +479,6 @@ pub async fn stop_task(
                 app_state.mqtt_clients().clear();
             }
             Some(Protocol::Tcp) => {
-                // TCP 连接断开逻辑
                 for mut entry in app_state.tcp_clients().iter_mut() {
                     let client_ref = entry.value_mut();
                     if let Some(writer) = client_ref.1.as_mut() {
@@ -402,7 +488,6 @@ pub async fn stop_task(
             }
         }
 
-        // 停止任务句柄，适用于所有类型的任务
         if let Some(handles) = task_lock.message_handle.take() {
             info!("正在停止消息发送任务句柄...");
             for h in handles {
@@ -421,18 +506,32 @@ pub async fn stop_task(
     }
 
     info!("没有找到运行中的任务");
-    // 清理可能残留的上下文
     app_state.clear_clients(protocol.unwrap());
 
     Err("没有正在运行的任务".to_string())
 }
 
+/// 重置任务状态
+/// 
+/// 重置任务的状态和计数器
+/// 
+/// # 参数
+/// * `task` - 要重置的任务
 async fn reset_task(task: Arc<Mutex<Task>>) {
     let task = task.lock().await;
     task.status.store(true, Ordering::SeqCst);
     task.counter.store(0, Ordering::SeqCst);
 }
 
+/// 获取客户端列表
+/// 
+/// 根据协议类型获取当前连接的客户端列表
+/// 
+/// # 参数
+/// * `protocol` - 协议类型
+/// 
+/// # 返回
+/// 成功返回客户端列表，失败返回错误信息
 #[command]
 pub async fn get_clients(protocol: Protocol) -> Result<Vec<Value>, String> {
     match protocol {

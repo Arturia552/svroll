@@ -1,23 +1,41 @@
 use anyhow::Result;
 
+/// Modbus数据字段结构
+/// 
+/// 表示Modbus协议中的单个数据字段
 #[derive(Debug, Clone)]
 pub struct DataField {
+    /// 字段长度
     pub length: u8,
+    /// 字段值
     pub value: Vec<u8>,
 }
 
+/// Modbus帧结构
+/// 
+/// 表示完整的Modbus通信帧，包含报文头和数据区
 #[derive(Debug, Clone)]
 pub struct ModbusFrame {
+    /// 事务标识符，用于唯一标识请求/响应对
     pub transaction_id: u16,
+    /// 协议标识符，Modbus协议固定为0
     pub protocol_id: u16,
+    /// 后续字节数量
     pub length: u16,
+    /// 从站地址
     pub unit_id: u8,
+    /// 功能码，定义执行的操作类型
     pub function_code: u8,
+    /// 数据字段列表
     pub data_fields: Vec<DataField>,
+    /// CRC校验值
     pub crc: u16,
 }
 
 impl ModbusFrame {
+    /// 创建新的Modbus帧
+    /// 
+    /// 初始化所有字段为默认值
     pub fn new() -> Self {
         ModbusFrame {
             transaction_id: 0,
@@ -30,7 +48,15 @@ impl ModbusFrame {
         }
     }
 
-    // CRC16 计算
+    /// 计算CRC16校验值
+    /// 
+    /// 使用Modbus标准CRC16算法
+    /// 
+    /// # 参数
+    /// * `data` - 要计算CRC校验的数据
+    /// 
+    /// # 返回
+    /// 计算得到的CRC16校验值
     fn calculate_crc(data: &[u8]) -> u16 {
         let mut crc = 0xFFFF;
         for byte in data {
@@ -46,6 +72,15 @@ impl ModbusFrame {
         crc
     }
 
+    /// 解析Modbus帧数据
+    /// 
+    /// 将原始字节序列解析为结构化的Modbus帧
+    /// 
+    /// # 参数
+    /// * `buffer` - 包含完整Modbus帧的字节数组
+    /// 
+    /// # 返回
+    /// 成功返回Ok，解析失败返回错误
     pub fn parse_frame(&mut self, buffer: &[u8]) -> Result<()> {
         // 检查最小长度要求：7字节报文头 + 1字节功能码 + 2字节CRC
         if buffer.len() < 9 {
