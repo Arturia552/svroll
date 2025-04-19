@@ -13,7 +13,7 @@
       </el-button>
     </div>
     <el-empty v-if="historyList.length === 0 && loading === false" description="暂无历史记录" />
-    <div v-else v-loading="loading" class="history-list">
+    <div v-else v-loading="loading" element-loading-background="initial" class="history-list">
       <div
         v-for="(item, index) in historyList" 
         :key="index" 

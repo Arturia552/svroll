@@ -75,7 +75,7 @@
 
       <div class="control-section">
         <div class="controls">
-          <el-button v-if="!isRunning && !showDashboard" type="primary" size="large" :disabled="!valid || isRunning" @click="start">
+          <el-button v-if="!isRunning || !showDashboard" type="primary" size="large" :disabled="!valid || isRunning" @click="start">
             <template #icon>
               <el-icon :size="20">
                 <VideoPlay />
@@ -83,7 +83,7 @@
             </template>
             开始
           </el-button>
-          <el-button type="danger" size="large" :loading="stopping" @click="stop">
+          <el-button v-if="isRunning && showDashboard" type="danger" size="large" :loading="stopping" @click="stop">
             <template #icon>
               <el-icon :size="20">
                 <VideoPause />

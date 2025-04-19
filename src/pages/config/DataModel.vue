@@ -32,7 +32,7 @@
     <el-divider />
 
     <div class="table-container">
-      <el-table :data="config.fieldStruct" style="width: 100%" size="small" row-key="fieldName"
+      <el-table :data="config.fieldStruct" style="width: 100%" :height="ModelTableHeight" size="small" row-key="fieldName"
                 :tree-props="{ children: 'children' }" border stripe highlight-current-row
       >
         <el-table-column prop="fieldName" label="键值" min-width="20%" />
@@ -225,6 +225,8 @@ import { open } from "@tauri-apps/plugin-dialog";
 import { invoke } from "@tauri-apps/api/core";
 import { ElMessage, FormInstance } from "element-plus";
 import { Refresh, Plus, Download } from '@element-plus/icons-vue';
+import { useWindowSize } from "@vueuse/core";
+const {height} =  useWindowSize();
 
 const config = inject<any>("config");
 const loading = ref<boolean>(true);
@@ -243,6 +245,10 @@ const vFocus = {
     el.querySelector('input')?.focus();
   }
 };
+
+const ModelTableHeight = computed(() => {
+  return height.value - 400; 
+})
 
 const newField = ref<JsonStruct>({
   fieldName: '',

@@ -169,6 +169,8 @@ const onSubmit = async () => {
     display: flex;
     flex-direction: column;
     min-height: calc(100vh - 150px);
+    position: relative;
+    padding-bottom: 80px; /* 为固定的按钮留出空间 */
 }
 
 .custom-tabs {
@@ -225,7 +227,14 @@ const onSubmit = async () => {
     display: flex;
     justify-content: center;
     gap: 16px;
-    margin-top: 24px;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background-color: var(--el-bg-color);
+    padding: 16px 0;
+    box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
+    z-index: 10;
 
     .el-button {
         min-width: 120px;

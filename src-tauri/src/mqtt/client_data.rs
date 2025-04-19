@@ -18,13 +18,14 @@ use tokio::{
 use tracing::{error, info};
 
 use crate::{
-    param::BasicConfig, context::get_app_state, model::task_com::Task, mqtt::device_data::process_fields, ConnectionState, MqttSendData, TopicWrap
+    context::get_app_state, model::task_com::Task, mqtt::device_data::process_fields,
+    param::BasicConfig, ConnectionState, MqttSendData, TopicWrap,
 };
 
 use super::Client;
 
 /// MQTT客户端
-/// 
+///
 /// 处理MQTT连接、消息发送和事件处理
 /// 负责客户端的创建、连接管理和消息收发
 #[derive(Clone)]
@@ -41,7 +42,7 @@ pub struct MqttClient {
 
 impl MqttClient {
     /// 创建新的MQTT客户端实例
-    /// 
+    ///
     /// # 参数
     /// * `send_data` - 要发送的数据模板
     /// * `enable_register` - 是否启用设备注册
@@ -78,13 +79,13 @@ impl MqttClient {
     }
 
     /// 解析主题中的MAC地址
-    /// 
+    ///
     /// 从主题路径中提取设备标识
-    /// 
+    ///
     /// # 参数
     /// * `topic` - MQTT主题字符串
     /// * `key_index` - MAC地址在主题路径中的索引位置
-    /// 
+    ///
     /// # 返回
     /// 返回不含MAC地址的主题路径和提取出的MAC地址
     fn parse_topic_mac(topic: &str, key_index: usize) -> (String, String) {
@@ -95,9 +96,9 @@ impl MqttClient {
     }
 
     /// 处理接收到的MQTT消息
-    /// 
+    ///
     /// 根据消息内容处理设备注册信息
-    /// 
+    ///
     /// # 参数
     /// * `topic` - 消息的主题
     /// * `payload` - 消息的内容
@@ -127,9 +128,12 @@ impl MqttClient {
 
                 if let Some(device_key) = data.get(extra_key) {
                     if let Some(device_key_str) = device_key.as_str() {
-                        get_app_state().mqtt_clients().entry(mac.to_string()).and_modify(|v| {
-                            v.set_device_key(device_key_str.to_string());
-                        });
+                        get_app_state()
+                            .mqtt_clients()
+                            .entry(mac.to_string())
+                            .and_modify(|v| {
+                                v.set_device_key(device_key_str.to_string());
+                            });
                     }
                 }
             }
@@ -137,14 +141,14 @@ impl MqttClient {
     }
 
     /// 处理MQTT事件循环
-    /// 
+    ///
     /// 持续监听和处理MQTT连接事件
-    /// 
+    ///
     /// # 参数
     /// * `client_id` - 客户端ID
     /// * `event_loop` - MQTT事件循环
     /// * `self_clone` - 客户端实例的克隆
-    /// 
+    ///
     /// # 返回
     /// 返回任务句柄
     async fn handle_event_loop(
@@ -177,7 +181,8 @@ impl MqttClient {
                         }
                     }
                     Err(e) => {
-                        if let Some(mut client_entry) = app_state.mqtt_clients().get_mut(&client_id) {
+                        if let Some(mut client_entry) = app_state.mqtt_clients().get_mut(&client_id)
+                        {
                             client_entry.set_connection_state(ConnectionState::Failed);
 
                             if !client_entry.disconnecting.load(Ordering::SeqCst) {
@@ -253,7 +258,7 @@ impl Client<MqttSendData, MqttClientData> for MqttClient {
                 Self::handle_event_loop(client_id.clone(), event_loop, Arc::clone(&self_arc)).await;
             client.event_loop_handle = Some(Arc::new(Mutex::new(Some(event_loop_handle))));
             client.set_client(Some(cli.clone()));
-           
+
             app_state.add_mqtt_client(client.get_client_id().to_string(), client.clone());
             clients.push(client.clone());
 
@@ -368,8 +373,15 @@ impl Client<MqttSendData, MqttClientData> for MqttClient {
                             let _ = mqtt_client.on_connect_success(&mut cli_clone).await;
                             continue;
                         }
-                        let real_topic =
-                            topic.get_publish_real_topic(Some(client_data.get_device_key()));
+                        let real_topic = match client_data.get_identify_key() {
+                            Some(identify_key) => {
+                                topic.get_pushlish_real_topic_identify_key(identify_key.clone())
+                            }
+                            None => {
+                                topic.get_publish_real_topic(Some(client_data.get_device_key()))
+                            }
+                        };
+
                         let mut msg_value = (*send_data).clone();
                         process_fields(&mut msg_value.data, &msg_value.fields, enable_random);
                         let json_msg = match serde_json::to_string(&msg_value.data) {
@@ -438,7 +450,7 @@ impl Client<MqttSendData, MqttClientData> for MqttClient {
 }
 
 /// MQTT客户端数据结构
-/// 
+///
 /// 存储MQTT客户端的连接信息和状态
 /// 管理单个MQTT连接实例的生命周期
 #[derive(Debug, Deserialize, Clone, Serialize)]
@@ -450,6 +462,9 @@ pub struct MqttClientData {
     pub username: String,
     /// MQTT连接密码
     pub password: String,
+    /// 标识键
+    #[serde(rename = "identifyKey")]
+    pub identify_key: Option<String>,
     /// 设备密钥，用于消息发布
     #[serde(skip)]
     pub device_key: String,
@@ -485,6 +500,10 @@ impl MqttClientData {
         &self.device_key
     }
 
+    pub fn get_identify_key(&self) -> &Option<String> {
+        &self.identify_key
+    }
+
     pub fn set_client_id(&mut self, client_id: String) {
         self.client_id = client_id;
     }
@@ -492,11 +511,11 @@ impl MqttClientData {
     pub fn get_connection_state(&self) -> &ConnectionState {
         &self.connection_state
     }
-    
+
     pub fn set_connection_state(&mut self, state: ConnectionState) {
         self.connection_state = state;
     }
-    
+
     pub fn is_connected(&self) -> bool {
         self.connection_state == ConnectionState::Connected
     }
@@ -517,9 +536,9 @@ impl MqttClientData {
     }
 
     /// 安全断开连接
-    /// 
+    ///
     /// 确保只执行一次断开操作
-    /// 
+    ///
     /// # 返回
     /// 成功断开返回Ok，失败返回错误
     pub async fn safe_disconnect(&self) -> Result<(), Error> {

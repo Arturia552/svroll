@@ -136,12 +136,21 @@ const validateTopic = (rule: any, value: any, callback: any) => {
 };
 
 
-const tableColumn = ref([
+const msgColumns = [
   { label: "主题", prop: "topic", },
   { label: "QoS", prop: "qos", },
-  { label: "Key索引", prop: "keyIndex", },
+  { label: "Key索引", prop: "keyIndex" },
   { label: "额外Key", prop: "extraKey" },
-]);
+];
+
+
+const tableColumn = computed(() => {
+  if (config.value.enableRegister) {
+    return msgColumns;
+  } else {
+    return msgColumns.filter(column => column.prop !== "extraKey");
+  }
+});
 
 const rules = ref<FormRules>({
   broker: [{ required: true, message: "请输入服务端地址", trigger: "blur" }],

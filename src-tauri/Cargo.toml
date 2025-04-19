@@ -11,7 +11,7 @@ tauri-build = { version = "2", features = [] }
 tauri = { version = "2", features = [] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
-tokio = { version = "1.37.0", features = ["full"] }
+tokio = { version = "1.44.2", features = ["full"] }
 tokio-util = { version = "0.7.11", features = ["full"] }
 tokio-stream = { version = "0.1.15", features = ["full"] }
 csv = { version = "1.3" }

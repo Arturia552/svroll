@@ -136,6 +136,7 @@ export interface ClientInfo {
   username: string;
   password: string;
   connectionState?: ConnectionState
+  identifyKey?: string;
 }
 
 export enum ConnectionState {

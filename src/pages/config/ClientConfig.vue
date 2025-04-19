@@ -69,7 +69,7 @@
         :data="filteredClients"
         :columns="columns"
         :width="tableWidth"
-        :height="500"
+        :height="ClientTableHeight"
         :row-height="40"
         fixed
       />
@@ -83,12 +83,13 @@ import { invoke } from "@tauri-apps/api/core";
 import { ElMessage } from "element-plus";
 import { h, ref, computed, inject, onMounted } from 'vue';
 import { Delete } from '@element-plus/icons-vue';
+import { useWindowSize } from "@vueuse/core";
 
 const generateSize = ref(100);
 const config = ref(inject<ConnectConfig>("config"))
 const searchQuery = ref('');
 const tableWidth = ref(0);
-
+const {height} =  useWindowSize();
 // 根据窗口大小计算表格宽度
 onMounted(() => {
   tableWidth.value = document.querySelector('.table-section')?.clientWidth || 1000;
@@ -97,25 +98,35 @@ onMounted(() => {
   });
 });
 
+const ClientTableHeight = computed(() => {
+  return height.value - 400;
+})
+
 // 定义表格列
 const columns = computed(() => [
   {
     key: 'clientId',
     dataKey: 'clientId',
     title: '客户端ID',
-    width: tableWidth.value * 0.28,
+    width: tableWidth.value * 0.2,
     sortable: true,
   },
   {
     key: 'username',
     dataKey: 'username',
     title: '用户名',
-    width: tableWidth.value * 0.3,
+    width: tableWidth.value * 0.2,
   },
   {
     key: 'password',
     dataKey: 'password',
     title: '密码',
+    width: tableWidth.value * 0.2,
+  },
+  {
+    key: 'identifyKey',
+    dataKey: 'identifyKey',
+    title: '标识密钥',
     width: tableWidth.value * 0.3,
   },
   {
@@ -187,7 +198,8 @@ const generateRandom = (size: number) => {
     clients.push({
       clientId: `client_${i}`,
       username: `user_${i}`,
-      password: `password_${i}`
+      password: `password_${i}`,
+      identifyKey: `key_${i}`,
     });
   }
   config.value.clients = clients;
