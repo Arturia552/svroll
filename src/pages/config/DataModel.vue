@@ -32,22 +32,29 @@
     <el-divider />
 
     <div class="table-container">
-      <el-table :data="config.fieldStruct" style="width: 100%" :height="ModelTableHeight" size="small" row-key="fieldName"
+      <el-table :data="config.fieldStruct" style="width: 100%" :height="ModelTableHeight" size="small"
                 :tree-props="{ children: 'children' }" border stripe highlight-current-row
       >
-        <el-table-column prop="fieldName" label="键值" min-width="20%" />
+        <el-table-column prop="fieldName" label="键值" min-width="20%">
+          <template #default="scope">
+            <on-click-outside v-if="scope.row.editing0" @trigger="scope.row.editing0 = false">
+              <el-input v-if="scope.row.editing0" v-model="scope.row.fieldName" v-focus class="edit-input" @blur="
+                blurInput(scope.row, scope.row.fieldName, 'fieldName', 'editing0')
+              "
+              />
+            </on-click-outside>
+            <div v-else class="editable-cell" @dblclick="activateEdit(scope.row, 'editing0')">
+              {{ scope.row.fieldName }}
+            </div>
+          </template>
+        </el-table-column>
 
         <el-table-column prop="fieldType" label="数据类型" min-width="20%">
           <template #default="scope">
-            <el-select v-model="scope.row.fieldType" v-focus
-                       class="edit-select" size="small"
+            <el-select v-model="scope.row.fieldType" v-focus class="edit-select" size="small"
                        @change="handleTypeChange"
             >
-              <el-option v-for="item in fieldTypeOptions" 
-                         :key="item.value" 
-                         :label="item.label" 
-                         :value="item.value"
-              />
+              <el-option v-for="item in fieldTypeOptions" :key="item.value" :label="item.label" :value="item.value" />
             </el-select>
           </template>
         </el-table-column>
@@ -226,7 +233,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { ElMessage, FormInstance } from "element-plus";
 import { Refresh, Plus, Download } from '@element-plus/icons-vue';
 import { useWindowSize } from "@vueuse/core";
-const {height} =  useWindowSize();
+const { height } = useWindowSize();
 
 const config = inject<any>("config");
 const loading = ref<boolean>(true);
@@ -247,7 +254,7 @@ const vFocus = {
 };
 
 const ModelTableHeight = computed(() => {
-  return height.value - 400; 
+  return height.value - 400;
 })
 
 const newField = ref<JsonStruct>({
@@ -331,10 +338,10 @@ const handleTypeChange = (row: JsonStruct) => {
     row.maxValue = undefined;
     row.possibleValues = '';
   }
-  
+
   // 更新JSON结构
   updateJsonFromStruct();
-  
+
 };
 
 // 刷新数据结构

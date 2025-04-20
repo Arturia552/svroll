@@ -128,7 +128,7 @@ import { CanvasRenderer } from 'echarts/renderers';
 import { ElTableV2 } from 'element-plus';
 import type { TableV2Props } from 'element-plus';
 import { rs2JsEntity } from '@/types/mqttConfig';
-
+import { ElTag } from 'element-plus';
 
 echarts.use([GridComponent, LineChart, TooltipComponent, TitleComponent, LegendComponent, CanvasRenderer]);
 
@@ -178,6 +178,12 @@ const columns = ref<TableV2Props['columns']>([
     width: 120,
   },
   {
+    key: 'username',
+    dataKey: 'username',
+    title: '用户名',
+    width: 120,
+  },
+  {
     key: 'connectionState',
     dataKey: 'connectionState',
     title: '状态',
@@ -205,27 +211,9 @@ const columns = ref<TableV2Props['columns']>([
           type = 'info';
           text = '未知';
       }
-      return h('el-tag', { type }, text);
+      return h(ElTag, { type: type }, text);
     }
   },
-  {
-    key: 'username',
-    dataKey: 'username',
-    title: '用户名',
-    width: 120,
-  },
-  {
-    key: 'messages',
-    dataKey: 'messages',
-    title: '消息数',
-    width: 100,
-  },
-  {
-    key: 'lastSeen',
-    dataKey: 'lastSeen',
-    title: '最后活动时间',
-    width: 180,
-  }
 ]);
 
 

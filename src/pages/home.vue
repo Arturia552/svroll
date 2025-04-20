@@ -436,7 +436,7 @@ let clientInfoTimerId: number | null = null;
 const getClientInfo = async () => {
   try {
     const clients: ClientInfo[] = await invoke("get_clients",{ protocol: config.value.protocol });
-
+    clientConnectionInfo.value = clients;
     clientInfo.value = {
       connected: 0,
       disconnected: 0,

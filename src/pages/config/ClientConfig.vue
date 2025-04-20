@@ -61,11 +61,7 @@
         />
       </div>
       
-      <div v-if="filteredClients.length === 0" class="empty-data">
-        <el-empty description="暂无客户端数据" />
-      </div>
       <el-table-v2
-        v-else
         :data="filteredClients"
         :columns="columns"
         :width="tableWidth"
@@ -133,7 +129,7 @@ const columns = computed(() => [
     key: 'action',
     dataKey: 'action',
     title: '操作',
-    width: tableWidth.value * 0.1,
+    width: tableWidth.value * 0.05,
     cellRenderer: ({ rowIndex }) => {
       return h('div', {
         style: { display: 'flex', justifyContent: 'center' }

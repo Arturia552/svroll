@@ -1,6 +1,6 @@
 use std::{fmt::Debug, fs::File};
 
-use anyhow::{Context, Result};
+use anyhow::{anyhow, Context, Result};
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use tokio::fs::{self};
 
@@ -31,7 +31,7 @@ pub enum Flag {
     False,
 }
 /// 客户端手动输入的配置信息
-/// 
+///
 /// 包含连接、发送和性能参数的综合配置
 #[derive(Debug, Serialize, Deserialize)]
 pub struct BasicConfig<T, C> {
@@ -69,7 +69,7 @@ where
     C: DeserializeOwned + Debug,
 {
     /// 创建新的基准测试配置
-    /// 
+    ///
     /// # 参数
     /// * `send_data` - 要发送的数据内容
     /// * `clients` - 客户端配置列表
@@ -105,9 +105,9 @@ where
     }
 
     /// 验证配置参数的有效性
-    /// 
+    ///
     /// 检查配置中的必要参数是否有效，防止使用无效配置
-    /// 
+    ///
     /// # 返回
     /// 成功返回Ok，配置无效返回错误信息
     pub async fn validate(&self) -> Result<(), String> {
@@ -130,7 +130,7 @@ where
     }
 
     /// 设置发送数据内容
-    /// 
+    ///
     /// # 参数
     /// * `data` - 要设置的数据内容
     pub fn set_send_data(&mut self, data: T) {
@@ -158,7 +158,7 @@ where
     }
 
     /// 设置发送间隔
-    /// 
+    ///
     /// # 参数
     /// * `send_interval` - 发送间隔(秒)
     pub fn set_send_interval(&mut self, send_interval: u64) {
@@ -167,10 +167,10 @@ where
 }
 
 /// 从JSON文件加载发送数据
-/// 
+///
 /// # 参数
 /// * `file_path` - JSON文件路径
-/// 
+///
 /// # 返回
 /// 成功返回解析后的数据对象，失败返回错误
 pub async fn load_send_data_from_json_file<T>(file_path: &str) -> Result<T>
@@ -188,10 +188,10 @@ where
 }
 
 /// 从CSV文件读取数据并转换为结构体列表
-/// 
+///
 /// # 参数
 /// * `file_path` - CSV文件路径
-/// 
+///
 /// # 返回
 /// 成功返回结构体列表，失败返回错误
 pub async fn read_from_csv_into_struct<C>(file_path: &str) -> Result<Vec<C>>
@@ -209,32 +209,32 @@ where
 }
 
 /// 初始化MQTT客户端上下文
-/// 
+///
 /// 根据配置和主题配置创建MQTT客户端实例
-/// 
+///
 /// # 参数
 /// * `config` - 基准测试配置
 /// * `topic_config` - 主题配置
-/// 
+///
 /// # 返回
 /// 成功返回MQTT客户端实例，失败返回错误
 pub fn init_mqtt_context(
     config: &BasicConfig<MqttSendData, MqttClientData>,
     topic_config: TopicConfig,
-) -> Result<MqttClient, Box<dyn std::error::Error>> {
+) -> Result<MqttClient> {
     let mut register_topic: Option<TopicWrap> = None;
     let data_topic;
     if config.enable_register {
         if let Some(register) = topic_config.register {
             register_topic = Some(register);
         } else {
-            return Err("没有配置注册主题".into());
+            return Err(anyhow!("没有配置注册主题"));
         }
     }
     if let Some(data) = topic_config.data {
         data_topic = data;
     } else {
-            return Err("没有配置数据上报主题".into());
+        return Err(anyhow!("没有配置数据上报主题"));
     }
     let mqtt_client = MqttClient::new(
         config.get_send_data().clone(),
