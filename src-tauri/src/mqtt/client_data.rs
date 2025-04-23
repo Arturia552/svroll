@@ -401,7 +401,10 @@ impl Client<MqttSendData, MqttClientData> for MqttClient {
                                 continue;
                             }
                         };
-
+                        info!(
+                            "发布消息到主题: {}, 消息: {}",
+                            real_topic, json_msg
+                        );
                         if let Err(e) = client.publish(real_topic, qos, false, json_msg).await {
                             error!("发布消息失败: {:?}", e);
                             continue;

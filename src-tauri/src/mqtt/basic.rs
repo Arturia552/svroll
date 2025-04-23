@@ -110,7 +110,7 @@ impl TopicWrap {
     pub fn get_pushlish_real_topic_identify_key<'a>(&'a self, identify_key: String) -> Cow<'a,str> {
         let topic = &self.publish;
         let key_index = topic.key_index;
-        if key_index.is_none() || identify_key.trim().is_empty() {
+        if key_index.is_none() || identify_key.trim().is_empty() || key_index == Some(0) {
             return Cow::Borrowed(&topic.topic);
         }else {
             let key_index = key_index.unwrap();

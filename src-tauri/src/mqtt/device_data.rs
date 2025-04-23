@@ -80,6 +80,28 @@ pub fn process_fields(data: &mut Value, fields: &Vec<MqttFieldStruct>, enable_ra
             process_fields(&mut object, &field.child.as_ref().unwrap(), enable_random);
             data[&field.field_name] = object;
         }
+        FieldType::Enum => {
+            if enable_random {
+                if let Some(possible_values) = &field.possible_values {
+                    if !possible_values.is_empty() {
+                        let total_probability: f64 = possible_values.iter()
+                            .map(|pv| pv.probability)
+                            .sum();
+                        
+                        let random_value = rng.gen_range(0.0..total_probability);
+                        
+                        let mut cumulative_prob = 0.0;
+                        for pv in possible_values {
+                            cumulative_prob += pv.probability;
+                            if random_value <= cumulative_prob {
+                                data[&field.field_name] = Value::from(pv.value);
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+        }
         _ => {}
     })
 }
@@ -104,11 +126,19 @@ pub struct MqttFieldStruct {
     pub max_value: Option<f64>,
     /// 可能的取值列表（对枚举类型有效）
     #[serde(rename = "possibleValues")]
-    pub possible_values: Value,
+    pub possible_values: Option<Vec<PossibleValue>>,
     /// 子字段列表（对对象类型有效）
     #[serde(rename = "children", default)]
     pub child: Option<Vec<MqttFieldStruct>>,
 }
+
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct PossibleValue {
+    pub value: u32,
+    pub probability: f64,
+}
+
 
 /// 字段类型枚举
 /// 

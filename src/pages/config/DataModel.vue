@@ -33,17 +33,12 @@
 
     <div class="table-container">
       <el-table :data="config.fieldStruct" style="width: 100%" :height="ModelTableHeight" size="small"
-                :tree-props="{ children: 'children' }" border stripe highlight-current-row
+                :tree-props="{ children: 'children' }" row-key="id"
+                border stripe highlight-current-row
       >
-        <el-table-column prop="fieldName" label="键值" min-width="20%">
+        <el-table-column class-name="first-cell" prop="fieldName" label="键值" min-width="20%">
           <template #default="scope">
-            <on-click-outside v-if="scope.row.editing0" @trigger="scope.row.editing0 = false">
-              <el-input v-if="scope.row.editing0" v-model="scope.row.fieldName" v-focus class="edit-input" @blur="
-                blurInput(scope.row, scope.row.fieldName, 'fieldName', 'editing0')
-              "
-              />
-            </on-click-outside>
-            <div v-else class="editable-cell" @dblclick="activateEdit(scope.row, 'editing0')">
+            <div class="cell-content">
               {{ scope.row.fieldName }}
             </div>
           </template>
@@ -51,26 +46,15 @@
 
         <el-table-column prop="fieldType" label="数据类型" min-width="20%">
           <template #default="scope">
-            <el-select v-model="scope.row.fieldType" v-focus class="edit-select" size="small"
-                       @change="handleTypeChange"
-            >
-              <el-option v-for="item in fieldTypeOptions" :key="item.value" :label="item.label" :value="item.value" />
-            </el-select>
+            <div class="cell-content">
+              {{ getFieldTypeName(scope.row.fieldType) }}
+            </div>
           </template>
         </el-table-column>
 
         <el-table-column prop="minValue" label="最小值" min-width="15%">
           <template #default="scope">
-            <on-click-outside v-if="scope.row.editing1 && scope.row.fieldType !== FieldTypeEnum.Object"
-                              @trigger="scope.row.editing1 = false"
-            >
-              <el-input v-if="scope.row.editing1" ref="minValueInput" v-model="scope.row.minValue" v-focus
-                        class="edit-input" @blur="
-                          blurInput(scope.row, scope.row.minValue, 'minValue', 'editing1')
-                        "
-              />
-            </on-click-outside>
-            <div v-else class="editable-cell" @dblclick="activateEdit(scope.row, 'editing1')">
+            <div class="cell-content">
               {{ scope.row.minValue ?? "--" }}
             </div>
           </template>
@@ -78,15 +62,7 @@
 
         <el-table-column prop="maxValue" label="最大值" min-width="15%">
           <template #default="scope">
-            <on-click-outside v-if="scope.row.editing2 && scope.row.fieldType !== FieldTypeEnum.Object"
-                              @trigger="scope.row.editing2 = false"
-            >
-              <el-input v-if="scope.row.editing2" v-model="scope.row.maxValue" v-focus class="edit-input" @blur="
-                blurInput(scope.row, scope.row.maxValue, 'maxValue', 'editing2')
-              "
-              />
-            </on-click-outside>
-            <div v-else class="editable-cell" @dblclick="activateEdit(scope.row, 'editing2')">
+            <div class="cell-content">
               {{ scope.row.maxValue ?? "--" }}
             </div>
           </template>
@@ -94,23 +70,21 @@
 
         <el-table-column prop="possibleValues" label="有效值" min-width="20%">
           <template #default="scope">
-            <on-click-outside v-if="
-              scope.row.editing3 && scope.row.fieldType !== FieldTypeEnum.Object
-            " @trigger="scope.row.editing3 = false"
-            >
-              <el-input v-if="scope.row.editing3" v-model="scope.row.possibleValues" v-focus class="edit-input" @blur="
-                blurInput(
-                  scope.row,
-                  scope.row.possibleValues,
-                  'possibleValues',
-                  'editing3'
-                )
-              "
-              />
-            </on-click-outside>
-            <div v-else class="editable-cell" @dblclick="activateEdit(scope.row, 'editing3')">
-              {{ scope.row.possibleValues ?? "--" }}
+            <div class="cell-content">
+              <el-tag v-for="(item, index) in scope.row.possibleValues" :key="index" size="small"
+                      class="possible-value-tag"
+              >
+                {{ item.value }}({{ item.probability }}%)
+              </el-tag>
             </div>
+          </template>
+        </el-table-column>
+
+        <el-table-column label="操作" width="100">
+          <template #default="scope">
+            <el-button type="primary" size="small" @click="showEditFieldDialog(scope.row)">
+              编辑
+            </el-button>
           </template>
         </el-table-column>
 
@@ -131,12 +105,11 @@
     <div class="tips">
       <el-alert type="info" :closable="false">
         <div class="tips-content">
-          <p><strong>提示：</strong> 双击单元格进行编辑。</p>
+          <p><strong>提示：</strong> 使用添加字段按钮来修改数据结构。</p>
         </div>
       </el-alert>
     </div>
 
-    <!-- 添加字段对话框 -->
     <el-dialog v-model="addFieldDialogVisible" title="添加字段" width="500px" :close-on-click-modal="false"
                :append-to-body="true"
     >
@@ -156,7 +129,28 @@
         </el-form-item>
         <template v-if="newField.fieldType !== FieldTypeEnum.Object && newField.fieldType !== FieldTypeEnum.Array">
           <el-form-item v-if="newField.fieldType" label="默认值">
-            <el-input v-model="newField.possibleValues" placeholder="请输入默认值" />
+            <div v-if="newField.fieldType === FieldTypeEnum.Enum">
+              <div class="possible-values-editor">
+                <div v-for="(item, index) in possibleValuesArray" :key="index" class="possible-value-item">
+                  <el-input-number v-model="item.value" :min="0" placeholder="值" class="value-input" />
+                  <el-input-number v-model="item.probability" :min="0" :max="100" placeholder="概率(%)"
+                                   class="probability-input"
+                  />
+                  <el-button type="danger" circle size="small" @click="removePossibleValue(index)">
+                    <el-icon>
+                      <delete />
+                    </el-icon>
+                  </el-button>
+                </div>
+                <el-button type="primary" @click="addPossibleValue">
+                  添加枚举值
+                </el-button>
+              </div>
+            </div>
+            <div v-else>
+              <!-- 非枚举类型只有一个值 -->
+              <el-input v-model="singleDefaultValue" placeholder="默认值" style="width: 100%;" />
+            </div>
           </el-form-item>
           <template v-if="newField.fieldType === FieldTypeEnum.Integer || newField.fieldType === FieldTypeEnum.Float">
             <el-form-item label="最小值">
@@ -197,7 +191,28 @@
           v-if="currentEditField.fieldType !== FieldTypeEnum.Object && currentEditField.fieldType !== FieldTypeEnum.Array"
         >
           <el-form-item v-if="currentEditField.fieldType" label="默认值">
-            <el-input v-model="currentEditField.possibleValues" placeholder="请输入默认值" />
+            <div v-if="currentEditField.fieldType === FieldTypeEnum.Enum">
+              <div class="possible-values-editor">
+                <div v-for="(item, index) in editPossibleValuesArray" :key="index" class="possible-value-item">
+                  <el-input-number v-model="item.value" :min="0" placeholder="值" class="value-input" />
+                  <el-input-number v-model="item.probability" :min="0" :max="100" placeholder="概率(%)"
+                                   class="probability-input"
+                  />
+                  <el-button type="danger" circle size="small" @click="removeEditPossibleValue(index)">
+                    <el-icon>
+                      <delete />
+                    </el-icon>
+                  </el-button>
+                </div>
+                <el-button type="primary" @click="addEditPossibleValue">
+                  添加可能值
+                </el-button>
+              </div>
+            </div>
+            <div v-else>
+              <!-- 非枚举类型只有一个值 -->
+              <el-input v-model="editSingleDefaultValue" placeholder="默认值" style="width: 100%;" />
+            </div>
           </el-form-item>
           <template
             v-if="currentEditField.fieldType === FieldTypeEnum.Integer || currentEditField.fieldType === FieldTypeEnum.Float"
@@ -226,12 +241,11 @@
 </template>
 <script setup lang="ts" name="DataModel">
 import { convertToJsonStruct } from "@/hooks/processJsonStruct";
-import { FieldTypeEnum, JsonStruct } from "@/types/mqttConfig";
-import { OnClickOutside } from "@vueuse/components";
+import { FieldTypeEnum, JsonStruct, PossibleValue } from "@/types/mqttConfig";
 import { open } from "@tauri-apps/plugin-dialog";
 import { invoke } from "@tauri-apps/api/core";
 import { ElMessage, FormInstance } from "element-plus";
-import { Refresh, Plus, Download } from '@element-plus/icons-vue';
+import { Refresh, Plus, Download, Delete } from '@element-plus/icons-vue';
 import { useWindowSize } from "@vueuse/core";
 const { height } = useWindowSize();
 
@@ -246,12 +260,7 @@ const editFieldFormRef = ref<FormInstance>();
 const objectFields = ref<{ id: string, label: string }[]>([]);
 const selectedParentFieldId = ref<string>('');
 
-// 自定义指令：自动聚焦
-const vFocus = {
-  mounted: (el) => {
-    el.querySelector('input')?.focus();
-  }
-};
+
 
 const ModelTableHeight = computed(() => {
   return height.value - 400;
@@ -262,7 +271,7 @@ const newField = ref<JsonStruct>({
   fieldType: FieldTypeEnum.String,
   minValue: undefined,
   maxValue: undefined,
-  possibleValues: '',
+  possibleValues: [],
   children: []
 });
 
@@ -281,6 +290,7 @@ const fieldTypeOptions = [
   { value: FieldTypeEnum.Integer, label: '整数(Integer)' },
   { value: FieldTypeEnum.Float, label: '浮点数(Float)' },
   { value: FieldTypeEnum.Boolean, label: '布尔值(Boolean)' },
+  { value: FieldTypeEnum.Enum, label: '枚举(Array)' },
   { value: FieldTypeEnum.Object, label: '对象(Object)' },
   { value: FieldTypeEnum.Array, label: '数组(Array)' },
   { value: FieldTypeEnum.DateTime, label: '日期时间(DateTime)' },
@@ -295,54 +305,43 @@ const convertJsonStructToJson = (jsonStructArray: JsonStruct[]): object => {
     } else if (item.fieldType === FieldTypeEnum.Array) {
       result[item.fieldName] = [];
     } else {
-      result[item.fieldName] = item.possibleValues;
+      result[item.fieldName] = item.possibleValues[0].value;
     }
   });
   return result;
 };
 
-const blurInput = (
-  row: JsonStruct,
-  val: any,
-  valueKey: string,
-  editKey: string
-) => {
-  row[editKey] = false;
-  if (row.fieldType === FieldTypeEnum.Object) return;
-  else if (row.fieldType === FieldTypeEnum.String) {
-    row[valueKey] = val;
-  } else if (row.fieldType === FieldTypeEnum.Integer) {
-    const parsed = parseInt(val);
-    row[valueKey] = isNaN(parsed) ? 0 : parsed;
-  } else if (row.fieldType === FieldTypeEnum.Float) {
-    const parsed = parseFloat(val);
-    row[valueKey] = isNaN(parsed) ? 0 : parsed;
-  } else if (row.fieldType === FieldTypeEnum.Boolean) {
-    row[valueKey] = val === "true";
-  }
+const possibleValuesArray = ref<PossibleValue[]>([]);
+const editPossibleValuesArray = ref<PossibleValue[]>([]);
+const singleDefaultValue = ref<any>(undefined);
+const editSingleDefaultValue = ref<any>(undefined);
+
+// 添加可能值（创建表单）
+const addPossibleValue = () => {
+  possibleValuesArray.value.push({ value: 0, probability: 0 });
 };
 
-const activateEdit = (row: JsonStruct, editKey: string) => {
-  if (row.fieldType !== FieldTypeEnum.Object) {
-    row[editKey] = true;
-  }
+// 移除可能值（创建表单）
+const removePossibleValue = (index: number) => {
+  possibleValuesArray.value.splice(index, 1);
 };
 
-const handleTypeChange = (row: JsonStruct) => {
-  const newFieldType = row.fieldType;
-  if (newFieldType === FieldTypeEnum.Object && !row.children) {
-    row.children = [];
-  }
-  if (newFieldType === FieldTypeEnum.Object || newFieldType === FieldTypeEnum.Array) {
-    row.minValue = undefined;
-    row.maxValue = undefined;
-    row.possibleValues = '';
-  }
-
-  // 更新JSON结构
-  updateJsonFromStruct();
-
+// 添加可能值（编辑表单）
+const addEditPossibleValue = () => {
+  editPossibleValuesArray.value.push({ value: 0, probability: 0 });
 };
+
+// 移除可能值（编辑表单）
+const removeEditPossibleValue = (index: number) => {
+  editPossibleValuesArray.value.splice(index, 1);
+};
+
+// 获取字段类型名称
+const getFieldTypeName = (type: FieldTypeEnum): string => {
+  const option = fieldTypeOptions.find(opt => opt.value === type);
+  return option ? option.label : '未知类型';
+};
+
 
 // 刷新数据结构
 const refreshStructure = () => {
@@ -403,9 +402,12 @@ const showAddFieldDialog = () => {
     fieldType: FieldTypeEnum.String,
     minValue: undefined,
     maxValue: undefined,
-    possibleValues: '',
+    possibleValues: [],
     children: []
   };
+  
+  possibleValuesArray.value = [];
+  singleDefaultValue.value = undefined;
 
   // 获取所有Object类型字段
   objectFields.value = [];
@@ -416,15 +418,38 @@ const showAddFieldDialog = () => {
   addFieldDialogVisible.value = true;
 };
 
-// 确认添加字段
+// 显示编辑字段对话框
+const showEditFieldDialog = (row: JsonStruct) => {
+  currentEditField.value = JSON.parse(JSON.stringify(row));
+  
+  // 初始化编辑表单中的可能值数组
+  if (currentEditField.value.fieldType === FieldTypeEnum.Enum) {
+    editPossibleValuesArray.value = [...(currentEditField.value.possibleValues || [])];
+  } else if (currentEditField.value.fieldType !== FieldTypeEnum.Object && 
+             currentEditField.value.fieldType !== FieldTypeEnum.Array && 
+             currentEditField.value.possibleValues?.length) {
+    editSingleDefaultValue.value = currentEditField.value.possibleValues[0]?.value;
+  } else {
+    editSingleDefaultValue.value = undefined;
+  }
+  
+  editFieldDialogVisible.value = true;
+};
+
+// 确认添加字段前处理possibleValues
 const confirmAddField = () => {
   fieldFormRef.value?.validate((valid) => {
     if (valid) {
       const fieldToAdd = { ...newField.value };
 
-      // 如果是对象类型，确保有children数组
-      if (fieldToAdd.fieldType === FieldTypeEnum.Object && !fieldToAdd.children) {
-        fieldToAdd.children = [];
+      // 如果是枚举类型，设置possibleValues为数组
+      if (fieldToAdd.fieldType === FieldTypeEnum.Enum) {
+        fieldToAdd.possibleValues = [...possibleValuesArray.value];
+      } else if (fieldToAdd.fieldType !== FieldTypeEnum.Object && fieldToAdd.fieldType !== FieldTypeEnum.Array) {
+        // 非enum类型的probability固定为100%
+        fieldToAdd.possibleValues = singleDefaultValue.value !== undefined 
+          ? [{ value: singleDefaultValue.value, probability: 100 }] 
+          : [];
       }
 
       // 根据选择的父字段确定添加位置
@@ -448,10 +473,20 @@ const confirmAddField = () => {
   });
 };
 
-// 确认编辑字段
+// 确认编辑字段前处理possibleValues
 const confirmEditField = () => {
   editFieldFormRef.value?.validate((valid) => {
     if (valid) {
+      // 如果是枚举类型，设置possibleValues为数组
+      if (currentEditField.value.fieldType === FieldTypeEnum.Enum) {
+        currentEditField.value.possibleValues = [...editPossibleValuesArray.value];
+      } else if (currentEditField.value.fieldType !== FieldTypeEnum.Object && currentEditField.value.fieldType !== FieldTypeEnum.Array) {
+        // 非enum类型的probability固定为1
+        currentEditField.value.possibleValues = editSingleDefaultValue.value !== undefined 
+          ? [{ value: editSingleDefaultValue.value, probability: 100 }] 
+          : [];
+      }
+
       // 找到字段并更新
       const updateField = (arr: JsonStruct[], fieldId: string) => {
         for (let i = 0; i < arr.length; i++) {
@@ -523,7 +558,17 @@ onMounted(() => {
     ElMessage.error('JSON格式错误，无法解析');
   }
   config.value.fieldStruct = convertToJsonStruct(parsedData, config.value.fieldStruct || []);
+  console.log(config.value.fieldStruct);
   loading.value = false;
+});
+
+// 在处理编辑对话框时初始化默认值
+watch(() => currentEditField.value.fieldType, (newType) => {
+  if (newType !== FieldTypeEnum.Enum && currentEditField.value.possibleValues?.length) {
+    editSingleDefaultValue.value = currentEditField.value.possibleValues[0]?.value;
+  } else {
+    editSingleDefaultValue.value = undefined;
+  }
 });
 </script>
 <style lang="scss" scoped>
@@ -576,26 +621,6 @@ onMounted(() => {
     }
   }
 
-  .editable-cell {
-    display: block;
-    width: 100%;
-    padding: 6px 8px;
-    border-radius: var(--el-border-radius-small);
-    cursor: pointer;
-    transition: all 0.2s;
-
-    &:hover {
-      background-color: var(--el-color-primary-light-9);
-    }
-  }
-
-  .edit-input {
-    width: 100%;
-
-    :deep(.el-input__inner) {
-      padding: 6px 8px;
-    }
-  }
 
   .actions-cell {
     display: flex;
@@ -621,5 +646,40 @@ onMounted(() => {
       }
     }
   }
+}
+
+.possible-values-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 10px;
+
+  .possible-value-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+
+    .value-input {
+      flex: 1;
+    }
+
+    .probability-input {
+      flex: 1;
+    }
+  }
+}
+
+:deep(.first-cell) {
+  .cell {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    height: 40px;
+  }
+}
+
+.possible-value-tag {
+  margin-right: 5px;
+  margin-bottom: 5px;
 }
 </style>

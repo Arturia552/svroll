@@ -101,12 +101,18 @@ export interface TopicInfo {
 
 
 export interface JsonStruct {
+  id?: number;
   fieldName?: string;
   fieldType?: FieldTypeEnum;
   minValue?: number;
   maxValue?: number;
-  possibleValues?: any;
+  possibleValues?: PossibleValue[];
   children?: JsonStruct[];
+}
+
+export interface PossibleValue {
+  value: number;
+  probability: number;
 }
 
 export interface rs2JsEntity {

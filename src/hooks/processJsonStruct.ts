@@ -1,4 +1,4 @@
-import { FieldTypeEnum, JsonStruct } from "@/types/mqttConfig";
+import { FieldTypeEnum, JsonStruct, PossibleValue } from "@/types/mqttConfig";
 
 export const convertToJsonStruct = (
   data: object,
@@ -6,10 +6,12 @@ export const convertToJsonStruct = (
 ): JsonStruct[] => {
   for (const [key, value] of Object.entries(data)) {
     if(jsonStructArray.filter(item=> item.fieldName === key)?.length !== 0) continue;
+
     const jsonStruct: JsonStruct = {
+      id: Math.floor(Math.random() * 1000000),
       fieldName: key,
       fieldType: getFieldType(value),
-      possibleValues: getFieldType(value) === FieldTypeEnum.Object ? "" : value,
+      possibleValues: getFieldType(value) === FieldTypeEnum.Object ? [] : [{ value: value, probability:1 }] as PossibleValue[],
       children: [],
     };
 
@@ -19,7 +21,6 @@ export const convertToJsonStruct = (
         jsonStruct.fieldType = FieldTypeEnum.DateTime;
       }
     }
-
     if (jsonStruct.fieldType === FieldTypeEnum.Object) {
       jsonStruct.children = convertToJsonStruct(value, []);
     }
