@@ -1,7 +1,6 @@
 use serde::{Deserialize, Serialize};
 
 pub mod connect_param;
-pub mod task_com;
 pub mod database;
 pub mod db_com;
 
@@ -51,4 +50,7 @@ pub enum Rs2JsMsgType {
     /// 成功消息，用于显示操作成功提示
     #[serde(rename = "success")]
     Success,
+    /// 连接状态消息，用于更新连接状态
+    #[serde(rename = "connectState")]
+    ConnectState,
 }

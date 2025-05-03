@@ -4,7 +4,7 @@ use anyhow::Result;
 use once_cell::sync::OnceCell;
 
 use tauri::{AppHandle, Manager};
-use tokio::sync::Mutex;
+use tokio::sync::RwLock;
 
 use crate::{model::database::Database, state::AppState};
 
@@ -35,6 +35,6 @@ pub fn get_app_state() -> &'static Arc<AppState> {
 }
 
 /// 获取数据库引用
-pub async fn get_database() -> Arc<Mutex<Database>> {
+pub async fn get_database() -> Arc<RwLock<Database>> {
     get_app_state().database().clone()
 }

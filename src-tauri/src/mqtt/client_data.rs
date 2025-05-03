@@ -11,15 +11,15 @@ use anyhow::{Error, Result};
 use rumqttc::{AsyncClient, Event, EventLoop, MqttOptions, Packet};
 use serde::{Deserialize, Serialize};
 use tokio::{
-    sync::{Mutex, Semaphore},
+    sync::{RwLock, Semaphore},
     task::JoinHandle,
     time::sleep,
 };
 use tracing::{error, info};
 
 use crate::{
-    context::get_app_state, model::task_com::Task, mqtt::device_data::process_fields,
-    param::BasicConfig, ConnectionState, MqttSendData, TopicWrap,
+    context::get_app_state, mqtt::device_data::process_fields, param::BasicConfig, task::Task,
+    ConnectionState, MqttSendData, TopicWrap,
 };
 
 use super::Client;
@@ -256,7 +256,7 @@ impl Client<MqttSendData, MqttClientData> for MqttClient {
             let client_id = client.client_id.clone();
             let event_loop_handle: JoinHandle<()> =
                 Self::handle_event_loop(client_id.clone(), event_loop, Arc::clone(&self_arc)).await;
-            client.event_loop_handle = Some(Arc::new(Mutex::new(Some(event_loop_handle))));
+            client.event_loop_handle = Some(Arc::new(RwLock::new(Some(event_loop_handle))));
             client.set_client(Some(cli.clone()));
 
             app_state.add_mqtt_client(client.get_client_id().to_string(), client.clone());
@@ -401,10 +401,7 @@ impl Client<MqttSendData, MqttClientData> for MqttClient {
                                 continue;
                             }
                         };
-                        info!(
-                            "发布消息到主题: {}, 消息: {}",
-                            real_topic, json_msg
-                        );
+                        info!("发布消息到主题: {}, 消息: {}", real_topic, json_msg);
                         if let Err(e) = client.publish(real_topic, qos, false, json_msg).await {
                             error!("发布消息失败: {:?}", e);
                             continue;
@@ -478,9 +475,9 @@ pub struct MqttClientData {
     /// MQTT异步客户端实例
     #[serde(skip)]
     pub client: Option<AsyncClient>,
-    /// 事件循环处理任务句柄
+    /// 事件循环处理任务句柄 - 使用RwLock提高读取性能
     #[serde(skip)]
-    pub event_loop_handle: Option<Arc<Mutex<Option<JoinHandle<()>>>>>,
+    pub event_loop_handle: Option<Arc<RwLock<Option<JoinHandle<()>>>>>,
     /// 是否正在断开连接
     #[serde(skip)]
     pub disconnecting: Arc<AtomicBool>,

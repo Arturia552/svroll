@@ -4,7 +4,7 @@ use anyhow::{Error, Result};
 use serde::{Deserialize, Serialize};
 use tokio::task::JoinHandle;
 
-use crate::{param::BasicConfig, model::task_com::Task};
+use crate::{param::BasicConfig, task::Task};
 
 /// 通用客户端接口，定义了客户端需要实现的基本功能
 /// 

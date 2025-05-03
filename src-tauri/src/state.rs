@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use dashmap::DashMap;
-use tokio::{net::tcp::OwnedWriteHalf, sync::Mutex};
+use tokio::{net::tcp::OwnedWriteHalf, sync::RwLock};
 
 use crate::{param::Protocol, tcp::tcp_client::TcpClient, Database, MqttClientData};
 
@@ -11,8 +11,8 @@ pub struct AppState {
     mqtt_clients: DashMap<String, MqttClientData>,
     /// TCP客户端上下文
     tcp_clients: DashMap<String, (TcpClient, Option<OwnedWriteHalf>)>,
-    /// 应用数据库
-    database: Arc<Mutex<Database>>,
+    /// 应用数据库 - 使用RwLock提高读取性能
+    database: Arc<RwLock<Database>>,
 }
 
 impl AppState {
@@ -21,7 +21,7 @@ impl AppState {
         Self {
             mqtt_clients: DashMap::new(),
             tcp_clients: DashMap::new(),
-            database: Arc::new(Mutex::new(database)),
+            database: Arc::new(RwLock::new(database)),
         }
     }
 
@@ -36,7 +36,7 @@ impl AppState {
     }
 
     /// 获取数据库引用
-    pub fn database(&self) -> &Arc<Mutex<Database>> {
+    pub fn database(&self) -> &Arc<RwLock<Database>> {
         &self.database
     }
 
@@ -73,7 +73,4 @@ impl AppState {
             Protocol::Tcp => self.tcp_clients.clear(),
         }
     }
-
-    
-    
 }

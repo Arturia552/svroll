@@ -14,8 +14,9 @@ use super::{connect_param::ConnectParam, database::HistoryConfig};
 #[command]
 pub async fn get_history_config() -> Result<Vec<HistoryConfig>, String> {
     let db = context::get_database().await;
-    let db_lock = db.lock().await;
-    db_lock
+    // 使用读锁访问数据库
+    let db_read = db.read().await;
+    db_read
         .get_configs()
         .await
         .map_err(|_| "没有找到配置记录".to_string())
@@ -33,9 +34,10 @@ pub async fn get_history_config() -> Result<Vec<HistoryConfig>, String> {
 #[command]
 pub async fn load_history_config(id: i64) -> Result<ConnectParam, String> {
     let db = context::get_database().await;
-    let db_lock = db.lock().await;
+    // 使用读锁访问数据库
+    let db_read = db.read().await;
 
-    let history_config = db_lock.get_config(id).await.unwrap();
+    let history_config = db_read.get_config(id).await.unwrap();
     let config = match history_config {
         Some(config) => config,
         None => return Err("没有找到配置记录".into()),
@@ -55,6 +57,7 @@ pub async fn load_history_config(id: i64) -> Result<ConnectParam, String> {
 #[command]
 pub async fn clear_history_config() -> Result<bool, String> {
     let db = context::get_database().await;
-    let db_lock = db.lock().await;
-    db_lock.delete_all_configs().await.map_err(|_| "清除配置记录失败".to_string())
+    // 使用读锁访问数据库 - 即使是删除操作，数据库内部也会处理锁
+    let db_read = db.read().await;
+    db_read.delete_all_configs().await.map_err(|_| "清除配置记录失败".to_string())
 }

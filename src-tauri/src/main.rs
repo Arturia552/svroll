@@ -3,8 +3,10 @@
 
 use svroll::{
     context, model::{
-        db_com, task_com::{self}
-    }, rs2js, AsyncProcInputTx
+        db_com
+    }, rs2js, AsyncProcInputTx, 
+    // 更新引用路径
+    task::commands as task_com
 };
 use tokio::sync::{mpsc, Mutex};
 use tracing::info;
@@ -58,4 +60,3 @@ async fn main() {
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
-

@@ -4,8 +4,7 @@ use std::{
 };
 
 use crate::{
-    param::BasicConfig, context::get_app_state, model::task_com::Task, mqtt::Client,
-    ConnectionState,
+    context::get_app_state, mqtt::Client, param::BasicConfig, task::Task, ConnectionState
 };
 use anyhow::{Error, Result};
 use serde::{Deserialize, Deserializer, Serialize};
