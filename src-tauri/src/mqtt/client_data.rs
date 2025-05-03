@@ -22,7 +22,10 @@ use crate::{
     ConnectionState, MqttSendData, TopicWrap,
 };
 
-use super::Client;
+use super::{
+    hooks::{get_mqtt_hook_manager, process_event},
+    Client,
+};
 
 /// MQTT客户端
 ///
@@ -157,27 +160,20 @@ impl MqttClient {
         self_clone: Arc<MqttClient>,
     ) -> JoinHandle<()> {
         let app_state = get_app_state();
+
         tokio::spawn(async move {
             loop {
                 if !app_state.mqtt_clients().contains_key(&client_id) {
                     break;
                 }
-
                 match event_loop.poll().await {
-                    Ok(Event::Incoming(Packet::Publish(publish))) => {
-                        self_clone.on_message_callback(&publish.topic, &publish.payload);
-                    }
-                    Ok(Event::Incoming(Packet::ConnAck(_))) => {
-                        if let Some(mut client) = app_state.mqtt_clients().get_mut(&client_id) {
-                            match self_clone.on_connect_success(&mut client).await {
-                                Ok(_) => {
-                                    client.set_connection_state(ConnectionState::Connected);
-                                }
-                                Err(e) => {
-                                    error!("连接初始化失败: {:?}", e);
-                                    client.set_connection_state(ConnectionState::Failed);
-                                }
+                    Ok(event) => {
+                        process_event(&event, client_id.clone()).await;
+                        match &event {
+                            Event::Incoming(Packet::Publish(publish)) => {
+                                self_clone.on_message_callback(&publish.topic, &publish.payload);
                             }
+                            _ => {}
                         }
                     }
                     Err(e) => {
@@ -205,9 +201,10 @@ impl MqttClient {
                         }
                         sleep(Duration::from_secs(2)).await;
                     }
-                    _ => {}
                 }
             }
+
+            // 循环结束后的清理工作
             if let Some(mut client) = app_state.mqtt_clients().get_mut(&client_id) {
                 client.set_connection_state(ConnectionState::Failed);
                 if client.client.is_some() {

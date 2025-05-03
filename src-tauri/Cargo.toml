@@ -28,6 +28,8 @@ tauri-plugin-fs = "2"
 tauri-plugin-dialog = "2"
 rumqttc = "0.24.0"
 sqlx = { version = "0.8.3", features = ["runtime-tokio", "sqlite", "json", "chrono"] }
-
+async-trait = "0.1.88"
+futures = "0.3.25"
+futures-util = "0.3.25"
 [features]
 custom-protocol = ["tauri/custom-protocol"]

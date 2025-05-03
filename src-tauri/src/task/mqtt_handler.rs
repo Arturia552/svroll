@@ -35,7 +35,7 @@ pub async fn start_mqtt(
     let mqtt_config = topic_config.unwrap_or_else(TopicConfig::default);
     log_and_notify(&tx, Rs2JsMsgType::Terminal, "初始化MQTT客户端成功").await?;
 
-    let mqtt_client = init_mqtt_context(&param, mqtt_config).context("初始化MQTT上下文失败")?;
+    let mqtt_client = init_mqtt_context(&param, mqtt_config).await.context("初始化MQTT上下文失败")?;
 
     log_and_notify(&tx, Rs2JsMsgType::Terminal, "初始化客户端...").await?;
     let mut clients = mqtt_client

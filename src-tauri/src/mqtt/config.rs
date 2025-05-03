@@ -1,3 +1,4 @@
+
 use anyhow::{anyhow, Result};
 
 use crate::{
@@ -5,6 +6,9 @@ use crate::{
     mqtt::{basic::TopicConfig, client_data::MqttClient},
     MqttClientData, MqttSendData, TopicWrap,
 };
+
+use super::hooks::init_mqtt_hooks;
+
 
 /// 初始化MQTT客户端上下文
 ///
@@ -16,7 +20,7 @@ use crate::{
 ///
 /// # 返回
 /// 成功返回MQTT客户端实例，失败返回错误
-pub fn init_mqtt_context(
+pub async fn init_mqtt_context(
     config: &BasicConfig<MqttSendData, MqttClientData>,
     topic_config: TopicConfig,
 ) -> Result<MqttClient> {
@@ -40,6 +44,6 @@ pub fn init_mqtt_context(
         register_topic,
         data_topic,
     );
-
+    init_mqtt_hooks(mqtt_client.clone()).await;
     Ok(mqtt_client)
 }
