@@ -22,10 +22,7 @@ use crate::{
     ConnectionState, MqttSendData, TopicWrap,
 };
 
-use super::{
-    hooks::{get_mqtt_hook_manager, process_event},
-    Client,
-};
+use super::{hooks::process_event, Client};
 
 /// MQTT客户端
 ///

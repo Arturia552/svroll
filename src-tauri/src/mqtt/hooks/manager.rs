@@ -1,6 +1,5 @@
 use std::{collections::HashMap, sync::Arc};
 
-use rumqttc::{Event, Packet};
 use tokio::sync::RwLock;
 use tracing::debug;
 
@@ -38,7 +37,7 @@ impl MqttHookManager {
     /// 返回自身，支持链式调用
     pub async fn register(&self, processor: Arc<dyn MqttHookProcessor>) -> &Self {
         let name = processor.name().to_string();
-        debug!("Registering MQTT hook processor: {}", name);
+        debug!("注册MQTT钩子处理器: {}", name);
 
         let mut processors = self.processors.write().await;
         processors.insert(name, processor);
@@ -65,7 +64,7 @@ impl MqttHookManager {
             // 清除优先级缓存
             let mut cache = self.priority_cache.write().await;
             *cache = None;
-            debug!("Unregistered MQTT hook processor: {}", name);
+            debug!("已注销MQTT钩子处理器: {}", name);
         }
 
         result
@@ -79,7 +78,7 @@ impl MqttHookManager {
         let mut cache = self.priority_cache.write().await;
         *cache = None;
 
-        debug!("Cleared all MQTT hook processors");
+        debug!("已清空所有MQTT钩子处理器");
     }
 
     /// 获取排序后的处理器列表
@@ -105,36 +104,6 @@ impl MqttHookManager {
         sorted_processors
     }
 
-    /// 处理MQTT事件
-    ///
-    /// # 参数
-    /// * `event` - MQTT事件
-    ///
-    /// # 返回
-    /// 返回是否有处理器处理了该事件
-    pub async fn process_event(&self, event: &Event, client_id: String) -> bool {
-        // 当前我们只处理Publish消息
-        if let Event::Incoming(Packet::Publish(publish)) = event {
-            let topic = publish.topic.clone();
-            let payload = publish.payload.clone();
-
-            debug!("Processing MQTT publish event on topic: {}", topic);
-
-            // 创建处理上下文
-            let mut context = MqttHookContext::new(
-                Packet::Publish(publish.clone()),
-                topic.clone(),
-                payload.to_vec(),
-            );
-            context.add_metadata("client_id", &client_id);
-
-            // 处理消息
-            return self.process_message(context).await;
-        }
-
-        false
-    }
-
     /// 处理MQTT消息
     ///
     /// # 参数
@@ -157,15 +126,15 @@ impl MqttHookManager {
 
         if matching_processors.is_empty() {
             if let Some(topic) = initial_context.get_topic() {
-                debug!("No matching processors for topic: {}", topic);
+                debug!("没有匹配主题的处理器: {}", topic);
             } else {
-                debug!("No matching processors for message without topic");
+                debug!("没有匹配无主题消息的处理器");
             }
             return false;
         }
 
         debug!(
-            "Found {} matching processors for message",
+            "找到{}个匹配消息的处理器",
             matching_processors.len()
         );
 
@@ -173,7 +142,7 @@ impl MqttHookManager {
         let mut current_context = initial_context;
 
         for processor in matching_processors {
-            debug!("Executing processor: {}", processor.name());
+            debug!("执行处理器: {}", processor.name());
 
             // 执行处理函数
             let result = processor.handle(current_context.clone()).await;
@@ -192,14 +161,14 @@ impl MqttHookManager {
                 MqttHookResult::Terminate(_) => {
                     // 终止处理链，但仍算作成功处理
                     debug!(
-                        "Processor {} terminated the processing chain",
+                        "处理器 {} 终止了处理链",
                         processor.name()
                     );
                     break;
                 }
                 MqttHookResult::Ignore => {
                     // 忽略当前消息
-                    debug!("Processor {} ignored the message", processor.name());
+                    debug!("处理器 {} 忽略了该消息", processor.name());
                     return true; // 仍然返回true，因为有匹配的处理器
                 }
             }

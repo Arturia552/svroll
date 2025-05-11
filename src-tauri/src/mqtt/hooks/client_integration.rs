@@ -35,7 +35,7 @@ pub async fn process_event(event: &Event, client_id: String) {
         let topic = publish.topic.clone();
         let payload = publish.payload.clone();
 
-        debug!("Processing MQTT publish event on topic: {}", topic);
+        debug!("处理MQTT发布事件，主题: {}", topic);
 
         // 创建处理上下文
         let mut context =
@@ -44,9 +44,9 @@ pub async fn process_event(event: &Event, client_id: String) {
 
         // 处理消息
         if hook_manager.process_message(context).await {
-            debug!("MQTT event processed by hook system");
+            debug!("MQTT事件已被钩子系统处理");
         } else {
-            debug!("No hook processor handled the MQTT event");
+            debug!("没有钩子处理器处理该MQTT事件");
         }
     } else {
         // 对于非Publish事件，创建只有packet的上下文
@@ -61,9 +61,9 @@ pub async fn process_event(event: &Event, client_id: String) {
 
         // 让钩子管理器处理事件
         if hook_manager.process_message(context).await {
-            debug!("MQTT event processed by hook system");
+            debug!("MQTT事件已被钩子系统处理");
         } else {
-            debug!("No hook processor handled the MQTT event");
+            debug!("没有钩子处理器处理该MQTT事件");
         }
     }
 }
@@ -74,7 +74,7 @@ pub async fn init_mqtt_hooks(mqtt_client: MqttClient) {
     let hook_manager = get_mqtt_hook_manager().await;
     let connack_processor = Arc::new(ConnAckProcessor::new(mqtt_client.into()));
     hook_manager.register(connack_processor).await;
-    debug!("MQTT hook system initialized");
+    debug!("MQTT钩子系统已初始化");
 }
 
 /// 连接确认(ConnAck)钩子处理器

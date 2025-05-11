@@ -45,21 +45,6 @@ pub trait MqttHookProcessor: Send + Sync + 'static {
     }
 }
 
-/// 扩展特性，定义处理结果到Future的转换
-pub trait ProcessorResultFuture {
-    fn boxed(self) -> Pin<Box<dyn Future<Output = MqttHookResult> + Send>>;
-}
-
-impl<F, Fut> ProcessorResultFuture for F
-where
-    F: FnOnce() -> Fut + Send + 'static,
-    Fut: Future<Output = MqttHookResult> + Send + 'static,
-{
-    fn boxed(self) -> Pin<Box<dyn Future<Output = MqttHookResult> + Send>> {
-        Box::pin(self())
-    }
-}
-
 /// 基本的MQTT钩子处理器实现
 pub struct MqttHookProcessorImpl {
     /// 处理器名称

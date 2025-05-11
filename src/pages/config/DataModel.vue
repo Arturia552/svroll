@@ -32,17 +32,11 @@
     <el-divider />
 
     <div class="table-container">
-      <el-table :data="config.fieldStruct" style="width: 100%" :height="ModelTableHeight" size="small"
+      <el-table :data="config.fieldStruct" style="width: 100%" :height="ModelTableHeight"
                 :tree-props="{ children: 'children' }" row-key="id"
                 border stripe highlight-current-row
       >
-        <el-table-column class-name="first-cell" prop="fieldName" label="键值" min-width="20%">
-          <template #default="scope">
-            <div class="cell-content">
-              {{ scope.row.fieldName }}
-            </div>
-          </template>
-        </el-table-column>
+        <el-table-column prop="fieldName" label="键值" min-width="20%" />
 
         <el-table-column prop="fieldType" label="数据类型" min-width="20%">
           <template #default="scope">
@@ -71,7 +65,7 @@
         <el-table-column prop="possibleValues" label="有效值" min-width="20%">
           <template #default="scope">
             <div class="cell-content">
-              <el-tag v-for="(item, index) in scope.row.possibleValues" :key="index" size="small"
+              <el-tag v-for="(item, index) in scope.row.possibleValues" :key="index" 
                       class="possible-value-tag"
               >
                 {{ item.value }}({{ item.probability }}%)
@@ -80,7 +74,7 @@
           </template>
         </el-table-column>
 
-        <el-table-column label="操作" width="100">
+        <el-table-column align="center" label="操作" width="100">
           <template #default="scope">
             <el-button type="primary" size="small" @click="showEditFieldDialog(scope.row)">
               编辑
@@ -307,7 +301,7 @@ const convertJsonStructToJson = (jsonStructArray: JsonStruct[]): object => {
     } else {
       result[item.fieldName] = item.possibleValues[0].value;
     }
-  });
+  })
   return result;
 };
 
@@ -558,7 +552,7 @@ onMounted(() => {
     ElMessage.error('JSON格式错误，无法解析');
   }
   config.value.fieldStruct = convertToJsonStruct(parsedData, config.value.fieldStruct || []);
-  console.log(config.value.fieldStruct);
+  console.log('config.value.fieldStruct', config.value.fieldStruct);
   loading.value = false;
 });
 
@@ -666,15 +660,6 @@ watch(() => currentEditField.value.fieldType, (newType) => {
     .probability-input {
       flex: 1;
     }
-  }
-}
-
-:deep(.first-cell) {
-  .cell {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    height: 40px;
   }
 }
 

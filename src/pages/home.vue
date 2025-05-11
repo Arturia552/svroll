@@ -227,6 +227,7 @@ const showHistory = () => {
 
 const handleHistoryConfigLoad = (historyConfig: ConnectConfig) => {
   config.value = historyConfig;
+  console.log(config.value)
   convertType(config.value, connectConfigTypeDef);
   
   if (config.value.sendData && /^[0-9A-Fa-f\s]+$/.test(config.value.sendData)) {

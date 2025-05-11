@@ -5,7 +5,14 @@ export const convertToJsonStruct = (
   jsonStructArray: JsonStruct[]
 ): JsonStruct[] => {
   for (const [key, value] of Object.entries(data)) {
-    if(jsonStructArray.filter(item=> item.fieldName === key)?.length !== 0) continue;
+    if(jsonStructArray.filter(item=> item.fieldName === key)?.length !== 0) {
+      // 如果已经存在相同的字段名，则跳过，并赋予id
+      const existingStruct = jsonStructArray.find(item => item.fieldName === key);
+      if(existingStruct) {
+        existingStruct.id = Math.floor(Math.random() * 1000000);
+      }
+      continue;
+    }
 
     const jsonStruct: JsonStruct = {
       id: Math.floor(Math.random() * 1000000),
@@ -24,10 +31,8 @@ export const convertToJsonStruct = (
     if (jsonStruct.fieldType === FieldTypeEnum.Object) {
       jsonStruct.children = convertToJsonStruct(value, []);
     }
-
     jsonStructArray.push(jsonStruct);
   }
-
   return jsonStructArray;
 };
 
