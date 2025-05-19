@@ -4,7 +4,6 @@ export interface ConnectConfig {
   protocol: string;
   clients?: ClientInfo[];
   threadSize?: number;
-  enableRegister?: boolean;
   enableRandom?: boolean;
   broker?: string;
   maxConnectPerSecond?: number;
@@ -18,7 +17,6 @@ export const connectConfigTypeDef: ConnectConfig = {
   protocol: "",
   clients: [],
   threadSize: 0,
-  enableRegister: false,
   enableRandom: false,
   broker: "",
   maxConnectPerSecond: 0,
@@ -30,20 +28,6 @@ export const connectConfigTypeDef: ConnectConfig = {
         topic: "",
         qos: 0,
         keyIndex: 0,
-      },
-    },
-    register: {
-      publish: {
-        topic: "",
-        qos: 0,
-        keyIndex: 0,
-        extraKey: "",
-      },
-      subscribe: {
-        topic: "",
-        qos: 0,
-        keyIndex: 0,
-        extraKey: "",
       },
     },
   },

@@ -40,18 +40,6 @@ where
         &self,
         clients: &mut [Self::Item],
     ) -> impl std::future::Future<Output = ()> + Send;
-
-    /// 处理客户端连接成功后的操作
-    /// 
-    /// # 参数
-    /// * `client` - 已连接的客户端实例
-    /// 
-    /// # 返回
-    /// 操作成功返回Ok，失败返回错误
-    fn on_connect_success(
-        &self,
-        client: &mut Self::Item,
-    ) -> impl std::future::Future<Output = Result<(), Error>> + Send;
     
     /// 启动消息发送任务
     /// 

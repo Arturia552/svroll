@@ -30,7 +30,6 @@ pub async fn start_tcp(
 ) -> Result<String> {
     let tcp_client = TcpClientContext::new(
         Arc::new(benchmark_config.send_data.clone()),
-        benchmark_config.enable_register,
     );
 
     let mut clients = tcp_client

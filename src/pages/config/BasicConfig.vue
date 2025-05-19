@@ -20,35 +20,6 @@
             <el-radio-button label="TCP" value="Tcp" />
           </el-radio-group>
         </el-form-item>
-        
-        <el-form-item label="注册包机制" prop="enableRegister">
-          <el-radio-group v-model="config.enableRegister">
-            <el-radio-button label="关闭" :value="false" />
-            <el-radio-button label="启动" :value="true" />
-          </el-radio-group>
-        </el-form-item>
-        
-        <el-form-item
-          v-if="config.enableRegister && config.protocol === 'Mqtt'"
-          class="topic"
-          label="主题配置"
-          prop="topicConfig.register"
-        >
-          <el-card class="topic-card">
-            <template v-for="(key, value) in config.topicConfig.register" :key="value">
-              <div v-if="config.topicConfig.register[value]" class="topic-row">
-                <div class="form-label">
-                  {{ value === "publish" ? "发布" : "订阅" }}
-                </div>
-                <div class="form-content">
-                  <template v-for="(column, index) in tableColumn" :key="`reg-${column.label}-${index}`">
-                    <el-input v-model="config.topicConfig.register[value][column.prop]" :placeholder="column.label" />
-                  </template>
-                </div>
-              </div>
-            </template>
-          </el-card>
-        </el-form-item>
       </div>
 
 
@@ -145,17 +116,12 @@ const msgColumns = [
 
 
 const tableColumn = computed(() => {
-  if (config.value.enableRegister) {
-    return msgColumns;
-  } else {
-    return msgColumns.filter(column => column.prop !== "extraKey");
-  }
+  return msgColumns.filter(column => column.prop !== "extraKey");
 });
 
 const rules = ref<FormRules>({
   broker: [{ required: true, message: "请输入服务端地址", trigger: "blur" }],
   "topicConfig.data": [{ validator: validateTopic, trigger: "blur" }],
-  "topicConfig.register": [{ validator: validateTopic, trigger: "blur" }],
 });
 
 const validateForm = () => {

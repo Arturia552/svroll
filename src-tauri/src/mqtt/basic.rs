@@ -184,23 +184,11 @@ pub fn wrap_real_topic<'a>(topic: &'a TopicInfo, key_value: Option<&str>) -> Cow
 /// 包含注册和数据传输的主题配置
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct TopicConfig {
-    /// 设备注册主题配置
-    pub register: Option<TopicWrap>,
     /// 数据传输主题配置
     pub data: Option<TopicWrap>,
 }
 
-impl TopicConfig {
-    /// 获取注册主题路径
-    ///
-    /// # 返回
-    /// 如果配置了注册主题，返回Some(主题路径)，否则返回None
-    pub fn get_register_topic(&self) -> Option<&str> {
-        self.register
-            .as_ref()
-            .map(|topic| topic.get_publish_topic())
-    }
-}
+impl TopicConfig {}
 
 /// TCP配置结构体
 ///
@@ -211,20 +199,6 @@ pub struct TcpConfig {}
 impl Default for TopicConfig {
     fn default() -> Self {
         TopicConfig {
-            register: Some(TopicWrap {
-                publish: TopicInfo {
-                    key_index: None,
-                    extra_key: None,
-                    topic: "/pub/register".to_string(),
-                    qos: default_qos(),
-                },
-                subscribe: Some(TopicInfo {
-                    key_index: Some(2),
-                    extra_key: None,
-                    topic: "/sub/register/ack".to_string(),
-                    qos: default_qos(),
-                }),
-            }),
             data: Some(TopicWrap {
                 publish: TopicInfo {
                     key_index: Some(2),

@@ -6,9 +6,8 @@ use tracing::debug;
 
 use super::{MqttHookManager, MqttHookProcessor, MqttHookResult};
 use crate::mqtt::{MqttClient, MqttHookContext};
-use crate::{context::get_app_state, mqtt::Client, ConnectionState};
+use crate::{context::get_app_state, ConnectionState};
 use async_trait::async_trait;
-use tracing::error;
 
 /// 全局MQTT钩子管理器单例
 static MQTT_HOOK_MANAGER: OnceCell<MqttHookManager> = OnceCell::const_new();
@@ -112,15 +111,7 @@ impl MqttHookProcessor for ConnAckProcessor {
             // 从上下文中提取客户端ID
             if let Some(client_id) = context.get_metadata("client_id") {
                 if let Some(mut client) = app_state.mqtt_clients().get_mut(client_id) {
-                    match self.client.on_connect_success(&mut client).await {
-                        Ok(_) => {
-                            client.set_connection_state(ConnectionState::Connected);
-                        }
-                        Err(e) => {
-                            error!("连接初始化失败: {:?}", e);
-                            client.set_connection_state(ConnectionState::Failed);
-                        }
-                    }
+                    client.set_connection_state(ConnectionState::Connected);
                 }
                 // 标记事件已处理
                 return MqttHookResult::Terminate(context);

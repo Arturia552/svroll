@@ -4,12 +4,14 @@ use std::{
 };
 
 use crate::{
-    context::get_app_state, mqtt::Client, param::BasicConfig, task::Task, ConnectionState
+    context::get_app_state, mqtt::Client, param::BasicConfig, task::Task, ConnectionState,
 };
 use anyhow::{Error, Result};
 use serde::{Deserialize, Deserializer, Serialize};
 use tokio::{
-    io::AsyncWriteExt, net::{tcp::OwnedReadHalf, TcpStream}, time::Instant
+    io::AsyncWriteExt,
+    net::{tcp::OwnedReadHalf, TcpStream},
+    time::Instant,
 };
 use tokio_stream::StreamExt;
 use tokio_util::codec::FramedRead;
@@ -18,7 +20,7 @@ use tracing::error;
 use super::RequestCodec;
 
 /// TCP发送数据结构
-/// 
+///
 /// 包含要通过TCP发送的二进制数据
 #[derive(Debug, Clone, Deserialize)]
 pub struct TcpSendData {
@@ -27,10 +29,10 @@ pub struct TcpSendData {
 }
 
 /// 反序列化十六进制字符串为字节数组的辅助函数
-/// 
+///
 /// # 参数
 /// * `deserializer` - 反序列化器
-/// 
+///
 /// # 返回
 /// 成功返回字节数组，失败返回反序列化错误
 pub fn deserialize_bytes<'de, D>(deserializer: D) -> Result<Vec<u8>, D::Error>
@@ -44,41 +46,25 @@ where
 }
 
 /// TCP客户端上下文
-/// 
+///
 /// 管理TCP客户端配置和数据发送
 #[derive(Debug, Clone)]
 pub struct TcpClientContext {
     /// 要发送的数据
     pub send_data: Arc<TcpSendData>,
-    /// 是否启用注册流程
-    pub enable_register: bool,
 }
 
 impl TcpClientContext {
     /// 创建新的TCP客户端上下文
-    /// 
+    ///
     /// # 参数
     /// * `send_data` - 要发送的数据模板
-    /// * `enable_register` - 是否启用注册流程
-    pub fn new(send_data: Arc<TcpSendData>, enable_register: bool) -> Self {
-        Self {
-            send_data,
-            enable_register,
-        }
-    }
-
-    /// 获取是否启用注册流程
-    pub fn get_enable_register(&self) -> bool {
-        self.enable_register
-    }
-
-    /// 设置是否启用注册流程
-    pub fn set_enable_register(&mut self, enable_register: bool) {
-        self.enable_register = enable_register
+    pub fn new(send_data: Arc<TcpSendData>) -> Self {
+        Self { send_data }
     }
 
     /// 处理读取的数据
-    /// 
+    ///
     /// # 参数
     /// * `reader` - TCP流的读取端
     async fn process_read(reader: OwnedReadHalf) {
@@ -100,7 +86,7 @@ impl TcpClientContext {
 }
 
 /// TCP客户端
-/// 
+///
 /// 表示单个TCP连接客户端
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 pub struct TcpClient {
@@ -111,9 +97,6 @@ pub struct TcpClient {
     #[serde(default)]
     #[serde(rename = "connectionState")]
     pub connection_state: ConnectionState,
-    /// 是否已完成注册
-    #[serde(skip)]
-    pub is_register: bool,
 }
 
 impl TcpClient {
@@ -140,16 +123,6 @@ impl TcpClient {
     /// 判断是否已连接
     pub fn is_connected(&self) -> bool {
         self.connection_state == ConnectionState::Connected
-    }
-
-    /// 设置是否已注册
-    pub fn set_is_register(&mut self, is_register: bool) {
-        self.is_register = is_register;
-    }
-
-    /// 获取是否已注册状态
-    pub fn get_is_register(&self) -> bool {
-        self.is_register
     }
 }
 
@@ -185,7 +158,6 @@ impl Client<TcpSendData, TcpClient> for TcpClientContext {
                         let tcp_client = TcpClient {
                             mac: client_mac.clone(),
                             connection_state: ConnectionState::Connected,
-                            is_register: false,
                         };
                         app_state
                             .tcp_clients()
@@ -220,27 +192,6 @@ impl Client<TcpSendData, TcpClient> for TcpClientContext {
         }
 
         Ok(clients)
-    }
-
-    async fn wait_for_connections(&self, clients: &mut [Self::Item]) {
-        for client in clients {
-            let _ = self.on_connect_success(client).await;
-        }
-    }
-
-    async fn on_connect_success(&self, client: &mut TcpClient) -> Result<(), Error> {
-        let app_state = get_app_state();
-        if let Some(mut client_ref) = app_state.tcp_clients().get_mut(&client.get_mac()) {
-            if let Some(writer) = client_ref.1.as_mut() {
-                if self.get_enable_register() {
-                    match writer.write("abc".as_bytes()).await {
-                        Ok(_) => todo!(),
-                        Err(_) => todo!(),
-                    }
-                }
-            }
-        }
-        Ok(())
     }
 
     async fn spawn_message(
@@ -286,5 +237,9 @@ impl Client<TcpSendData, TcpClient> for TcpClientContext {
             hanldes.push(handle);
         }
         Ok(hanldes)
+    }
+
+    async fn wait_for_connections(&self, clients: &mut [Self::Item]) {
+        ()
     }
 }
