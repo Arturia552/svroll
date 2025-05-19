@@ -25,9 +25,6 @@ pub struct ConnectParam {
     /// 线程数量
     #[serde(rename = "threadSize")]
     pub thread_size: usize,
-    /// 是否启用注册机制
-    #[serde(rename = "enableRegister")]
-    pub enable_register: bool,
     /// 是否启用随机值生成
     #[serde(rename = "enableRandom")]
     pub enable_random: bool,
@@ -78,7 +75,6 @@ impl ConnectParam {
             protocol_type: Protocol::Mqtt,
             clients,
             thread_size: self.thread_size,
-            enable_register: self.enable_register,
             enable_random: self.enable_random,
             broker: self.broker.clone(),
             max_connect_per_second: self.max_connect_per_second,
@@ -116,7 +112,6 @@ impl ConnectParam {
             clients,
             Protocol::Tcp,
             self.thread_size,
-            self.enable_register,
             self.enable_random,
             self.broker.clone(),
             self.max_connect_per_second,

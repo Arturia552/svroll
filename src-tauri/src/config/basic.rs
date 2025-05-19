@@ -22,9 +22,6 @@ pub struct BasicConfig<T, C> {
     /// 设置启动协程数量,默认为200
     pub thread_size: usize,
 
-    /// 设置是否启用注册包机制
-    pub enable_register: bool,
-
     /// 是否启用随机值
     pub enable_random: bool,
 
@@ -60,7 +57,6 @@ where
         clients: Vec<C>,
         protocol_type: Protocol,
         thread_size: usize,
-        enable_register: bool,
         enable_random: bool,
         broker: String,
         max_connect_per_second: usize,
@@ -71,7 +67,6 @@ where
             protocol_type,
             clients,
             thread_size,
-            enable_register,
             enable_random,
             broker,
             max_connect_per_second,
