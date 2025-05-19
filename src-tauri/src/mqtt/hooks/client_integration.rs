@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use rumqttc::{Event, Packet};
 use tokio::sync::OnceCell;
-use tracing::debug;
+use tracing::{debug, info};
 
 use super::{MqttHookManager, MqttHookProcessor, MqttHookResult};
 use crate::mqtt::{MqttClient, MqttHookContext};
@@ -67,14 +67,6 @@ pub async fn process_event(event: &Event, client_id: String) {
     }
 }
 
-/// 初始化MQTT钩子系统
-pub async fn init_mqtt_hooks(mqtt_client: MqttClient) {
-    // 确保钩子管理器已初始化
-    let hook_manager = get_mqtt_hook_manager().await;
-    let connack_processor = Arc::new(ConnAckProcessor::new(mqtt_client.into()));
-    hook_manager.register(connack_processor).await;
-    debug!("MQTT钩子系统已初始化");
-}
 
 /// 连接确认(ConnAck)钩子处理器
 pub struct ConnAckProcessor {
@@ -121,4 +113,14 @@ impl MqttHookProcessor for ConnAckProcessor {
         // 不是我们关心的事件，继续处理链
         MqttHookResult::Continue(context)
     }
+}
+
+
+/// 初始化MQTT钩子系统
+pub async fn init_mqtt_hooks(mqtt_client: MqttClient) {
+    // 确保钩子管理器已初始化
+    let hook_manager = get_mqtt_hook_manager().await;
+    let connack_processor = Arc::new(ConnAckProcessor::new(mqtt_client.into()));
+    hook_manager.register(connack_processor).await;
+    info!("MQTT钩子系统已初始化");
 }
