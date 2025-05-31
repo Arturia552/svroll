@@ -13,13 +13,15 @@
       </el-button>
     </div>
     <el-empty v-if="historyList.length === 0 && loading === false" description="暂无历史记录" />
-    <div v-else v-loading="loading" element-loading-background="initial" class="history-list">
+    <div v-else
+         v-loading="loading"
+         element-loading-background="initial"
+         class="history-list">
       <div
         v-for="(item, index) in historyList" 
         :key="index" 
         class="history-item"
-        @click="loadHistoryConfig(item.id)"
-      >
+        @click="loadHistoryConfig(item.id)">
         <div class="history-item-content">
           <div class="history-info">
             <div class="protocol-tag">
@@ -38,12 +40,12 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
-import { invoke } from "@tauri-apps/api/core";
-import { ElMessage, ElMessageBox } from 'element-plus';
-import { Delete } from '@element-plus/icons-vue';
-import "element-plus/es/components/message/style/css";
-import "element-plus/es/components/message-box/style/css";
+import { ref, onMounted } from 'vue'
+import { invoke } from "@tauri-apps/api/core"
+import { ElMessage, ElMessageBox } from 'element-plus'
+import { Delete } from '@element-plus/icons-vue'
+import "element-plus/es/components/message/style/css"
+import "element-plus/es/components/message-box/style/css"
 
 interface HistoryItem {
   id: number;
@@ -52,34 +54,34 @@ interface HistoryItem {
   created_at: string;
 }
 
-const loading = ref(true);
-const historyList = ref<HistoryItem[]>([]);
-const emit = defineEmits(['load-config']);
+const loading = ref(true)
+const historyList = ref<HistoryItem[]>([])
+const emit = defineEmits(['load-config'])
 
 onMounted(async () => {
-  loading.value = true;
-  await fetchHistoryList();
-});
+  loading.value = true
+  await fetchHistoryList()
+})
 
 const fetchHistoryList = async () => {
   try {
-    historyList.value = await invoke<HistoryItem[]>("get_history_config");
+    historyList.value = await invoke<HistoryItem[]>("get_history_config")
   } catch (error) {
-    ElMessage.error(`获取历史配置失败: ${error}`);
+    ElMessage.error(`获取历史配置失败: ${error}`)
   } finally {
-    loading.value = false;
+    loading.value = false
   }
-};
+}
 
 const loadHistoryConfig = async (id: number) => {
   try {
-    const config = await invoke("load_history_config", { id });
-    emit('load-config', config);
-    ElMessage.success('历史配置加载成功');
+    const config = await invoke("load_history_config", { id })
+    emit('load-config', config)
+    ElMessage.success('历史配置加载成功')
   } catch (error) {
-    ElMessage.error(`加载历史配置失败: ${error}`);
+    ElMessage.error(`加载历史配置失败: ${error}`)
   }
-};
+}
 
 const clearHistory = async () => {
   ElMessageBox.confirm('确认要清空所有历史记录吗？此操作不可恢复。', '警告', {
@@ -88,24 +90,24 @@ const clearHistory = async () => {
     type: 'warning'
   }).then(async () => {
     try {
-      await invoke("clear_history_config");
-      historyList.value = [];
-      ElMessage.success('历史记录已清空');
+      await invoke("clear_history_config")
+      historyList.value = []
+      ElMessage.success('历史记录已清空')
     } catch (error) {
-      ElMessage.error(`清空历史记录失败: ${error}`);
+      ElMessage.error(`清空历史记录失败: ${error}`)
     }
   }).catch(() => {
     // 用户取消操作
-  });
-};
+  })
+}
 
 const getProtocolTagType = (protocol: string): any => {
   const types: {[key: string]: string} = {
     'mqtt': 'success',
     'tcp': 'warning',
-  };
-  return types[protocol] || 'default';
-};
+  }
+  return types[protocol] || 'default'
+}
 </script>
 
 <style lang="scss" scoped>

@@ -27,9 +27,10 @@
             {{ clientInfo?.connected || 0 }}
           </div>
           <div class="metric-chart">
-            <el-progress :percentage="calculatePercentage('connected')" :stroke-width="8" :show-text="false"
-                         status="success"
-            />
+            <el-progress :percentage="calculatePercentage('connected')"
+                         :stroke-width="8"
+                         :show-text="false"
+                         status="success" />
           </div>
         </el-card>
       </el-col>
@@ -43,9 +44,10 @@
             {{ clientInfo?.failed || 0 }}
           </div>
           <div class="metric-chart">
-            <el-progress :percentage="calculatePercentage('failed')" :stroke-width="8" :show-text="false"
-                         status="exception"
-            />
+            <el-progress :percentage="calculatePercentage('failed')"
+                         :stroke-width="8"
+                         :show-text="false"
+                         status="exception" />
           </div>
         </el-card>
       </el-col>
@@ -59,42 +61,29 @@
             {{ clientInfo?.connecting || 0 }}
           </div>
           <div class="metric-chart">
-            <el-progress :percentage="calculatePercentage('connecting')" :stroke-width="8" :show-text="false"
-                         status="warning"
-            />
+            <el-progress :percentage="calculatePercentage('connecting')"
+                         :stroke-width="8"
+                         :show-text="false"
+                         status="warning" />
           </div>
         </el-card>
       </el-col>
     </el-row>
 
-    <el-row :gutter="0" class="chart-container">
-      <el-col :span="24">
-        <el-card class="chart-card">
-          <template #header>
-            <div class="chart-header">
-              <el-select v-model="timeRange" placeholder="时间范围" size="small">
-                <el-option label="最近1分钟" value="1m" />
-                <el-option label="最近5分钟" value="5m" />
-                <el-option label="最近15分钟" value="15m" />
-              </el-select>
-            </div>
-          </template>
-          <div ref="chartRef" class="chart" />
-        </el-card>
-      </el-col>
-    </el-row>
-
-    <el-row :gutter="0" style="gap: 20px">
+    <el-row :gutter="0" style="gap: 20px; flex: 1">
       <el-card class="clients-card">
         <template #header>
           <div class="card-header">
             <span>客户端连接状态</span>
           </div>
         </template>
-        <div ref="tableContainer" style="width: 100%; height: 300px;">
-          <el-table-v2 :columns="columns" :data="clientsTableData" :width="tableWidth || 400" :height="tableHeight"
-                       :row-height="40" fixed
-          />
+        <div ref="tableContainer" style="width: 100%; height: 100%;">
+          <el-table-v2 :columns="columns"
+                       :data="clientsTableData"
+                       :width="tableWidth || 500"
+                       :height="tableHeight"
+                       :row-height="40"
+                       fixed />
         </div>
       </el-card>
 
@@ -119,18 +108,13 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref, watch, onBeforeUnmount, PropType, h, inject } from 'vue';
-import { ArrowUp } from '@element-plus/icons-vue';
-import * as echarts from 'echarts/core';
-import { LineChart } from 'echarts/charts';
-import { GridComponent, TooltipComponent, TitleComponent, LegendComponent } from 'echarts/components';
-import { CanvasRenderer } from 'echarts/renderers';
-import { ElTableV2 } from 'element-plus';
-import type { TableV2Props } from 'element-plus';
-import { rs2JsEntity } from '@/types/mqttConfig';
-import { ElTag } from 'element-plus';
-
-echarts.use([GridComponent, LineChart, TooltipComponent, TitleComponent, LegendComponent, CanvasRenderer]);
+import { onMounted, ref, watch, PropType, h, inject } from 'vue'
+import { useResizeObserver, useWindowSize } from '@vueuse/core'
+import { ArrowUp } from '@element-plus/icons-vue'
+import { ElTableV2 } from 'element-plus'
+import type { TableV2Props } from 'element-plus'
+import { rs2JsEntity } from '@/types/mqttConfig'
+import { ElTag } from 'element-plus'
 
 const props = defineProps({
   counter: {
@@ -150,24 +134,20 @@ const props = defineProps({
     type: Array as PropType<rs2JsEntity[]>,
     default: () => []
   }
-});
+})
 
-const chartRef = ref<HTMLElement | null>(null);
-const timeRange = ref('5m');
-const messageChart = ref<echarts.ECharts | null>(null);
-const messageRateHistory = ref<number[]>([]);
-const lastCounter = ref(0);
-const lastTime = ref(Date.now());
-const ratePerSecond = ref(0);
+const lastCounter = ref(0)
+const lastTime = ref(Date.now())
+const ratePerSecond = ref(0)
 
-// 模拟的客户端数据
+const clientsTableData = inject<any>('clientConnectionInfo')
+const { height } = useWindowSize()
+const tableContainer = ref<HTMLElement | null>(null)
+const tableWidth = ref(0)
 
-const clientsTableData = inject<any>('clientConnectionInfo');
-
-// 表格容器引用和尺寸
-const tableContainer = ref<HTMLElement | null>(null);
-const tableHeight = ref(300);
-const tableWidth = ref(0);
+const tableHeight = computed(() => {
+  return height.value - 500 
+})
 
 // 定义列配置
 const columns = ref<TableV2Props['columns']>([
@@ -189,188 +169,71 @@ const columns = ref<TableV2Props['columns']>([
     title: '状态',
     width: 100,
     cellRenderer: ({ rowData }) => {
-      let type, text;
+      let type, text
       switch (rowData.connectionState) {
         case 'Connected':
-          type = 'success';
-          text = '已连接';
-          break;
+          type = 'success'
+          text = '已连接'
+          break
         case 'Connecting':
-          type = 'warning';
-          text = '连接中';
-          break;
+          type = 'warning'
+          text = '连接中'
+          break
         case 'Failed':
-          type = 'danger';
-          text = '连接失败';
-          break;
+          type = 'danger'
+          text = '连接失败'
+          break
         case 'Disconnected':
-          type = 'info';
-          text = '已断开';
-          break;
+          type = 'info'
+          text = '已断开'
+          break
         default:
-          type = 'info';
-          text = '未知';
+          type = 'info'
+          text = '未知'
       }
-      return h(ElTag, { type: type }, text);
+      return h(ElTag, { type: type }, text)
     }
   },
-]);
-
+])
 
 const calculatePercentage = (type: string): number => {
-  if (!props.clientInfo) return 0;
-  const total = props.clientInfo.connected + props.clientInfo.failed + props.clientInfo.connecting + props.clientInfo.disconnected;
-  if (total === 0) return 0;
-  return Math.round((props.clientInfo[type] / total) * 100);
-};
+  if (!props.clientInfo) return 0
+  const total = props.clientInfo.connected + props.clientInfo.failed + props.clientInfo.connecting + props.clientInfo.disconnected
+  if (total === 0) return 0
+  return Math.round((props.clientInfo[type] / total) * 100)
+}
 
 const calculateRate = () => {
-  return ratePerSecond.value.toFixed(1);
-};
-
-const initChart = () => {
-  if (chartRef.value) {
-    messageChart.value = echarts.init(chartRef.value);
-    updateChart();
-  }
-};
-
-const updateChart = () => {
-  if (!messageChart.value) return;
-
-  const now = new Date();
-  const xAxisData = [];
-  const times = messageRateHistory.value.length;
-
-  for (let i = times - 1; i >= 0; i--) {
-    const time = new Date(now.getTime() - i * 1000);
-    xAxisData.push(`${time.getHours()}:${time.getMinutes().toString().padStart(2, '0')}:${time.getSeconds().toString().padStart(2, '0')}`);
-  }
-
-  const option = {
-    title: {
-      text: '',
-      left: 'center'
-    },
-    tooltip: {
-      trigger: 'axis',
-      formatter: '{b}<br />发送速率: {c} 消息/秒'
-    },
-    xAxis: {
-      type: 'category',
-      data: xAxisData,
-      axisLabel: {
-        interval: Math.floor(messageRateHistory.value.length / 5)
-      }
-    },
-    yAxis: {
-      type: 'value',
-      name: '消息/秒',
-      min: 0
-    },
-    series: [
-      {
-        name: '发送速率',
-        type: 'line',
-        data: messageRateHistory.value,
-        areaStyle: {
-          color: {
-            type: 'linear',
-            x: 0,
-            y: 0,
-            x2: 0,
-            y2: 1,
-            colorStops: [
-              {
-                offset: 0,
-                color: 'rgba(64, 158, 255, 0.6)'
-              },
-              {
-                offset: 1,
-                color: 'rgba(64, 158, 255, 0.1)'
-              }
-            ]
-          }
-        },
-        lineStyle: {
-          width: 2,
-          color: '#409EFF'
-        },
-        symbol: 'circle',
-        symbolSize: 6
-      }
-    ],
-    grid: {
-      left: '3%',
-      right: '4%',
-      bottom: '3%',
-      top: '8%',
-      containLabel: true
-    }
-  };
-
-  messageChart.value.setOption(option);
-};
+  return ratePerSecond.value.toFixed(1)
+}
 
 // 监控计数器变化，计算消息速率
 watch(() => props.counter, (newVal) => {
-  const currentTime = Date.now();
-  const elapsedSeconds = (currentTime - lastTime.value) / 1000;
+  const currentTime = Date.now()
+  const elapsedSeconds = (currentTime - lastTime.value) / 1000
 
   if (elapsedSeconds > 0.5) {  // 至少间隔0.5秒更新一次速率
-    ratePerSecond.value = (newVal - lastCounter.value) / elapsedSeconds;
-    lastCounter.value = newVal;
-    lastTime.value = currentTime;
-
-    messageRateHistory.value.push(Math.round(ratePerSecond.value));
-    if (messageRateHistory.value.length > 60) { // 保持最多60个数据点
-      messageRateHistory.value.shift();
-    }
-
-    updateChart();
+    ratePerSecond.value = (newVal - lastCounter.value) / elapsedSeconds
+    lastCounter.value = newVal
+    lastTime.value = currentTime
   }
-});
-
-// 窗口尺寸变化时调整图表大小
-const handleResize = () => {
-  messageChart.value?.resize();
-};
+})
 
 onMounted(() => {
-  initChart();
-  lastTime.value = Date.now();
-  window.addEventListener('resize', handleResize);
-
-  // 初始化历史数据
-  for (let i = 0; i < 10; i++) {
-    messageRateHistory.value.push(0);
-  }
+  lastTime.value = Date.now()
 
   // 计算表格容器宽度
   if (tableContainer.value) {
-    tableWidth.value = tableContainer.value.clientWidth;
+    tableWidth.value = tableContainer.value.clientWidth
 
-    // 监听容器大小变化
-    const resizeObserver = new ResizeObserver(entries => {
-      for (const entry of entries) {
-        tableWidth.value = entry.contentRect.width;
+    useResizeObserver(tableContainer, (entries) => {
+      const entry = entries[0]
+      if (entry) {
+        tableWidth.value = entry.contentRect.width
       }
-    });
-
-    resizeObserver.observe(tableContainer.value);
-
-    // 清理观察器
-    onBeforeUnmount(() => {
-      resizeObserver.disconnect();
-    });
+    })
   }
-});
-
-
-onBeforeUnmount(() => {
-  window.removeEventListener('resize', handleResize);
-  messageChart.value?.dispose();
-});
+})
 </script>
 
 <style scoped lang="scss">
@@ -397,17 +260,30 @@ onBeforeUnmount(() => {
 
 .metric-card {
   padding: 10px;
+  height: 140px; // 固定高度确保一致性
+  display: flex;
+  flex-direction: column;
+
+  :deep(.el-card__body) {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+  }
 
   .metric-label {
     font-size: 14px;
     color: var(--el-text-color-secondary);
     margin-bottom: 8px;
+    flex-shrink: 0;
   }
 
   .metric-value {
     font-size: 32px;
     font-weight: 600;
     margin-bottom: 16px;
+    flex-shrink: 0;
+    line-height: 1.2;
 
     &.primary {
       color: var(--el-color-primary);
@@ -427,6 +303,10 @@ onBeforeUnmount(() => {
   }
 
   .metric-chart {
+    flex: 1;
+    display: flex;
+    align-items: flex-end;
+    
     .trend-indicator {
       display: flex;
       align-items: center;
@@ -443,6 +323,10 @@ onBeforeUnmount(() => {
       .el-icon {
         margin-right: 4px;
       }
+    }
+    
+    :deep(.el-progress) {
+      width: 100%;
     }
   }
 }

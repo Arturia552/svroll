@@ -7,8 +7,7 @@
       label-position="top"
       :inline="false"
       class="basic-form"
-      size="default"
-    >
+      size="default">
       <div class="form-section">
         <h3 class="section-title">
           协议设置
@@ -33,12 +32,14 @@
           prop="broker"
           :rules="[
             { required: true, message: '请输入broker地址', trigger: 'blur' },
-          ]"
-        >
+          ]">
           <el-input v-model="config.broker" />
         </el-form-item>
         
-        <el-form-item v-if="config.protocol === 'Mqtt'" class="topic" label="消息主题" prop="topicConfig.data">
+        <el-form-item v-if="config.protocol === 'Mqtt'"
+                      class="topic"
+                      label="消息主题"
+                      prop="topicConfig.data">
           <el-card class="topic-card">
             <template v-for="(key, value) in config.topicConfig.data" :key="value">
               <div v-if="config.topicConfig.data[value]" class="topic-row">
@@ -70,15 +71,24 @@
           </el-form-item>
           
           <el-form-item label="线程数" prop="threadSize">
-            <el-input-number v-model.number="config.threadSize" :min="1" :max="1000" controls-position="right" />
+            <el-input-number v-model.number="config.threadSize"
+                             :min="1"
+                             :max="1000"
+                             controls-position="right" />
           </el-form-item>
           
           <el-form-item label="每秒连接请求数" prop="maxConnectPerSecond">
-            <el-input-number v-model.number="config.maxConnectPerSecond" :min="1" :max="1000" controls-position="right" />
+            <el-input-number v-model.number="config.maxConnectPerSecond"
+                             :min="1"
+                             :max="1000"
+                             controls-position="right" />
           </el-form-item>
           
           <el-form-item label="数据发送间隔" prop="sendInterval">
-            <el-input-number v-model.number="config.sendInterval" :min="1" :max="60" controls-position="right" />
+            <el-input-number v-model.number="config.sendInterval"
+                             :min="1"
+                             :max="60"
+                             controls-position="right" />
           </el-form-item>
         </div>
       </div>
@@ -87,12 +97,12 @@
 </template>
 
 <script setup lang="ts" name="BasicConfig">
-import { ConnectConfig } from '@/types/mqttConfig';
-import { FormRules, type FormInstance } from 'element-plus';
-import { getNestedValue, isJsonValueNull } from '@/hooks/processJsonStruct';
+import { ConnectConfig } from '@/types/mqttConfig'
+import { FormRules, type FormInstance } from 'element-plus'
+import { getNestedValue, isJsonValueNull } from '@/hooks/processJsonStruct'
 
-const config = ref(inject<ConnectConfig>("config"));
-const basicFormRef = ref<FormInstance>();
+const config = ref(inject<ConnectConfig>("config"))
+const basicFormRef = ref<FormInstance>()
 
 // 验证主题配置
 const validateTopic = (rule: any, value: any, callback: any) => {
@@ -101,10 +111,10 @@ const validateTopic = (rule: any, value: any, callback: any) => {
     "keyIndex","extraKey","subscribe"
     ])
   ) {
-    callback(new Error("请完善主题"));
+    callback(new Error("请完善主题"))
   }
-  callback();
-};
+  callback()
+}
 
 
 const msgColumns = [
@@ -112,29 +122,29 @@ const msgColumns = [
   { label: "QoS", prop: "qos", },
   { label: "Key索引", prop: "keyIndex" },
   { label: "额外Key", prop: "extraKey" },
-];
+]
 
 
 const tableColumn = computed(() => {
-  return msgColumns.filter(column => column.prop !== "extraKey");
-});
+  return msgColumns.filter(column => column.prop !== "extraKey")
+})
 
 const rules = ref<FormRules>({
   broker: [{ required: true, message: "请输入服务端地址", trigger: "blur" }],
   "topicConfig.data": [{ validator: validateTopic, trigger: "blur" }],
-});
+})
 
 const validateForm = () => {
   return new Promise<boolean>((resolve) => {
     basicFormRef.value?.validate((valid) => {
-      resolve(valid);
-    });
-  });
-};
+      resolve(valid)
+    })
+  })
+}
 
 defineExpose({
   validateForm
-});
+})
 </script>
 
 <style scoped lang="scss">

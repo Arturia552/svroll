@@ -1,9 +1,8 @@
-import { ConfigEnv, UserConfig } from 'vite';
-import path from 'path';
-import createVitePlugins from './vite/plugins';
-import zh_CN from 'vscode-loc.git/i18n/vscode-language-pack-zh-hans/translations/main.i18n.json'
+import { ConfigEnv, UserConfig } from 'vite'
+import path from 'path'
+import createVitePlugins from './vite/plugins'
 
-export default ({ mode, command }: ConfigEnv): UserConfig => ({
+export default ({ command }: ConfigEnv): UserConfig => ({
   plugins: createVitePlugins(command === 'build'),
   resolve: {
     alias: {
@@ -40,7 +39,7 @@ export default ({ mode, command }: ConfigEnv): UserConfig => ({
           AtRule: {
             charset: (atRule: any) => {
               if (atRule.name === 'charset') {
-                atRule.remove();
+                atRule.remove()
               }
             },
           },
@@ -48,4 +47,4 @@ export default ({ mode, command }: ConfigEnv): UserConfig => ({
       ],
     },
   },
-});
+})

@@ -1,22 +1,22 @@
-import { createApp } from "vue";
+import { createApp } from "vue"
 
-import ElementPlus from "element-plus";
-import locale from "element-plus/dist/locale/zh-cn.mjs";
-import * as ElementPlusIconsVue from "@element-plus/icons-vue";
-import "./assets/styles/index.scss";
-import "./assets/styles/common.scss";
+import ElementPlus from "element-plus"
+import locale from "element-plus/dist/locale/zh-cn.mjs"
+import * as ElementPlusIconsVue from "@element-plus/icons-vue"
+import "./assets/styles/index.scss"
+import "./assets/styles/common.scss"
 
-import App from "./App.vue";
-import store from "./store";
-import router from "./router";
+import App from "./App.vue"
+import store from "./store"
+import router from "./router"
 
-const app = createApp(App);
-app.use(store);
-app.use(router);
+const app = createApp(App)
+app.use(store)
+app.use(router)
 app.use(ElementPlus, {
   locale: locale,
-});
+})
 for (const [key, component] of Object.entries(ElementPlusIconsVue)) {
-  app.component(key, component);
+  app.component(key, component)
 }
-app.mount("#app");
+app.mount("#app")

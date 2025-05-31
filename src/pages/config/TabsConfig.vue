@@ -8,7 +8,11 @@
               <Setting />
             </el-icon>
             <span>基础配置</span>
-            <el-tag v-if="formErrors.basic" type="danger" size="small" effect="dark" class="error-tag">
+            <el-tag v-if="formErrors.basic"
+                    type="danger"
+                    size="small"
+                    effect="dark"
+                    class="error-tag">
               !
             </el-tag>
           </div>
@@ -22,7 +26,11 @@
               <User />
             </el-icon>
             <span>客户端配置</span>
-            <el-tag v-if="formErrors.client" type="danger" size="small" effect="dark" class="error-tag">
+            <el-tag v-if="formErrors.client"
+                    type="danger"
+                    size="small"
+                    effect="dark"
+                    class="error-tag">
               !
             </el-tag>
           </div>
@@ -36,7 +44,11 @@
               <Document />
             </el-icon>
             <span>数据配置</span>
-            <el-tag v-if="formErrors.data" type="danger" size="small" effect="dark" class="error-tag">
+            <el-tag v-if="formErrors.data"
+                    type="danger"
+                    size="small"
+                    effect="dark"
+                    class="error-tag">
               !
             </el-tag>
           </div>
@@ -57,110 +69,110 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive } from 'vue';
-import DataModel from './DataModel.vue';
-import ClientConfig from './ClientConfig.vue';
-import BasicConfig from './BasicConfig.vue';
-import { ConnectConfig } from '@/types/mqttConfig';
-import { ElMessage } from 'element-plus';
+import { ref, reactive } from 'vue'
+import DataModel from './DataModel.vue'
+import ClientConfig from './ClientConfig.vue'
+import BasicConfig from './BasicConfig.vue'
+import { ConnectConfig } from '@/types/mqttConfig'
+import { ElMessage } from 'element-plus'
 
-const configForm = defineModel<ConnectConfig>('configForm');
+const configForm = defineModel<ConnectConfig>('configForm')
 // 添加对valid状态的双向绑定
-const valid = defineModel<boolean>('valid', { default: false });
+const valid = defineModel<boolean>('valid', { default: false })
 
 const emit = defineEmits<{
     (e: 'close'): void;
     (e: 'submit'): void;
-}>();
+}>()
 
-const activeName = ref<string>("basic");
-const basicConfigRef = ref();
-const clientConfigRef = ref();
-const dataModelRef = ref();
-const submitting = ref(false);
+const activeName = ref<string>("basic")
+const basicConfigRef = ref()
+const clientConfigRef = ref()
+const dataModelRef = ref()
+const submitting = ref(false)
 
 // 跟踪表单错误状态
 const formErrors = reactive({
     basic: false,
     client: false,
     data: false
-});
+})
 
 // 清除所有错误标记
 const clearErrors = () => {
-    formErrors.basic = false;
-    formErrors.client = false;
-    formErrors.data = false;
-};
+    formErrors.basic = false
+    formErrors.client = false
+    formErrors.data = false
+}
 
 // 检查客户端配置
 const validateClientConfig = (): boolean => {
     // 如果有客户端，则检查是否至少有一个客户端
     if (configForm.value.clients && configForm.value.clients.length === 0) {
-        formErrors.client = true;
-        ElMessage.warning('请添加至少一个客户端');
-        return false;
+        formErrors.client = true
+        ElMessage.warning('请添加至少一个客户端')
+        return false
     }
-    return true;
-};
+    return true
+}
 
 // 检查数据配置
 const validateDataConfig = (): boolean => {
     if(configForm.value.protocol !== 'Mqtt') {
-        return true;
+        return true
     }
 
     // 检查是否有字段结构
     if (!configForm.value.fieldStruct || configForm.value.fieldStruct.length === 0) {
-        formErrors.data = true;
-        ElMessage.warning('请添加至少一个数据字段');
-        return false;
+        formErrors.data = true
+        ElMessage.warning('请添加至少一个数据字段')
+        return false
     }
-    return true;
-};
+    return true
+}
 
 // 表单提交
 const onSubmit = async () => {
-    submitting.value = true;
-    clearErrors();
+    submitting.value = true
+    clearErrors()
 
     try {
         // 首先验证基础配置
-        const basicValid = await basicConfigRef.value?.validateForm();
+        const basicValid = await basicConfigRef.value?.validateForm()
 
         if (!basicValid) {
-            formErrors.basic = true;
-            activeName.value = 'basic';
-            return;
+            formErrors.basic = true
+            activeName.value = 'basic'
+            return
         }
 
         // 然后验证客户端配置
         if (!validateClientConfig()) {
-            activeName.value = 'client';
-            return;
+            activeName.value = 'client'
+            return
         }
 
         // 最后验证数据配置
         if (!validateDataConfig()) {
-            activeName.value = 'data';
-            return;
+            activeName.value = 'data'
+            return
         }
 
         // 所有验证通过，设置valid为true
         nextTick(() => {
-            valid.value = true;
-        });
+            valid.value = true
+        })
         // 提交表单
-        emit('submit');
-        emit('close');
+        emit('submit')
+        emit('close')
 
     } catch (error) {
-        console.error('Form validation error:', error);
-        ElMessage.error('表单验证出错，请检查各项配置');
+        console.error('Form validation error:', error)
+        ElMessage.error('表单验证出错，请检查各项配置')
     } finally {
-        submitting.value = false;
+        submitting.value = false
     }
-};
+}
 </script>
 
 <style scoped lang="scss">

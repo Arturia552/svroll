@@ -1,4 +1,4 @@
-import { createRouter, createWebHistory, RouteRecordRaw } from 'vue-router';
+import { createRouter, createWebHistory, RouteRecordRaw } from 'vue-router'
 
 const defaultRouterList: Array<RouteRecordRaw> = [
   {
@@ -6,7 +6,7 @@ const defaultRouterList: Array<RouteRecordRaw> = [
     name: 'Home',
     component: () => import('@/pages/home.vue'),
   },
-];
+]
 
 const router = createRouter({
   history: createWebHistory(),
@@ -16,8 +16,8 @@ const router = createRouter({
       el: '#app',
       top: 0,
       behavior: 'smooth',
-    };
+    }
   },
-});
+})
 
-export default router;
+export default router

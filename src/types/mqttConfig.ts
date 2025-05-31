@@ -31,39 +31,7 @@ export const connectConfigTypeDef: ConnectConfig = {
       },
     },
   },
-};
-
-export function convert2Type(obj: any, typeDef: any): void {
-  if (typeof obj !== typeof typeDef) {
-    return;
-  }
-  if (typeof obj === "object" && obj !== null) {
-    for (const key in typeDef) {
-      if (typeDef.hasOwnProperty(key)) {
-        if (typeof obj[key] !== typeof typeDef[key]) {
-          // 强制转换类型
-          if (typeof typeDef[key] === "number") {
-            if(obj[key] === null) {
-              obj[key] = undefined
-            }else {
-              obj[key] = Number(obj[key]);
-            }
-          } else if (typeof typeDef[key] === "string") {
-            obj[key] = String(obj[key]);
-          } else if (typeof typeDef[key] === "boolean") {
-            obj[key] = Boolean(obj[key]);
-          } else if (Array.isArray(typeDef[key])) {
-            obj[key] = Array.isArray(obj[key]) ? obj[key] : [];
-          } else if (typeof typeDef[key] === "object") {
-            obj[key] = typeof obj[key] === "object" ? obj[key] : {};
-          }
-        }
-        convert2Type(obj[key], typeDef[key]);
-      }
-    }
-  }
 }
-
 
 export interface TopicConfig {
   register?: topicWrap;

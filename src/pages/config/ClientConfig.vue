@@ -18,8 +18,7 @@
           confirm-button-text="生成" 
           cancel-button-text="取消"
           @cancel="onCancel"
-          @confirm="confirm"
-        >
+          @confirm="confirm">
           <template #reference>
             <el-button type="success" class="action-btn">
               <el-icon><Plus /></el-icon>
@@ -33,8 +32,7 @@
               :min="1"
               :max="10000"
               controls-position="right"
-              placeholder="输入数量"
-            />
+              placeholder="输入数量" />
             <div class="popconfirm-actions">
               <el-button size="small" @click="cancel">
                 取消
@@ -50,15 +48,14 @@
     
     <el-divider />
     
-    <div class="table-section">
+    <div ref="tableSectionRef" class="table-section">
       <div class="table-header">
         <el-input
           v-if="config.clients.length > 0"
           v-model="searchQuery"
           placeholder="搜索客户端"
           suffix-icon="Search"
-          class="search-input"
-        />
+          class="search-input" />
       </div>
       
       <el-table-v2
@@ -67,35 +64,32 @@
         :width="tableWidth"
         :height="ClientTableHeight"
         :row-height="40"
-        fixed
-      />
+        fixed />
     </div>
   </div>
 </template>
 <script setup lang="ts">
-import { ClientInfo, ConnectConfig } from "@/types/mqttConfig";
-import { open } from "@tauri-apps/plugin-dialog";
-import { invoke } from "@tauri-apps/api/core";
-import { ElMessage } from "element-plus";
-import { h, ref, computed, inject, onMounted } from 'vue';
-import { Delete } from '@element-plus/icons-vue';
-import { useWindowSize } from "@vueuse/core";
+import { ClientInfo, ConnectConfig } from "@/types/mqttConfig"
+import { open } from "@tauri-apps/plugin-dialog"
+import { invoke } from "@tauri-apps/api/core"
+import { ElMessage } from "element-plus"
+import { h, ref, computed, inject } from 'vue'
+import { Delete } from '@element-plus/icons-vue'
+import { useWindowSize, useElementSize } from "@vueuse/core"
 
-const generateSize = ref(100);
+const generateSize = ref(100)
 const config = ref(inject<ConnectConfig>("config"))
-const searchQuery = ref('');
-const tableWidth = ref(0);
-const {height} =  useWindowSize();
-// 根据窗口大小计算表格宽度
-onMounted(() => {
-  tableWidth.value = document.querySelector('.table-section')?.clientWidth || 1000;
-  window.addEventListener('resize', () => {
-    tableWidth.value = document.querySelector('.table-section')?.clientWidth || 1000;
-  });
-});
+const searchQuery = ref('')
+const tableSectionRef = ref<HTMLElement>()
+const { width: tableSectionWidth } = useElementSize(tableSectionRef)
+const { height } = useWindowSize()
+
+const tableWidth = computed(() => {
+  return tableSectionWidth.value || 1000
+})
 
 const ClientTableHeight = computed(() => {
-  return height.value - 400;
+  return height.value - 400
 })
 
 // 定义表格列
@@ -146,26 +140,26 @@ const columns = computed(() => [
         }, [
           h(Delete)
         ])
-      ]);
+      ])
     }
   }
-]);
+])
 
 const filteredClients = computed(() => {
-  if (!searchQuery.value) return config.value.clients;
+  if (!searchQuery.value) return config.value.clients
   return config.value.clients.filter(client => 
     client.clientId.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
     client.username.toLowerCase().includes(searchQuery.value.toLowerCase())
-  );
-});
+  )
+})
 
 const onCancel = () => {
   // Do nothing on cancel
-};
+}
 
 const confirm = () => {
-  generateRandom(generateSize.value);
-  ElMessage.success(`成功生成 ${generateSize.value} 个客户端`);
+  generateRandom(generateSize.value)
+  ElMessage.success(`成功生成 ${generateSize.value} 个客户端`)
 }
 
 const resolveClientFile = async () => {
@@ -176,33 +170,33 @@ const resolveClientFile = async () => {
         { name: "文本文件", extensions: ["txt", "csv"] },
         { name: "所有文件", extensions: ["*"] }
       ],
-    })) as string;
+    })) as string
 
     if (filePath) {
-      const clients: ClientInfo[] = await invoke("process_client_file", { filePath });
-      config.value.clients = clients;
-      ElMessage.success(`成功导入 ${clients.length} 个客户端`);
+      const clients: ClientInfo[] = await invoke("process_client_file", { filePath })
+      config.value.clients = clients
+      ElMessage.success(`成功导入 ${clients.length} 个客户端`)
     }
   } catch (error) {
-    ElMessage.error(`导入失败: ${error}`);
+    ElMessage.error(`导入失败: ${error}`)
   }
 }
 
 const generateRandom = (size: number) => {
-  const clients: ClientInfo[] = [];
+  const clients: ClientInfo[] = []
   for (let i = 0; i < size; i++) {
     clients.push({
       clientId: `client_${i}`,
       username: `user_${i}`,
       password: `password_${i}`,
       identifyKey: `key_${i}`,
-    });
+    })
   }
-  config.value.clients = clients;
+  config.value.clients = clients
 }
 
 const removeClient = (index: number) => {
-  config.value.clients.splice(index, 1);
+  config.value.clients.splice(index, 1)
 }
 </script>
 <style scoped lang="scss">

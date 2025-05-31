@@ -4,13 +4,12 @@
     class="theme-switch"
     inline-prompt
     :active-icon="Moon"
-    :inactive-icon="Sunny"
-  />
+    :inactive-icon="Sunny" />
 </template>
 
 <script setup lang="ts">
-import { useDark } from '@vueuse/core';
-import { Moon, Sunny } from '@element-plus/icons-vue';
+import { useDark } from '@vueuse/core'
+import { Moon, Sunny } from '@element-plus/icons-vue'
 
 const isDark = useDark({
   selector: 'html',
@@ -18,7 +17,7 @@ const isDark = useDark({
   valueDark: 'dark',
   valueLight: 'light-theme',
   storageKey: 'theme-preference',
-});
+})
 
 </script>
 

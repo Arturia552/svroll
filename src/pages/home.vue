@@ -4,7 +4,10 @@
     <el-card class="main-card">
       <div class="header">
         <div class="func-button-group">
-          <el-button type="success" size="default" :disabled="isRunning" @click="showNewConfig">
+          <el-button type="success"
+                     size="default"
+                     :disabled="isRunning"
+                     @click="showNewConfig">
             <template #icon>
               <el-icon :size="16">
                 <Edit />
@@ -59,23 +62,26 @@
               </el-radio-group>
             </div>
           </div>
-          <code-editor ref="codeEditorRef" v-model:jsonEdit="config.sendData" class="json-edit-container"
-                       :language="editorMode"
-          />
+          <code-editor ref="codeEditorRef"
+                       v-model:jsonEdit="config.sendData"
+                       class="json-edit-container"
+                       :language="editorMode" />
         </div>
-        <dashboard-panel 
-          v-if="showDashboard"
-          :counter="counter" 
-          :terminal-log="terminalLog" 
-          :client-info="clientInfo" 
-          class="dashboard-container" 
-          @return-to-editor="returnToEditor"
-        />
+        <dashboard-panel v-if="showDashboard"
+                         :counter="counter"
+                         :terminal-log="terminalLog"
+                         :client-info="clientInfo"
+                         class="dashboard-container"
+                         @return-to-editor="returnToEditor" />
       </div>
 
       <div class="control-section">
         <div class="controls">
-          <el-button v-if="!isRunning || !showDashboard" type="primary" size="large" :disabled="!valid || isRunning" @click="start">
+          <el-button v-if="!isRunning || !showDashboard"
+                     type="primary"
+                     size="large"
+                     :disabled="!valid || isRunning"
+                     @click="start">
             <template #icon>
               <el-icon :size="20">
                 <VideoPlay />
@@ -83,7 +89,11 @@
             </template>
             开始
           </el-button>
-          <el-button v-if="isRunning && showDashboard" type="danger" size="large" :loading="stopping" @click="stop">
+          <el-button v-if="isRunning && showDashboard"
+                     type="danger"
+                     size="large"
+                     :loading="stopping"
+                     @click="stop">
             <template #icon>
               <el-icon :size="20">
                 <VideoPause />
@@ -91,7 +101,11 @@
             </template>
             停止
           </el-button>
-          <el-button v-if="showDashboard" type="warning" size="large" :disabled="isRunning" @click="returnToEditor">
+          <el-button v-if="showDashboard"
+                     type="warning"
+                     size="large"
+                     :disabled="isRunning"
+                     @click="returnToEditor">
             <el-icon>
               <back />
             </el-icon>返回编辑器
@@ -100,237 +114,178 @@
       </div>
     </el-card>
   </div>
-  <el-drawer v-model="configDrawerVisible" class="basic-drawer" direction="rtl" size="100%" :destroy-on-close="false"
-             :wrapper-closable="true" :show-close="false" :close-on-click-modal="false"
-  >
-    <tabs-config v-if="configDrawerVisible" v-model:config-form="config" v-model:valid="valid"
-                 @close="closeConfigDrawer" @submit="handleConfigSubmit"
-    />
+  <el-drawer v-model="configDrawerVisible"
+             class="basic-drawer"
+             direction="rtl"
+             size="100%"
+             :destroy-on-close="false"
+             :wrapper-closable="true"
+             :show-close="false"
+             :with-header="false"
+             :close-on-click-modal="false">
+    <tabs-config v-if="configDrawerVisible"
+                 v-model:config-form="config"
+                 v-model:valid="valid"
+                 @close="closeConfigDrawer"
+                 @submit="handleConfigSubmit" />
   </el-drawer>
-  
-  <el-drawer v-model="historyDrawerVisible" title="历史配置" direction="rtl" size="400px" :with-header="false" destroy-on-close>
+
+  <el-drawer v-model="historyDrawerVisible"
+             title="历史配置"
+             direction="rtl"
+             size="400px"
+             :with-header="false"
+             destroy-on-close>
     <history-component @load-config="handleHistoryConfigLoad" />
   </el-drawer>
 </template>
 <script setup lang="ts" name="Home">
-import { invoke } from "@tauri-apps/api/core";
-import CodeEditor from "@/components/CodeEditor/index.vue";
-import TabsConfig from "@/pages/config/TabsConfig.vue";
-import DashboardPanel from "@/components/Dashboard/DashboardPanel.vue";
-import HistoryComponent from "@/components/History/index.vue";
-import { convert2Type, ConnectConfig, rs2JsEntity, ClientInfo, ConnectionState } from "@/types/mqttConfig";
-import { listen } from "@tauri-apps/api/event";
-import { open, save } from "@tauri-apps/plugin-dialog";
-import { writeTextFile } from "@tauri-apps/plugin-fs";
-import { Clock, Back, Delete } from '@element-plus/icons-vue';
+import CodeEditor from "@/components/CodeEditor/index.vue"
+import TabsConfig from "@/pages/config/TabsConfig.vue"
+import DashboardPanel from "@/components/Dashboard/DashboardPanel.vue"
+import HistoryComponent from "@/components/History/index.vue"
+import { ConnectConfig, rs2JsEntity, ClientInfo } from "@/types/mqttConfig"
+import { Clock, Back, Delete } from '@element-plus/icons-vue'
 
-const valid = ref<boolean>(false);
-const isRunning = ref<boolean>(false);
-const clientInfo = ref<any>({
+import { TauriService } from "@/services/tauriService"
+import { EventManager, type EventCallbacks } from "@/services/eventManager"
+import { TimerManager, type ClientInfoSummary } from "@/services/timerManager"
+import { ConfigManager } from "@/services/configManager"
+
+// 响应式状态
+const valid = ref<boolean>(false)
+const isRunning = ref<boolean>(false)
+const clientInfo = ref<ClientInfoSummary>({
   connected: 0,
   disconnected: 0,
   failed: 0,
   connecting: 0
-});
+})
 
-const terminalLog = ref<rs2JsEntity[]>([]); 
-const clientConnectionInfo = ref<any>([]);
-const editorMode = ref<string>("json"); // 编辑器模式切换状态
-const codeEditorRef = ref<InstanceType<typeof CodeEditor> | null>(null);
-const stopping = ref<boolean>(false);
-const showDashboard = ref<boolean>(false);
-const config = ref<ConnectConfig>({
-  sendData: "",
-  protocol: "Mqtt",
-  clients: [],
-  threadSize: 100,
-  enableRandom: false,
-  broker: "",
-  maxConnectPerSecond: 100,
-  sendInterval: 1,
-  fieldStruct: [],
-  topicConfig: {
-    data: {
-      publish: {
-        topic: null,
-        qos: null,
-        keyIndex: null,
-      },
-    },
-    register: {
-      publish: {
-        topic: null,
-        qos: null,
-        keyIndex: null,
-        extraKey: null
-      },
-      subscribe: {
-        topic: null,
-        qos: null,
-        keyIndex: null,
-        extraKey: null
-      },
-    }
-  },
-});
+const terminalLog = ref<rs2JsEntity[]>([])
+const clientConnectionInfo = ref<ClientInfo[]>([])
+const editorMode = ref<'json' | 'hex'>("json")
+const codeEditorRef = ref<InstanceType<typeof CodeEditor> | null>(null)
+const stopping = ref<boolean>(false)
+const showDashboard = ref<boolean>(false)
+const config = ref<ConnectConfig>(ConfigManager.createDefaultConfig())
 
-provide("config", config);
+// 抽屉状态
+const configDrawerVisible = ref<boolean>(false)
+const historyDrawerVisible = ref<boolean>(false)
+const counter = ref<number>(0)
+
+// 服务实例
+const eventManager = new EventManager()
+const timerManager = new TimerManager()
+
+// 依赖注入
+provide("config", config)
 provide("clientConnectionInfo", clientConnectionInfo)
 
-const connectConfigTypeDef: ConnectConfig = {
-  sendData: "",
-  protocol: "",
-  clients: [],
-  threadSize: 0,
-  enableRandom: false,
-  broker: "",
-  maxConnectPerSecond: 0,
-  sendInterval: 0,
-  fieldStruct: [],
-  topicConfig: {
-    data: {
-      publish: {
-        topic: "",
-        qos: 0,
-        keyIndex: 0,
-      },
-    },
-    register: {
-      publish: {
-        topic: "",
-        qos: 0,
-        keyIndex: 0,
-        extraKey: ""
-      },
-      subscribe: {
-        topic: "",
-        qos: 0,
-        keyIndex: 0,
-        extraKey: ""
-      },
-    }
-  },
-};
-const configDrawerVisible = ref<boolean>(false);
-const historyDrawerVisible = ref<boolean>(false);
-const counter = ref<number>(0);
-
 const showNewConfig = () => {
-  configDrawerVisible.value = true;
-};
+  configDrawerVisible.value = true
+}
 
 const showHistory = () => {
-  historyDrawerVisible.value = true;
-};
+  historyDrawerVisible.value = true
+}
 
 const handleHistoryConfigLoad = (historyConfig: ConnectConfig) => {
-  config.value = historyConfig;
+  config.value = historyConfig
   console.log(config.value)
-  convertType(config.value, connectConfigTypeDef);
-  
-  if (config.value.sendData && /^[0-9A-Fa-f\s]+$/.test(config.value.sendData)) {
-    editorMode.value = "hex";
-  } else {
-    editorMode.value = "json";
-  }
-  
-  valid.value = true;
-  historyDrawerVisible.value = false;
-};
+  ConfigManager.validateAndConvertConfig(config.value)
+
+  editorMode.value = ConfigManager.detectEditorMode(config.value)
+
+  valid.value = true
+  historyDrawerVisible.value = false
+}
 
 const exportConfig = async () => {
-  const filePath = await save({
-    filters: [{ name: "JSON 文件", extensions: ["json"] }],
-    title: "导出配置",
-  });
-  convert2Type(config.value, connectConfigTypeDef);
-  if (!filePath || filePath?.trim() === "") return;
-  const content = JSON.stringify(config.value);
   try {
-    await writeTextFile(filePath, content);
-    ElMessage.success("导出成功");
+    ConfigManager.validateAndConvertConfig(config.value)
+    await TauriService.exportConfig(config.value)
+    ElMessage.success("导出成功")
   } catch (e) {
-    ElMessage.error(e);
+    ElMessage.error(String(e))
   }
-};
+}
 
 const loadConfig = async () => {
-  const filePath = await open({
-    filters: [{ name: "JSON 文件", extensions: ["json"] }],
-    title: "导入配置",
-  });
-  if (!filePath || filePath === "") return;
   try {
-    config.value = await invoke<ConnectConfig>("load_config", { filePath });
-    convertType(config.value, connectConfigTypeDef);
+    const filePath = await TauriService.selectConfigFile()
+    if (!filePath || filePath === "") return
 
-    if (config.value.sendData && /^[0-9A-Fa-f\s]+$/.test(config.value.sendData)) {
-      editorMode.value = "hex";
-    } else {
-      editorMode.value = "json";
-    }
-    valid.value = true;
-    ElMessage.success("导入成功");
+    config.value = await TauriService.loadConfig(filePath)
+    ConfigManager.validateAndConvertConfig(config.value)
+
+    editorMode.value = ConfigManager.detectEditorMode(config.value)
+    valid.value = true
+    ElMessage.success("导入成功")
   } catch (e) {
-    ElMessage.error(String(e));
+    ElMessage.error(String(e))
   }
-};
+}
 
 const start = async () => {
   try {
-    terminalLog.value = [];
-    counter.value = 0;
-    convertType(config.value, connectConfigTypeDef);
+    terminalLog.value = []
+    counter.value = 0
+    ConfigManager.prepareConfigForRuntime(config.value, editorMode.value)
 
-    if (editorMode.value === "hex") {
-      config.value.sendData = config.value.sendData.replace(/\s+/g, '');
-    }
-    isRunning.value = true;
-    showDashboard.value = true;
+    isRunning.value = true
+    showDashboard.value = true
+
+    // 开始监听事件
+    startEventListening()
+
+    // 开始定时获取客户端信息
     startClientInfoTimer()
-    const msg = await invoke("start_task", { param: config.value as ConnectConfig });
-    ElMessage.success(msg);
+
+    const msg = await TauriService.startTask(config.value)
+    ElMessage.success(msg)
   } catch (e) {
-    ElMessage.error(e);
-    isRunning.value = false;
+    ElMessage.error(String(e))
+    isRunning.value = false
   }
-};
+}
 
 const stop = async () => {
-  stopping.value = true;
+  stopping.value = true
   try {
-    const msg = await invoke("stop_task", {protocol: config.value.protocol});
-    ElMessage.success(msg);
+    const msg = await TauriService.stopTask(config.value.protocol)
+    ElMessage.success(msg)
   } catch (e) {
-    ElMessage.error(String(e));
+    ElMessage.error(String(e))
   } finally {
-    isRunning.value = false;
-    stopping.value = false;
-    stopClientInfoTimer();
+    isRunning.value = false
+    stopping.value = false
+    stopAllServices()
   }
-};
+}
 
 // 新增返回编辑器视图的方法
 const returnToEditor = () => {
-  showDashboard.value = false;
-};
+  showDashboard.value = false
+}
 
 const closeConfigDrawer = () => {
-  configDrawerVisible.value = false;
-};
+  configDrawerVisible.value = false
+}
 
 const handleConfigSubmit = () => {
   nextTick(() => {
-    console.log("配置已提交，表单验证状态:", valid.value);
+    console.log("配置已提交，表单验证状态:", valid.value)
   })
-};
+}
 
 // 格式化Hex文本
 const formatHexText = () => {
   if (codeEditorRef.value && editorMode.value === 'hex') {
-    codeEditorRef.value.formatHex();
+    codeEditorRef.value.formatHex()
   }
-};
+}
 
 const resetConfig = () => {
   ElMessageBox.confirm('确定要清空当前配置吗？', '提示', {
@@ -338,145 +293,66 @@ const resetConfig = () => {
     cancelButtonText: '取消',
     type: 'warning',
   }).then(() => {
-    config.value = {
-      sendData: "",
-      protocol: "Mqtt",
-      clients: [],
-      threadSize: 100,
-      enableRandom: false,
-      broker: "",
-      maxConnectPerSecond: 100,
-      sendInterval: 1,
-      fieldStruct: [],
-      topicConfig: {
-        data: {
-          publish: {
-            topic: null,
-            qos: null,
-            keyIndex: null,
-          },
-        },
-        register: {
-          publish: {
-            topic: null,
-            qos: null,
-            keyIndex: null,
-            extraKey: null
-          },
-          subscribe: {
-            topic: null,
-            qos: null,
-            keyIndex: null,
-            extraKey: null
-          },
-        }
-      },
-    };
-    valid.value = false;
-    editorMode.value = "json";
-    ElMessage.success('配置已清空');
+    config.value = ConfigManager.createDefaultConfig()
+    valid.value = false
+    editorMode.value = "json"
+    ElMessage.success('配置已清空')
   }).catch(() => {
     // 用户取消操作
-  });
-};
-
-function convertType(obj: any, typeDef: any): void {
-  if (typeof obj !== typeof typeDef) {
-    return;
-  }
-
-  if (typeof obj === "object" && obj !== null) {
-    for (const key in typeDef) {
-      if (typeDef.hasOwnProperty(key)) {
-        if (typeof obj[key] !== typeof typeDef[key]) {
-          // 强制转换类型
-          if (typeof typeDef[key] === "number") {
-            obj[key] = Number(obj[key]);
-          } else if (typeof typeDef[key] === "string") {
-            obj[key] = String(obj[key]);
-          } else if (typeof typeDef[key] === "boolean") {
-            obj[key] = Boolean(obj[key]);
-          } else if (Array.isArray(typeDef[key])) {
-            obj[key] = Array.isArray(obj[key]) ? obj[key] : [];
-          } else if (typeof typeDef[key] === "object") {
-            obj[key] = typeof obj[key] === "object" ? obj[key] : {};
-          }
-        }
-        convertType(obj[key], typeDef[key]);
-      }
-    }
-  }
+  })
 }
 
-const receive = () => {
-  listen("rs2js", async (event) => {
-    const entity: rs2JsEntity = JSON.parse(event.payload as string);
-    if (entity.msgType === "counter") {
-      counter.value = parseInt(entity.msg);
-    } else if (entity.msgType === "clientInfo") {
-      try {
-        clientInfo.value = JSON.parse(entity.msg);
-      } catch (e) {
-        console.error("解析客户端信息失败:", e);
+// 事件监听相关函数
+const startEventListening = () => {
+  const callbacks: EventCallbacks = {
+    onCounter: (count: number) => {
+      counter.value = count
+      if (!isRunning.value) {
+        isRunning.value = true
+        stopping.value = false
+        showDashboard.value = true
+        valid.value = true
       }
-    }else if (entity.msgType === "terminal") {
-      terminalLog.value.push(entity);
+    },
+    onClientInfo: (info: any) => {
+      clientInfo.value = info
+    },
+    onTerminal: (entity: rs2JsEntity) => {
+      terminalLog.value.push(entity)
       if (terminalLog.value.length > 100) {
-        terminalLog.value.shift(); 
+        terminalLog.value.shift()
       }
     }
-  });
-};
-
-let clientInfoTimerId: number | null = null;
-
-// 抽离获取客户端信息的函数
-const getClientInfo = async () => {
-  try {
-    const clients: ClientInfo[] = await invoke("get_clients",{ protocol: config.value.protocol });
-    clientConnectionInfo.value = clients;
-    clientInfo.value = {
-      connected: 0,
-      disconnected: 0,
-      failed: 0,
-      connecting: 0
-    };
-    
-    clients.forEach((client: ClientInfo) => {
-      if (client.connectionState === ConnectionState.Connected) {
-        clientInfo.value.connected += 1;
-      } else if (client.connectionState === ConnectionState.Failed) {
-        clientInfo.value.Failed += 1;
-      } else if (client.connectionState === ConnectionState.Connecting) {
-        clientInfo.value.connecting += 1;
-      }
-    });
-  } catch (error) {
-    console.error("获取客户端信息失败:", error);
   }
-};
 
-// 启动客户端信息定时查询
+  eventManager.startListening(callbacks)
+}
+
+// 定时器相关函数
 const startClientInfoTimer = () => {
-  stopClientInfoTimer(); // 确保先停止已有的定时器
-  clientInfoTimerId = window.setInterval(getClientInfo, 500);
-};
+  timerManager.startClientInfoTimer(
+    config.value.protocol,
+    (summary: ClientInfoSummary, clients: ClientInfo[]) => {
+      clientInfo.value = summary
+      clientConnectionInfo.value = clients
+    }
+  )
+}
 
-// 停止客户端信息定时查询
-const stopClientInfoTimer = () => {
-  if (clientInfoTimerId !== null) {
-    clearInterval(clientInfoTimerId);
-    clientInfoTimerId = null;
-  }
-};
+const stopAllServices = () => {
+  timerManager.stop()
+  eventManager.stopListening()
+}
 
 onMounted(() => {
-  receive();
-});
+  // 组件挂载时开始监听事件
+  startEventListening()
+})
 
 onUnmounted(() => {
-  stopClientInfoTimer();
-});
+  // 组件卸载时清理资源
+  stopAllServices()
+})
 
 </script>
 <style lang="scss" scoped>

@@ -19,17 +19,26 @@
     "ElNotification": "readonly"
   },
   "parser": "vue-eslint-parser",
-  "plugins": ["vue", "@typescript-eslint"],
+  "plugins": [
+    "vue",
+    "@typescript-eslint"
+  ],
   "parserOptions": {
     "parser": "@typescript-eslint/parser",
     "sourceType": "module",
     "allowImportExportEverywhere": true,
+    "ecmaVersion": "latest",
     "ecmaFeatures": {
       "jsx": true
     }
   },
   "settings": {
-    "import/extensions": [".js", ".jsx", ".ts", ".tsx"]
+    "import/extensions": [
+      ".js",
+      ".jsx",
+      ".ts",
+      ".tsx"
+    ]
   },
   "rules": {
     "no-console": "off",
@@ -39,50 +48,122 @@
     "no-param-reassign": "off",
     "no-shadow": "off",
     "guard-for-in": "off",
-
+    "semi": [
+      "error",
+      "never"
+    ],
     "import/extensions": "off",
     "import/no-unresolved": "off",
     "import/no-extraneous-dependencies": "off",
     "import/prefer-default-export": "off",
-    "import/first": "off", // https://github.com/vuejs/vue-eslint-parser/issues/58
+    "import/first": "off",
     "@typescript-eslint/no-explicit-any": "off",
     "@typescript-eslint/explicit-module-boundary-types": "off",
     "vue/first-attribute-linebreak": 0,
-
     "@typescript-eslint/no-unused-vars": [
       "error",
       {
         "argsIgnorePattern": "^_",
-        "varsIgnorePattern": "^_"
+        "varsIgnorePattern": "^_",
+        "caughtErrorsIgnorePattern": "^_",
+        "destructuredArrayIgnorePattern": "^_",
+        "ignoreRestSiblings": true
+      }
+    ],
+    "no-unused-vars": "off",
+    "@typescript-eslint/no-unused-expressions": [
+      "error",
+      {
+        "allowShortCircuit": true,
+        "allowTernary": true,
+        "allowTaggedTemplates": true
+      }
+    ],
+    "no-unused-expressions": "off",
+    "vue/no-unused-vars": "error",
+    "vue/no-unused-components": "error",
+    "vue/no-unused-properties": [
+      "error",
+      {
+        "groups": [
+          "props",
+          "data",
+          "computed",
+          "methods",
+          "setup"
+        ]
       }
     ],
     "vue/max-attributes-per-line": "off",
-    "no-unused-vars": [
-      "error",
-      {
-        "argsIgnorePattern": "^_",
-        "varsIgnorePattern": "^_"
-      }
-    ],
     "no-use-before-define": "off",
     "@typescript-eslint/no-use-before-define": "off",
     "@typescript-eslint/ban-ts-comment": "off",
     "@typescript-eslint/ban-types": "off",
-    "class-methods-use-this": "off" // 因为AxiosCancel必须实例化而能静态化所以加的规则，如果有办法解决可以取消
+    "class-methods-use-this": "off"
   },
   "overrides": [
     {
-      "files": ["*.vue"],
+      "files": [
+        "*.vue"
+      ],
       "rules": {
-        "vue/component-name-in-template-casing": [2, "kebab-case"],
+        "vue/component-name-in-template-casing": [
+          2,
+          "kebab-case"
+        ],
         "vue/require-default-prop": 0,
         "vue/multi-word-component-names": 0,
         "vue/no-reserved-props": 0,
-        "vue/no-v-html": 0
+        "vue/no-v-html": 0,
+        "semi": [
+          "error",
+          "never"
+        ],
+        // Vue 模板格式化规则
+        "vue/html-closing-bracket-newline": [
+          "error",
+          {
+            "singleline": "never",
+            "multiline": "never"
+          }
+        ],
+        "vue/html-closing-bracket-spacing": [
+          "error",
+          {
+            "startTag": "never",
+            "endTag": "never",
+            "selfClosingTag": "always"
+          }
+        ],
+        "vue/max-attributes-per-line": [
+          "error",
+          {
+            "singleline": {
+              "max": 3
+            },
+            "multiline": {
+              "max": 1
+            }
+          }
+        ],
+        "vue/no-unused-refs": "error",
+        "@typescript-eslint/no-unused-vars": [
+          "error",
+          {
+            "argsIgnorePattern": "^_",
+            "varsIgnorePattern": "^_",
+            "caughtErrorsIgnorePattern": "^_",
+            "destructuredArrayIgnorePattern": "^_",
+            "ignoreRestSiblings": true
+          }
+        ]
       }
     },
     {
-      "files": ["*.ts", "*.tsx"], // https://github.com/typescript-eslint eslint-recommended
+      "files": [
+        "*.ts",
+        "*.tsx"
+      ], // https://github.com/typescript-eslint eslint-recommended
       "rules": {
         "constructor-super": "off", // ts(2335) & ts(2377)
         "getter-return": "off", // ts(2378)
@@ -102,9 +183,23 @@
         "no-unsafe-negation": "off", // ts(2365) & ts(2360) & ts(2358)
         "no-var": "error", // ts transpiles let/const to var, so no need for vars any more
         "prefer-const": "error", // ts provides better types with const
-        "prefer-rest-params": "error", // ts provides better types with rest args over arguments
-        "prefer-spread": "error", // ts transpiles spread to apply, so no need for manual apply
-        "valid-typeof": "off" // ts(2367)
+        "prefer-rest-params": "error", // ts provides better types with rest args over arguments        "prefer-spread": "error", // ts transpiles spread to apply, so no need for manual apply
+        "valid-typeof": "off", // ts(2367)
+        // TypeScript 文件中的分号规则
+        "semi": [
+          "error",
+          "never"
+        ],
+        "@typescript-eslint/no-unused-vars": [
+          "error",
+          {
+            "argsIgnorePattern": "^_",
+            "varsIgnorePattern": "^_",
+            "caughtErrorsIgnorePattern": "^_",
+            "destructuredArrayIgnorePattern": "^_",
+            "ignoreRestSiblings": true
+          }
+        ]
       }
     }
   ]

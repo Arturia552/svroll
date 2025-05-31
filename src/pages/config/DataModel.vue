@@ -32,10 +32,14 @@
     <el-divider />
 
     <div class="table-container">
-      <el-table :data="config.fieldStruct" style="width: 100%" :height="ModelTableHeight"
-                :tree-props="{ children: 'children' }" row-key="id"
-                border stripe highlight-current-row
-      >
+      <el-table :data="config.fieldStruct"
+                style="width: 100%"
+                :height="ModelTableHeight"
+                :tree-props="{ children: 'children' }"
+                row-key="id"
+                border
+                stripe
+                highlight-current-row>
         <el-table-column prop="fieldName" label="键值" min-width="20%" />
 
         <el-table-column prop="fieldType" label="数据类型" min-width="20%">
@@ -65,10 +69,10 @@
         <el-table-column prop="possibleValues" label="有效值" min-width="20%">
           <template #default="scope">
             <div class="cell-content">
-              <el-tag v-for="(item, index) in scope.row.possibleValues" :key="index" 
-                      class="possible-value-tag"
-              >
-                {{ item.value }}({{ item.probability }}%)
+              <el-tag v-for="(item, index) in scope.row.possibleValues"
+                      :key="index" 
+                      class="possible-value-tag">
+                <span> {{ item.value }}</span><span v-if="scope.row.fieldType === FieldTypeEnum.Enum"> ({{ item.probability }}%)</span>
               </el-tag>
             </div>
           </template>
@@ -96,21 +100,21 @@
       </el-table>
     </div>
 
-    <div class="tips">
-      <el-alert type="info" :closable="false">
-        <div class="tips-content">
-          <p><strong>提示：</strong> 使用添加字段按钮来修改数据结构。</p>
-        </div>
-      </el-alert>
-    </div>
-
-    <el-dialog v-model="addFieldDialogVisible" title="添加字段" width="500px" :close-on-click-modal="false"
-               :append-to-body="true"
-    >
-      <el-form ref="fieldFormRef" :model="newField" label-width="100px" :rules="fieldRules">
+    <el-dialog v-model="addFieldDialogVisible"
+               title="添加字段"
+               width="500px"
+               :close-on-click-modal="false"
+               :append-to-body="true">
+      <el-form ref="fieldFormRef"
+               :model="newField"
+               label-width="100px"
+               :rules="fieldRules">
         <el-form-item label="添加到" prop="parentField">
           <el-select v-model="selectedParentFieldId" placeholder="请选择添加位置" style="width: 100%">
-            <el-option v-for="field in objectFields" :key="field.id" :label="field.label" :value="field.id" />
+            <el-option v-for="field in objectFields"
+                       :key="field.id"
+                       :label="field.label"
+                       :value="field.id" />
           </el-select>
         </el-form-item>
         <el-form-item label="字段名称" prop="fieldName">
@@ -118,7 +122,10 @@
         </el-form-item>
         <el-form-item label="字段类型" prop="fieldType">
           <el-select v-model="newField.fieldType" placeholder="请选择字段类型" style="width: 100%">
-            <el-option v-for="item in fieldTypeOptions" :key="item.value" :label="item.label" :value="item.value" />
+            <el-option v-for="item in fieldTypeOptions"
+                       :key="item.value"
+                       :label="item.label"
+                       :value="item.value" />
           </el-select>
         </el-form-item>
         <template v-if="newField.fieldType !== FieldTypeEnum.Object && newField.fieldType !== FieldTypeEnum.Array">
@@ -126,11 +133,19 @@
             <div v-if="newField.fieldType === FieldTypeEnum.Enum">
               <div class="possible-values-editor">
                 <div v-for="(item, index) in possibleValuesArray" :key="index" class="possible-value-item">
-                  <el-input-number v-model="item.value" :min="0" placeholder="值" class="value-input" />
-                  <el-input-number v-model="item.probability" :min="0" :max="100" placeholder="概率(%)"
-                                   class="probability-input"
-                  />
-                  <el-button type="danger" circle size="small" @click="removePossibleValue(index)">
+                  <el-input-number v-model="item.value"
+                                   :min="0"
+                                   placeholder="值"
+                                   class="value-input" />
+                  <el-input-number v-model="item.probability"
+                                   :min="0"
+                                   :max="100"
+                                   placeholder="概率(%)"
+                                   class="probability-input" />
+                  <el-button type="danger"
+                             circle
+                             size="small"
+                             @click="removePossibleValue(index)">
                     <el-icon>
                       <delete />
                     </el-icon>
@@ -149,13 +164,11 @@
           <template v-if="newField.fieldType === FieldTypeEnum.Integer || newField.fieldType === FieldTypeEnum.Float">
             <el-form-item label="最小值">
               <el-input-number v-model="newField.minValue"
-                               :precision="newField.fieldType === FieldTypeEnum.Float ? 2 : 0"
-              />
+                               :precision="newField.fieldType === FieldTypeEnum.Float ? 2 : 0" />
             </el-form-item>
             <el-form-item label="最大值">
               <el-input-number v-model="newField.maxValue"
-                               :precision="newField.fieldType === FieldTypeEnum.Float ? 2 : 0"
-              />
+                               :precision="newField.fieldType === FieldTypeEnum.Float ? 2 : 0" />
             </el-form-item>
           </template>
         </template>
@@ -169,30 +182,45 @@
     </el-dialog>
 
     <!-- 编辑字段对话框 -->
-    <el-dialog v-model="editFieldDialogVisible" title="编辑字段" width="500px" :close-on-click-modal="false"
-               :append-to-body="true"
-    >
-      <el-form ref="editFieldFormRef" :model="currentEditField" label-width="80px" :rules="fieldRules">
+    <el-dialog v-model="editFieldDialogVisible"
+               title="编辑字段"
+               width="500px"
+               :close-on-click-modal="false"
+               :append-to-body="true">
+      <el-form ref="editFieldFormRef"
+               :model="currentEditField"
+               label-width="80px"
+               :rules="fieldRules">
         <el-form-item label="字段名称" prop="fieldName">
           <el-input v-model="currentEditField.fieldName" placeholder="请输入字段名称" />
         </el-form-item>
         <el-form-item label="字段类型" prop="fieldType">
           <el-select v-model="currentEditField.fieldType" placeholder="请选择字段类型" style="width: 100%">
-            <el-option v-for="item in fieldTypeOptions" :key="item.value" :label="item.label" :value="item.value" />
+            <el-option v-for="item in fieldTypeOptions"
+                       :key="item.value"
+                       :label="item.label"
+                       :value="item.value" />
           </el-select>
         </el-form-item>
         <template
-          v-if="currentEditField.fieldType !== FieldTypeEnum.Object && currentEditField.fieldType !== FieldTypeEnum.Array"
-        >
+          v-if="currentEditField.fieldType !== FieldTypeEnum.Object && currentEditField.fieldType !== FieldTypeEnum.Array">
           <el-form-item v-if="currentEditField.fieldType" label="默认值">
             <div v-if="currentEditField.fieldType === FieldTypeEnum.Enum">
               <div class="possible-values-editor">
                 <div v-for="(item, index) in editPossibleValuesArray" :key="index" class="possible-value-item">
-                  <el-input-number v-model="item.value" :min="0" placeholder="值" class="value-input" />
-                  <el-input-number v-model="item.probability" :min="0" :max="100" placeholder="概率(%)"
-                                   class="probability-input"
-                  />
-                  <el-button type="danger" circle size="small" @click="removeEditPossibleValue(index)">
+                  <el-input-number v-model="item.value"
+                                   :min="0"
+                                   placeholder="值"
+                                   class="value-input" />
+                  <el-input-number v-model="item.probability"
+                                   :min="0"
+                                   :max="100"
+                                   placeholder="概率(%)"
+                                   class="probability-input" />
+                  <el-button type="danger"
+                             circle
+                             size="small"
+                             @click="removeEditPossibleValue(index)">
                     <el-icon>
                       <delete />
                     </el-icon>
@@ -209,17 +237,14 @@
             </div>
           </el-form-item>
           <template
-            v-if="currentEditField.fieldType === FieldTypeEnum.Integer || currentEditField.fieldType === FieldTypeEnum.Float"
-          >
+            v-if="currentEditField.fieldType === FieldTypeEnum.Integer || currentEditField.fieldType === FieldTypeEnum.Float">
             <el-form-item label="最小值">
               <el-input-number v-model="currentEditField.minValue"
-                               :precision="currentEditField.fieldType === FieldTypeEnum.Float ? 2 : 0"
-              />
+                               :precision="currentEditField.fieldType === FieldTypeEnum.Float ? 2 : 0" />
             </el-form-item>
             <el-form-item label="最大值">
               <el-input-number v-model="currentEditField.maxValue"
-                               :precision="currentEditField.fieldType === FieldTypeEnum.Float ? 2 : 0"
-              />
+                               :precision="currentEditField.fieldType === FieldTypeEnum.Float ? 2 : 0" />
             </el-form-item>
           </template>
         </template>
@@ -234,30 +259,30 @@
   </div>
 </template>
 <script setup lang="ts" name="DataModel">
-import { convertToJsonStruct } from "@/hooks/processJsonStruct";
-import { FieldTypeEnum, JsonStruct, PossibleValue } from "@/types/mqttConfig";
-import { open } from "@tauri-apps/plugin-dialog";
-import { invoke } from "@tauri-apps/api/core";
-import { ElMessage, FormInstance } from "element-plus";
-import { Refresh, Plus, Download, Delete } from '@element-plus/icons-vue';
-import { useWindowSize } from "@vueuse/core";
-const { height } = useWindowSize();
+import { convertToJsonStruct } from "@/hooks/processJsonStruct"
+import { FieldTypeEnum, JsonStruct, PossibleValue } from "@/types/mqttConfig"
+import { open } from "@tauri-apps/plugin-dialog"
+import { invoke } from "@tauri-apps/api/core"
+import { ElMessage, FormInstance } from "element-plus"
+import { Refresh, Plus, Download, Delete } from '@element-plus/icons-vue'
+import { useWindowSize } from "@vueuse/core"
+const { height } = useWindowSize()
 
-const config = inject<any>("config");
-const loading = ref<boolean>(true);
-const addFieldDialogVisible = ref(false);
-const editFieldDialogVisible = ref(false);
-const currentParent = ref<JsonStruct | null>(null);
-const currentEditField = ref<JsonStruct>({});
-const fieldFormRef = ref<FormInstance>();
-const editFieldFormRef = ref<FormInstance>();
-const objectFields = ref<{ id: string, label: string }[]>([]);
-const selectedParentFieldId = ref<string>('');
+const config = inject<any>("config")
+const loading = ref<boolean>(true)
+const addFieldDialogVisible = ref(false)
+const editFieldDialogVisible = ref(false)
+const currentParent = ref<JsonStruct | null>(null)
+const currentEditField = ref<JsonStruct>({})
+const fieldFormRef = ref<FormInstance>()
+const editFieldFormRef = ref<FormInstance>()
+const objectFields = ref<{ id: string, label: string }[]>([])
+const selectedParentFieldId = ref<string>('')
 
 
 
 const ModelTableHeight = computed(() => {
-  return height.value - 400;
+  return height.value - 400
 })
 
 const newField = ref<JsonStruct>({
@@ -267,7 +292,7 @@ const newField = ref<JsonStruct>({
   maxValue: undefined,
   possibleValues: [],
   children: []
-});
+})
 
 const fieldRules = {
   fieldName: [
@@ -277,7 +302,7 @@ const fieldRules = {
   fieldType: [
     { required: true, message: '请选择字段类型', trigger: 'change' }
   ]
-};
+}
 
 const fieldTypeOptions = [
   { value: FieldTypeEnum.String, label: '字符串(String)' },
@@ -289,105 +314,105 @@ const fieldTypeOptions = [
   { value: FieldTypeEnum.Array, label: '数组(Array)' },
   { value: FieldTypeEnum.DateTime, label: '日期时间(DateTime)' },
   { value: FieldTypeEnum.Timestamp, label: '时间戳(Timestamp)' }
-];
+]
 
 const convertJsonStructToJson = (jsonStructArray: JsonStruct[]): object => {
-  const result: any = {};
+  const result: any = {}
   jsonStructArray.forEach((item) => {
     if (item.fieldType === FieldTypeEnum.Object && item.children?.length) {
-      result[item.fieldName] = convertJsonStructToJson(item.children);
+      result[item.fieldName] = convertJsonStructToJson(item.children)
     } else if (item.fieldType === FieldTypeEnum.Array) {
-      result[item.fieldName] = [];
+      result[item.fieldName] = []
     } else {
-      result[item.fieldName] = item.possibleValues[0].value;
+      result[item.fieldName] = item.possibleValues[0].value
     }
   })
-  return result;
-};
+  return result
+}
 
-const possibleValuesArray = ref<PossibleValue[]>([]);
-const editPossibleValuesArray = ref<PossibleValue[]>([]);
-const singleDefaultValue = ref<any>(undefined);
-const editSingleDefaultValue = ref<any>(undefined);
+const possibleValuesArray = ref<PossibleValue[]>([])
+const editPossibleValuesArray = ref<PossibleValue[]>([])
+const singleDefaultValue = ref<any>(undefined)
+const editSingleDefaultValue = ref<any>(undefined)
 
 // 添加可能值（创建表单）
 const addPossibleValue = () => {
-  possibleValuesArray.value.push({ value: 0, probability: 0 });
-};
+  possibleValuesArray.value.push({ value: 0, probability: 0 })
+}
 
 // 移除可能值（创建表单）
 const removePossibleValue = (index: number) => {
-  possibleValuesArray.value.splice(index, 1);
-};
+  possibleValuesArray.value.splice(index, 1)
+}
 
 // 添加可能值（编辑表单）
 const addEditPossibleValue = () => {
-  editPossibleValuesArray.value.push({ value: 0, probability: 0 });
-};
+  editPossibleValuesArray.value.push({ value: 0, probability: 0 })
+}
 
 // 移除可能值（编辑表单）
 const removeEditPossibleValue = (index: number) => {
-  editPossibleValuesArray.value.splice(index, 1);
-};
+  editPossibleValuesArray.value.splice(index, 1)
+}
 
 // 获取字段类型名称
 const getFieldTypeName = (type: FieldTypeEnum): string => {
-  const option = fieldTypeOptions.find(opt => opt.value === type);
-  return option ? option.label : '未知类型';
-};
+  const option = fieldTypeOptions.find(opt => opt.value === type)
+  return option ? option.label : '未知类型'
+}
 
 
 // 刷新数据结构
 const refreshStructure = () => {
-  loading.value = true;
-  let parsedData = {};
+  loading.value = true
+  let parsedData = {}
   try {
-    parsedData = JSON.parse(config.value.sendData || '{}');
+    parsedData = JSON.parse(config.value.sendData || '{}')
   } catch (e) {
-    console.error(e);
-    ElMessage.error('JSON格式错误，无法解析');
+    console.error(e)
+    ElMessage.error('JSON格式错误，无法解析')
   }
-  config.value.fieldStruct = convertToJsonStruct(parsedData, []);
-  updateJsonFromStruct();
-  loading.value = false;
-  ElMessage.success('数据结构已刷新');
-};
+  config.value.fieldStruct = convertToJsonStruct(parsedData, [])
+  updateJsonFromStruct()
+  loading.value = false
+  ElMessage.success('数据结构已刷新')
+}
 
 // 更新JSON数据
 const updateJsonFromStruct = () => {
-  config.value.sendData = JSON.stringify(convertJsonStructToJson(config.value.fieldStruct), null, 2);
-};
+  config.value.sendData = JSON.stringify(convertJsonStructToJson(config.value.fieldStruct), null, 2)
+}
 
 // 获取所有Object类型字段
 const getObjectFields = (fields: JsonStruct[], prefix = '', path = ''): void => {
   fields.forEach((field, index) => {
     if (field.fieldType === FieldTypeEnum.Object) {
-      const id = path ? `${path}.${index}` : `${index}`;
-      const label = prefix ? `${prefix}.${field.fieldName}` : field.fieldName;
-      objectFields.value.push({ id, label });
+      const id = path ? `${path}.${index}` : `${index}`
+      const label = prefix ? `${prefix}.${field.fieldName}` : field.fieldName
+      objectFields.value.push({ id, label })
 
       if (field.children && field.children.length > 0) {
-        getObjectFields(field.children, label, id);
+        getObjectFields(field.children, label, id)
       }
     }
-  });
-};
+  })
+}
 
 // 根据path获取字段
 const getFieldByPath = (path: string): JsonStruct | null => {
-  if (!path) return null;
+  if (!path) return null
 
-  const indices = path.split('.').map(Number);
-  let current = config.value.fieldStruct;
-  let field = null;
+  const indices = path.split('.').map(Number)
+  let current = config.value.fieldStruct
+  let field = null
 
   for (const index of indices) {
-    field = current[index];
-    current = field.children || [];
+    field = current[index]
+    current = field.children || []
   }
 
-  return field;
-};
+  return field
+}
 
 // 显示添加字段对话框
 const showAddFieldDialog = () => {
@@ -398,74 +423,74 @@ const showAddFieldDialog = () => {
     maxValue: undefined,
     possibleValues: [],
     children: []
-  };
+  }
   
-  possibleValuesArray.value = [];
-  singleDefaultValue.value = undefined;
+  possibleValuesArray.value = []
+  singleDefaultValue.value = undefined
 
   // 获取所有Object类型字段
-  objectFields.value = [];
-  getObjectFields(config.value.fieldStruct);
+  objectFields.value = []
+  getObjectFields(config.value.fieldStruct)
 
-  selectedParentFieldId.value = '';
-  currentParent.value = null;
-  addFieldDialogVisible.value = true;
-};
+  selectedParentFieldId.value = ''
+  currentParent.value = null
+  addFieldDialogVisible.value = true
+}
 
 // 显示编辑字段对话框
 const showEditFieldDialog = (row: JsonStruct) => {
-  currentEditField.value = JSON.parse(JSON.stringify(row));
+  currentEditField.value = JSON.parse(JSON.stringify(row))
   
   // 初始化编辑表单中的可能值数组
   if (currentEditField.value.fieldType === FieldTypeEnum.Enum) {
-    editPossibleValuesArray.value = [...(currentEditField.value.possibleValues || [])];
+    editPossibleValuesArray.value = [...(currentEditField.value.possibleValues || [])]
   } else if (currentEditField.value.fieldType !== FieldTypeEnum.Object && 
              currentEditField.value.fieldType !== FieldTypeEnum.Array && 
              currentEditField.value.possibleValues?.length) {
-    editSingleDefaultValue.value = currentEditField.value.possibleValues[0]?.value;
+    editSingleDefaultValue.value = currentEditField.value.possibleValues[0]?.value
   } else {
-    editSingleDefaultValue.value = undefined;
+    editSingleDefaultValue.value = undefined
   }
   
-  editFieldDialogVisible.value = true;
-};
+  editFieldDialogVisible.value = true
+}
 
 // 确认添加字段前处理possibleValues
 const confirmAddField = () => {
   fieldFormRef.value?.validate((valid) => {
     if (valid) {
-      const fieldToAdd = { ...newField.value };
+      const fieldToAdd = { ...newField.value }
 
       // 如果是枚举类型，设置possibleValues为数组
       if (fieldToAdd.fieldType === FieldTypeEnum.Enum) {
-        fieldToAdd.possibleValues = [...possibleValuesArray.value];
+        fieldToAdd.possibleValues = [...possibleValuesArray.value]
       } else if (fieldToAdd.fieldType !== FieldTypeEnum.Object && fieldToAdd.fieldType !== FieldTypeEnum.Array) {
         // 非enum类型的probability固定为100%
         fieldToAdd.possibleValues = singleDefaultValue.value !== undefined 
           ? [{ value: singleDefaultValue.value, probability: 100 }] 
-          : [];
+          : []
       }
 
       // 根据选择的父字段确定添加位置
       if (selectedParentFieldId.value) {
-        const parentField = getFieldByPath(selectedParentFieldId.value);
+        const parentField = getFieldByPath(selectedParentFieldId.value)
         if (parentField) {
           if (!parentField.children) {
-            parentField.children = [];
+            parentField.children = []
           }
-          parentField.children.push(fieldToAdd);
+          parentField.children.push(fieldToAdd)
         }
       } else {
         // 添加为根级字段
-        config.value.fieldStruct.push(fieldToAdd);
+        config.value.fieldStruct.push(fieldToAdd)
       }
 
-      addFieldDialogVisible.value = false;
-      updateJsonFromStruct();
-      ElMessage.success('字段添加成功');
+      addFieldDialogVisible.value = false
+      updateJsonFromStruct()
+      ElMessage.success('字段添加成功')
     }
-  });
-};
+  })
+}
 
 // 确认编辑字段前处理possibleValues
 const confirmEditField = () => {
@@ -473,12 +498,12 @@ const confirmEditField = () => {
     if (valid) {
       // 如果是枚举类型，设置possibleValues为数组
       if (currentEditField.value.fieldType === FieldTypeEnum.Enum) {
-        currentEditField.value.possibleValues = [...editPossibleValuesArray.value];
+        currentEditField.value.possibleValues = [...editPossibleValuesArray.value]
       } else if (currentEditField.value.fieldType !== FieldTypeEnum.Object && currentEditField.value.fieldType !== FieldTypeEnum.Array) {
         // 非enum类型的probability固定为1
         currentEditField.value.possibleValues = editSingleDefaultValue.value !== undefined 
           ? [{ value: editSingleDefaultValue.value, probability: 100 }] 
-          : [];
+          : []
       }
 
       // 找到字段并更新
@@ -486,30 +511,30 @@ const confirmEditField = () => {
         for (let i = 0; i < arr.length; i++) {
           if (arr[i].fieldName === fieldId) {
             // 更新字段属性，保留children
-            const children = arr[i].children;
-            arr[i] = { ...currentEditField.value };
+            const children = arr[i].children
+            arr[i] = { ...currentEditField.value }
             if (children && arr[i].fieldType === FieldTypeEnum.Object) {
-              arr[i].children = children;
+              arr[i].children = children
             }
-            return true;
+            return true
           }
 
           if (arr[i].children && arr[i].children.length) {
             if (updateField(arr[i].children, fieldId)) {
-              return true;
+              return true
             }
           }
         }
-        return false;
-      };
+        return false
+      }
 
-      updateField(config.value.fieldStruct, currentEditField.value.fieldName);
-      editFieldDialogVisible.value = false;
-      updateJsonFromStruct();
-      ElMessage.success('字段更新成功');
+      updateField(config.value.fieldStruct, currentEditField.value.fieldName)
+      editFieldDialogVisible.value = false
+      updateJsonFromStruct()
+      ElMessage.success('字段更新成功')
     }
-  });
-};
+  })
+}
 
 // 导入模板
 const importTemplate = async () => {
@@ -517,53 +542,53 @@ const importTemplate = async () => {
     const filePath = await open({
       multiple: false,
       filters: [{ name: 'JSON', extensions: ['json'] }]
-    }) as string;
+    }) as string
 
     if (filePath) {
-      const templateContent = await invoke('read_file', { path: filePath });
+      const templateContent = await invoke('read_file', { path: filePath })
       try {
-        const parsedTemplate = JSON.parse(templateContent as string);
-        config.value.fieldStruct = convertToJsonStruct(parsedTemplate, []);
-        config.value.sendData = JSON.stringify(parsedTemplate, null, 2);
-        ElMessage.success('模板导入成功');
+        const parsedTemplate = JSON.parse(templateContent as string)
+        config.value.fieldStruct = convertToJsonStruct(parsedTemplate, [])
+        config.value.sendData = JSON.stringify(parsedTemplate, null, 2)
+        ElMessage.success('模板导入成功')
       } catch (e) {
-        console.error(e);
-        ElMessage.error('模板文件格式错误');
+        console.error(e)
+        ElMessage.error('模板文件格式错误')
       }
     }
   } catch (error) {
-    ElMessage.error(`导入失败: ${error}`);
+    ElMessage.error(`导入失败: ${error}`)
   }
-};
+}
 
 watch(() => config.value.fieldStruct, (newVal) => {
-  if (newVal === undefined) return;
-  config.value.fieldStruct = newVal;
-  updateJsonFromStruct();
-}, { deep: true });
+  if (newVal === undefined) return
+  config.value.fieldStruct = newVal
+  updateJsonFromStruct()
+}, { deep: true })
 
 onMounted(() => {
-  loading.value = true;
-  let parsedData = {};
+  loading.value = true
+  let parsedData = {}
   try {
-    parsedData = JSON.parse(config.value.sendData || '{}');
+    parsedData = JSON.parse(config.value.sendData || '{}')
   } catch (e) {
-    console.error(e);
-    ElMessage.error('JSON格式错误，无法解析');
+    console.error(e)
+    ElMessage.error('JSON格式错误，无法解析')
   }
-  config.value.fieldStruct = convertToJsonStruct(parsedData, config.value.fieldStruct || []);
-  console.log('config.value.fieldStruct', config.value.fieldStruct);
-  loading.value = false;
-});
+  config.value.fieldStruct = convertToJsonStruct(parsedData, config.value.fieldStruct || [])
+  console.log('config.value.fieldStruct', config.value.fieldStruct)
+  loading.value = false
+})
 
 // 在处理编辑对话框时初始化默认值
 watch(() => currentEditField.value.fieldType, (newType) => {
   if (newType !== FieldTypeEnum.Enum && currentEditField.value.possibleValues?.length) {
-    editSingleDefaultValue.value = currentEditField.value.possibleValues[0]?.value;
+    editSingleDefaultValue.value = currentEditField.value.possibleValues[0]?.value
   } else {
-    editSingleDefaultValue.value = undefined;
+    editSingleDefaultValue.value = undefined
   }
-});
+})
 </script>
 <style lang="scss" scoped>
 .data-model {
