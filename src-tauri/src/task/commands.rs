@@ -113,8 +113,8 @@ pub async fn start_task(
     let count_handle = spawn_counter(task.clone(), tx.clone()).await;
     // 获取写锁更新任务句柄
     {
-        let mut task_write = task.write().await;
-        task_write.count_handle = Some(count_handle);
+        let mut handles = task.handles.write().await;
+        handles.count_handle = Some(count_handle);
     }
 
     // 启动主任务
@@ -174,8 +174,8 @@ pub async fn start_task(
 
     // 更新任务句柄
     {
-        let mut task_write = task.write().await;
-        task_write.task_handle = Some(handle);
+        let mut handles = task.handles.write().await;
+        handles.task_handle = Some(handle);
     }
 
     // 保存到数据库
@@ -242,23 +242,25 @@ pub async fn stop_task(
         }
     }
 
-    // 获取写锁更新任务状态
+    // 更新任务状态和句柄
     let message_handles;
     let count_handle;
     {
-        let mut task_write = task.write().await;
+        // 先更新原子状态
+        let task_read = task.read().await;
+        task_read.status.store(false, std::sync::atomic::Ordering::SeqCst);
+        drop(task_read);
+
+        // 再处理句柄
+        let mut handles = task.handles.write().await;
         // 中止主任务
-        if let Some(handle) = task_write.task_handle.take() {
+        if let Some(handle) = handles.task_handle.take() {
             handle.abort();
         }
 
-        task_write
-            .status
-            .store(false, std::sync::atomic::Ordering::SeqCst);
-
         // 保存任务句柄以便稍后中止
-        message_handles = task_write.message_handle.take();
-        count_handle = task_write.count_handle.take();
+        message_handles = handles.message_handle.take();
+        count_handle = handles.count_handle.take();
     }
 
     info!("已将任务状态设置为停止");

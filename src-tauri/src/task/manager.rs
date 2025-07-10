@@ -45,11 +45,11 @@ pub async fn spawn_counter(
     task: Arc<RwLock<Task>>,
     tx: tauri::async_runtime::Sender<Rs2JsEntity>,
 ) -> tokio::task::JoinHandle<()> {
-    // 使用较小的作用域获取读锁，并克隆所需数据
-    let (counter, status) = {
-        let task_read = task.read().await;
-        (task_read.counter(), task_read.status())
-    };
+    // 直接使用原子状态，避免锁竞争
+    let task_read = task.read().await;
+    let counter = task_read.counter.clone();
+    let status = task_read.status.clone();
+    drop(task_read); // 提早释放读锁
 
     tokio::spawn(async move {
         loop {

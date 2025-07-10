@@ -2,24 +2,44 @@ use std::sync::{
     atomic::{AtomicBool, AtomicU32},
     Arc,
 };
-use tokio::task::JoinHandle;
+use tokio::{
+    sync::RwLock,
+    task::JoinHandle,
+};
 use tracing::debug;
 
-/// 任务结构体
-///
-/// 管理通信任务的执行状态和相关句柄，包括主任务、消息发送任务和计数任务
+/// 任务句柄管理结构，分离句柄管理减少锁竞争
 #[derive(Debug)]
-pub struct Task {
+pub struct TaskHandles {
     /// 主任务句柄，负责整体任务协调
     pub task_handle: Option<JoinHandle<()>>,
     /// 消息发送任务句柄列表，负责具体的消息发送
     pub message_handle: Option<Vec<JoinHandle<()>>>,
     /// 计数任务句柄，负责统计和报告已发送消息数
     pub count_handle: Option<JoinHandle<()>>,
-    /// 任务执行状态标志，true表示正在运行，false表示已停止
+}
+
+/// 任务结构体 - 优化后的版本，分离原子状态和锁保护数据
+///
+/// 管理通信任务的执行状态和相关句柄，包括主任务、消息发送任务和计数任务
+#[derive(Debug)]
+pub struct Task {
+    /// 任务执行状态标志，使用原子操作避免锁竞争
     pub status: Arc<AtomicBool>,
-    /// 消息计数器，记录已发送的消息数量
+    /// 消息计数器，使用原子操作避免锁竞争
     pub counter: Arc<AtomicU32>,
+    /// 任务句柄管理，只有句柄需要RwLock保护
+    pub handles: Arc<RwLock<TaskHandles>>,
+}
+
+impl TaskHandles {
+    pub fn new() -> Self {
+        Self {
+            task_handle: None,
+            message_handle: None,
+            count_handle: None,
+        }
+    }
 }
 
 impl Task {
@@ -27,11 +47,9 @@ impl Task {
     pub fn new() -> Self {
         debug!("创建新的任务实例");
         Task {
-            task_handle: None,
-            message_handle: None,
-            count_handle: None,
             status: Arc::new(AtomicBool::new(true)),
             counter: Arc::new(AtomicU32::new(0)),
+            handles: Arc::new(RwLock::new(TaskHandles::new())),
         }
     }
 
