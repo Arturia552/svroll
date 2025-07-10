@@ -239,7 +239,7 @@ impl Client<TcpSendData, TcpClient> for TcpClientContext {
         Ok(hanldes)
     }
 
-    async fn wait_for_connections(&self, clients: &mut [Self::Item]) {
+    async fn wait_for_connections(&self, _clients: &mut [Self::Item]) {
         ()
     }
 }

@@ -121,6 +121,6 @@ pub async fn init_mqtt_hooks(mqtt_client: MqttClient) {
     // 确保钩子管理器已初始化
     let hook_manager = get_mqtt_hook_manager().await;
     let connack_processor = Arc::new(ConnAckProcessor::new(mqtt_client.into()));
-    hook_manager.register(connack_processor).await;
+    hook_manager.register(connack_processor);
     info!("MQTT钩子系统已初始化");
 }

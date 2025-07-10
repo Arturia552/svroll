@@ -56,7 +56,8 @@ pub async fn start_mqtt(
             Ok(task_handle) => {
                 // 释放读锁并获取写锁来更新任务句柄
                 drop(task_read);
-                let mut handles = task.handles.write().await;
+                let task_write = task.write().await;
+                let mut handles = task_write.handles.write().await;
                 handles.message_handle = Some(task_handle);
                 info!("MQTT消息发送任务启动成功");
             }
@@ -91,8 +92,10 @@ pub async fn stop_mqtt_clients(
     // 中止所有事件循环
     for entry in app_state.mqtt_clients().iter() {
         // 使用OnceCell直接获取句柄并执行abort操作
-        if let Some(handle) = entry.value().event_loop_handle.get() {
-            handle.abort();
+        if let Some(handle_arc) = &entry.value().event_loop_handle {
+            if let Some(handle) = handle_arc.read().await.as_ref() {
+                handle.abort();
+            }
         }
     }
 

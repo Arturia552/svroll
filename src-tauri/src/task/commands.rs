@@ -113,7 +113,8 @@ pub async fn start_task(
     let count_handle = spawn_counter(task.clone(), tx.clone()).await;
     // 获取写锁更新任务句柄
     {
-        let mut handles = task.handles.write().await;
+        let task_read = task.read().await;
+        let mut handles = task_read.handles.write().await;
         handles.count_handle = Some(count_handle);
     }
 
@@ -174,7 +175,8 @@ pub async fn start_task(
 
     // 更新任务句柄
     {
-        let mut handles = task.handles.write().await;
+        let task_read = task.read().await;
+        let mut handles = task_read.handles.write().await;
         handles.task_handle = Some(handle);
     }
 
@@ -252,7 +254,8 @@ pub async fn stop_task(
         drop(task_read);
 
         // 再处理句柄
-        let mut handles = task.handles.write().await;
+        let task_read = task.read().await;
+        let mut handles = task_read.handles.write().await;
         // 中止主任务
         if let Some(handle) = handles.task_handle.take() {
             handle.abort();

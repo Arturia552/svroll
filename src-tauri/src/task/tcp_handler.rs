@@ -52,8 +52,9 @@ pub async fn start_tcp(
             Ok(handles) => {
                 // 释放读锁后再获取写锁
                 drop(task_read);
-                let mut task_write = task.write().await;
-                task_write.message_handle = Some(handles);
+                let task_write = task.write().await;
+                let mut handles_write = task_write.handles.write().await;
+                handles_write.message_handle = Some(handles);
                 info!("TCP消息发送任务启动成功");
             }
             Err(e) => {
