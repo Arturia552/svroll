@@ -10,7 +10,7 @@
                      @click="showNewConfig">
             <template #icon>
               <el-icon :size="16">
-                <Edit />
+                <edit />
               </el-icon>
             </template>编辑配置
           </el-button>
@@ -84,7 +84,7 @@
                      @click="start">
             <template #icon>
               <el-icon :size="20">
-                <VideoPlay />
+                <video-play />
               </el-icon>
             </template>
             开始
@@ -96,7 +96,7 @@
                      @click="stop">
             <template #icon>
               <el-icon :size="20">
-                <VideoPause />
+                <video-pause />
               </el-icon>
             </template>
             停止
@@ -145,7 +145,7 @@ import TabsConfig from "@/pages/config/TabsConfig.vue"
 import DashboardPanel from "@/components/Dashboard/DashboardPanel.vue"
 import HistoryComponent from "@/components/History/index.vue"
 import { ConnectConfig, rs2JsEntity, ClientInfo } from "@/types/mqttConfig"
-import { Clock, Back, Delete } from '@element-plus/icons-vue'
+import { Clock, Back, Delete, Edit, Upload, Download, VideoPlay, VideoPause } from '@element-plus/icons-vue'
 
 import { TauriService } from "@/services/tauriService"
 import { EventManager, type EventCallbacks } from "@/services/eventManager"
@@ -193,7 +193,6 @@ const showHistory = () => {
 
 const handleHistoryConfigLoad = (historyConfig: ConnectConfig) => {
   config.value = historyConfig
-  console.log(config.value)
   ConfigManager.validateAndConvertConfig(config.value)
 
   editorMode.value = ConfigManager.detectEditorMode(config.value)
@@ -233,7 +232,7 @@ const start = async () => {
     terminalLog.value = []
     counter.value = 0
     ConfigManager.prepareConfigForRuntime(config.value, editorMode.value)
-
+    console.log("开始任务，配置：", config.value)
     isRunning.value = true
     showDashboard.value = true
 

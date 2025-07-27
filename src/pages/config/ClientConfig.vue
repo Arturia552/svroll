@@ -78,7 +78,10 @@ import { Delete } from '@element-plus/icons-vue'
 import { useWindowSize, useElementSize } from "@vueuse/core"
 
 const generateSize = ref(100)
-const config = ref(inject<ConnectConfig>("config"))
+const config = inject<Ref<ConnectConfig>>("config")
+if (!config) {
+  throw new Error("Config not provided")
+}
 const searchQuery = ref('')
 const tableSectionRef = ref<HTMLElement>()
 const { width: tableSectionWidth } = useElementSize(tableSectionRef)

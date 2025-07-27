@@ -59,7 +59,6 @@ export interface JsonStruct {
   minValue?: number;
   maxValue?: number;
   possibleValues?: PossibleValue[];
-  children?: JsonStruct[];
 }
 
 export interface PossibleValue {
@@ -84,7 +83,6 @@ export enum FieldTypeEnum {
   Time = "Time",
   Enum = "Enum",
   Array = "Array",
-  Object = "Object",
   Null = "Null",
   Unknown = "Unknown",
 }

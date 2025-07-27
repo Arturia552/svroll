@@ -100,8 +100,12 @@
 import { ConnectConfig } from '@/types/mqttConfig'
 import { FormRules, type FormInstance } from 'element-plus'
 import { getNestedValue, isJsonValueNull } from '@/hooks/processJsonStruct'
+import type { Ref } from 'vue'
 
-const config = ref(inject<ConnectConfig>("config"))
+const config = inject<Ref<ConnectConfig>>("config")
+if (!config) {
+  throw new Error("Config not provided")
+}
 const basicFormRef = ref<FormInstance>()
 
 // 验证主题配置
@@ -154,7 +158,6 @@ defineExpose({
 
 .basic-form {
   max-width: 800px;
-  margin: 0 auto;
 }
 
 .form-section {

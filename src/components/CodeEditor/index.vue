@@ -34,6 +34,31 @@ const formatHex = () => {
   }
 }
 
+// 验证JSON是否为扁平结构（只允许一层）
+const validateFlatJson = (jsonStr: string): { isValid: boolean; error?: string } => {
+  if (!jsonStr.trim()) return { isValid: true }
+  
+  try {
+    const parsed = JSON.parse(jsonStr)
+    
+    // 必须是对象类型
+    if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
+      return { isValid: false, error: 'JSON数据必须是对象格式' }
+    }
+    
+    // 检查是否有嵌套对象
+    for (const [key, value] of Object.entries(parsed)) {
+      if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
+        return { isValid: false, error: `字段 "${key}" 不能包含嵌套对象，只支持扁平结构` }
+      }
+    }
+    
+    return { isValid: true }
+  } catch (_) {
+    return { isValid: false, error: 'JSON格式错误' }
+  }
+}
+
 // 配置hex语言
 const configureHexLanguage = () => {
   // 注册hex语言
@@ -101,6 +126,23 @@ onMounted(() => {
         modelValue.value = cleaned
         return
       }
+    } else if (props.language === 'json') {
+      // 如果是JSON模式，验证扁平结构
+      const validation = validateFlatJson(value)
+      if (!validation.isValid && validation.error) {
+        // 显示错误标记，但不阻止输入
+        monaco.editor.setModelMarkers(editorInstance!.getModel()!, 'flatJsonValidator', [{
+          startLineNumber: 1,
+          startColumn: 1,
+          endLineNumber: 1,
+          endColumn: 1,
+          message: validation.error,
+          severity: monaco.MarkerSeverity.Error
+        }])
+      } else {
+        // 清除错误标记
+        monaco.editor.setModelMarkers(editorInstance!.getModel()!, 'flatJsonValidator', [])
+      }
     }
     
     modelValue.value = value
@@ -131,6 +173,18 @@ onMounted(() => {
     editorInstance.setValue(modelValue.value)
     if (props.language === 'json') {
       editorInstance.getAction("editor.action.formatDocument")?.run()
+      // 初始化时也进行扁平结构校验
+      const validation = validateFlatJson(modelValue.value)
+      if (!validation.isValid && validation.error) {
+        monaco.editor.setModelMarkers(editorInstance.getModel()!, 'flatJsonValidator', [{
+          startLineNumber: 1,
+          startColumn: 1,
+          endLineNumber: 1,
+          endColumn: 1,
+          message: validation.error,
+          severity: monaco.MarkerSeverity.Error
+        }])
+      }
     } else if (props.language === 'hex') {
       const formatted = formatHexValue(modelValue.value)
       if (formatted !== modelValue.value) {

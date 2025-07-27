@@ -34,7 +34,7 @@ impl MqttSendData {
 
 /// 处理字段值，根据字段类型和配置设置数据
 /// 
-/// 支持多种数据类型的处理，包括时间戳、日期时间、整数、浮点数、布尔值和对象
+/// 支持多种数据类型的处理，包括时间戳、日期时间、整数、浮点数、布尔值和枚举
 /// 
 /// # 参数
 /// * `data` - 要处理的JSON数据
@@ -74,11 +74,6 @@ pub fn process_fields(data: &mut Value, fields: &Vec<MqttFieldStruct>, enable_ra
                 let random_float = rng.gen_range(field.min_value.unwrap()..=field.max_value.unwrap());
                 data[&field.field_name] = Value::from(random_float);
             }
-        }
-        FieldType::Object => {
-            let mut object = Value::Object(Default::default());
-            process_fields(&mut object, &field.child.as_ref().unwrap(), enable_random);
-            data[&field.field_name] = object;
         }
         FieldType::Enum => {
             if enable_random {
@@ -127,9 +122,6 @@ pub struct MqttFieldStruct {
     /// 可能的取值列表（对枚举类型有效）
     #[serde(rename = "possibleValues")]
     pub possible_values: Option<Vec<PossibleValue>>,
-    /// 子字段列表（对对象类型有效）
-    #[serde(rename = "children", default)]
-    pub child: Option<Vec<MqttFieldStruct>>,
 }
 
 
@@ -165,8 +157,6 @@ pub enum FieldType {
     Enum,
     /// 数组类型
     Array,
-    /// 对象类型，包含子字段
-    Object,
     /// 空值
     Null,
     /// 未定义类型
