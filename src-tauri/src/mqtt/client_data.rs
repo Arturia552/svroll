@@ -8,21 +8,21 @@ use std::{
 };
 
 use anyhow::{Error, Result};
-use rumqttc::{AsyncClient, EventLoop, MqttOptions};
+use rumqttc::{AsyncClient, EventLoop, MqttOptions, Packet, Event};
 use serde::{Deserialize, Serialize};
 use tokio::{
     sync::{RwLock, Semaphore},
     task::JoinHandle,
     time::sleep,
 };
-use tracing::{error, info};
+use tracing::{debug, error, info};
 
 use crate::{
     context::get_app_state, mqtt::device_data::process_fields, param::BasicConfig, task::Task,
     ConnectionState, MqttSendData, TopicWrap,
 };
 
-use super::{hooks::process_event, Client};
+use super::Client;
 
 /// MQTT客户端
 ///
@@ -74,7 +74,7 @@ impl MqttClient {
                 }
                 match event_loop.poll().await {
                     Ok(event) => {
-                        process_event(&event, client_id.clone()).await;
+                        Self::process_event(&event, &client_id).await;
                     }
                     Err(e) => {
                         if let Some(mut client_entry) = app_state.mqtt_clients().get_mut(&client_id)
@@ -112,6 +112,27 @@ impl MqttClient {
                 }
             }
         })
+    }
+
+    /// 处理MQTT事件
+    ///
+    /// 处理ConnAck等MQTT事件，更新客户端连接状态
+    ///
+    /// # 参数
+    /// * `event` - MQTT事件
+    /// * `client_id` - 客户端ID
+    async fn process_event(event: &Event, client_id: &str) {
+        if let Event::Incoming(Packet::ConnAck(_)) = event {
+            debug!("收到ConnAck事件，客户端ID: {}", client_id);
+            
+            let app_state = get_app_state();
+            if let Some(mut client) = app_state.mqtt_clients().get_mut(client_id) {
+                client.set_connection_state(ConnectionState::Connected);
+                debug!("已更新客户端连接状态为已连接: {}", client_id);
+            }
+        } else {
+            debug!("处理其他MQTT事件: {:?}", event);
+        }
     }
 }
 
@@ -237,7 +258,6 @@ impl Client<MqttSendData, MqttClientData> for MqttClient {
                                 continue;
                             }
                         };
-                        info!("发布消息到主题: {}, 消息: {}", real_topic, json_msg);
                         if let Err(e) = client.publish(real_topic, qos, false, json_msg).await {
                             error!("发布消息失败: {:?}", e);
                             continue;

@@ -6,7 +6,6 @@ use crate::{
     MqttClientData, MqttSendData,
 };
 
-use super::hooks::init_mqtt_hooks;
 
 /// 初始化MQTT客户端上下文
 ///
@@ -29,6 +28,5 @@ pub async fn init_mqtt_context(
         return Err(anyhow!("没有配置数据上报主题"));
     }
     let mqtt_client = MqttClient::new(config.get_send_data().clone(), data_topic);
-    init_mqtt_hooks(mqtt_client.clone()).await;
     Ok(mqtt_client)
 }

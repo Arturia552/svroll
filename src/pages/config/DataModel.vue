@@ -559,7 +559,6 @@ onMounted(() => {
     ElMessage.error('JSON格式错误，无法解析')
   }
   config.value.fieldStruct = convertToJsonStruct(parsedData, config.value.fieldStruct || [])
-  console.log('config.value.fieldStruct', config.value.fieldStruct)
   loading.value = false
 })
 
@@ -594,63 +593,8 @@ watch(() => newField.value.fieldType, (_newType) => {
 </script>
 <style lang="scss" scoped>
 .data-model {
-  .header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 16px;
-
-    .title {
-      font-size: 18px;
-      font-weight: bold;
-      color: var(--el-color-primary);
-    }
-
-    .actions {
-      display: flex;
-      gap: 10px;
-    }
-  }
-
   .table-container {
     margin-bottom: 20px;
-    border-radius: var(--el-border-radius-base);
-    overflow: hidden;
-    box-shadow: var(--el-box-shadow-light);
-
-    :deep(.el-table__row) {
-      transition: all 0.2s;
-
-      &:hover {
-        background-color: var(--el-fill-color-light) !important;
-      }
-    }
-  }
-
-  .field-name-cell {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-
-    .el-icon {
-      font-size: 16px;
-      color: var(--el-text-color-regular);
-    }
-
-    span {
-      font-weight: 500;
-    }
-  }
-
-
-  .actions-cell {
-    display: flex;
-    justify-content: center;
-
-    .el-button {
-      padding: 6px;
-      margin: 0 2px;
-    }
   }
 
   .tips {
@@ -667,33 +611,5 @@ watch(() => newField.value.fieldType, (_newType) => {
       }
     }
   }
-}
-
-.possible-values-table {
-  margin-bottom: 10px;
-
-  .table-actions {
-    margin-top: 10px;
-    text-align: left;
-  }
-
-  :deep(.el-table) {
-    .el-table__header-wrapper {
-      background-color: var(--el-fill-color-lighter);
-    }
-
-    .el-table__body-wrapper {
-      .el-table__row {
-        &:hover {
-          background-color: var(--el-fill-color-light);
-        }
-      }
-    }
-  }
-}
-
-.possible-value-tag {
-  margin-right: 5px;
-  margin-bottom: 5px;
 }
 </style>

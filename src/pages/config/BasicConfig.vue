@@ -160,51 +160,6 @@ defineExpose({
   max-width: 800px;
 }
 
-.form-section {
-  margin-bottom: 32px;
-  
-  .section-title {
-    margin-top: 0;
-    margin-bottom: 8px;
-    color: var(--el-color-primary);
-    font-size: 18px;
-    font-weight: 500;
-  }
-}
-
-.params-grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 20px;
-}
-
-.topic-card {
-  box-shadow: var(--el-box-shadow-light);
-  margin-top: 8px;
-}
-
-.topic-row {
-  display: flex;
-  margin-bottom: 16px;
-  align-items: center;
-  
-  &:last-child {
-    margin-bottom: 0;
-  }
-}
-
-.form-label {
-  width: 100px;
-  font-weight: 500;
-  color: var(--el-text-color-regular);
-}
-
-.form-content {
-  display: flex;
-  gap: 16px;
-  flex: 1;
-}
-
 .topic {
   :deep(.el-form-item__content) {
     row-gap: 10px;
