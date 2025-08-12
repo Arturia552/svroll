@@ -101,6 +101,7 @@ pub async fn start_task(
     param: ConnectParam,
     async_proc_output_tx: State<'_, AsyncProcInputTx>,
 ) -> Result<String, String> {
+    info!("启动任务: {:?}", param);
     let task = get_or_init_task().await;
     let tx: tauri::async_runtime::Sender<Rs2JsEntity> =
         async_proc_output_tx.inner.lock().await.clone();

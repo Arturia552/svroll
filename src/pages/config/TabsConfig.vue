@@ -173,6 +173,20 @@ const onSubmit = async () => {
         submitting.value = false
     }
 }
+
+// 刷新数据模型
+const refreshDataModel = () => {
+    if (dataModelRef.value && configForm.value.protocol === 'Mqtt') {
+        nextTick(() => {
+            dataModelRef.value.refreshStructure()
+        })
+    }
+}
+
+// 暴露方法供父组件调用
+defineExpose({
+    refreshDataModel
+})
 </script>
 
 <style scoped lang="scss">

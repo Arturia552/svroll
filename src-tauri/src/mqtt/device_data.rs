@@ -35,6 +35,7 @@ impl MqttSendData {
 /// 处理字段值，根据字段类型和配置设置数据
 /// 
 /// 支持多种数据类型的处理，包括时间戳、日期时间、整数、浮点数、布尔值和枚举
+/// 支持嵌套JSON结构的正确处理
 /// 
 /// # 参数
 /// * `data` - 要处理的JSON数据
@@ -42,43 +43,64 @@ impl MqttSendData {
 /// * `enable_random` - 是否启用随机值生成
 pub fn process_fields(data: &mut Value, fields: &Vec<MqttFieldStruct>, enable_random: bool) {
     let mut rng = rand::thread_rng();
-    fields.iter().for_each(|field| match field.field_type {
+    
+    for field in fields.iter() {
+        process_single_field(data, field, enable_random, &mut rng);
+    }
+}
+
+/// 处理单个字段，支持嵌套结构
+/// 
+/// # 参数
+/// * `data` - 当前数据节点
+/// * `field` - 字段定义
+/// * `enable_random` - 是否启用随机值生成
+/// * `rng` - 随机数生成器
+fn process_single_field(data: &mut Value, field: &MqttFieldStruct, enable_random: bool, rng: &mut rand::rngs::ThreadRng) {
+    match field.field_type {
         FieldType::Timestamp => {
             let now = Local::now().timestamp_millis();
-            data[&field.field_name] = Value::from(now);
+            set_field_value(data, &field.field_name, Value::from(now));
         }
         FieldType::DateTime => {
             let now = Local::now().format("%Y-%m-%d %H:%M:%S%.3f").to_string();
-            data[&field.field_name] = Value::from(now);
+            set_field_value(data, &field.field_name, Value::from(now));
         }
         FieldType::Integer => {
             if enable_random {
-                if field.max_value.is_none() && field.min_value.is_none() {
-                    return;
+                if let (Some(min), Some(max)) = (field.min_value, field.max_value) {
+                    let random_integer = rng.gen_range(min as i64..=max as i64);
+                    set_field_value(data, &field.field_name, Value::from(random_integer));
                 }
-                let random_integer = rng.gen_range(field.min_value.unwrap() as i64..=field.max_value.unwrap() as i64);
-                data[&field.field_name] = Value::from(random_integer);
             }
         }
         FieldType::Boolean => {
             if enable_random {
                 let random_boolean = rng.gen_bool(0.5);
-                data[&field.field_name] = Value::from(random_boolean);
+                set_field_value(data, &field.field_name, Value::from(random_boolean));
             }
         }
         FieldType::Float => {
             if enable_random {
-                if field.max_value.is_none() && field.min_value.is_none() {
-                    return;
+                if let (Some(min), Some(max)) = (field.min_value, field.max_value) {
+                    let random_float = rng.gen_range(min..=max);
+                    set_field_value(data, &field.field_name, Value::from(random_float));
                 }
-                let random_float = rng.gen_range(field.min_value.unwrap()..=field.max_value.unwrap());
-                data[&field.field_name] = Value::from(random_float);
             }
         }
         FieldType::Object => {
-            let mut object = Value::Object(Default::default());
-            process_fields(&mut object, &field.child.as_ref().unwrap(), enable_random);
-            data[&field.field_name] = object;
+            // 获取或创建对象
+            let mut object = get_or_create_object(data, &field.field_name);
+            
+            // 递归处理子字段
+            if let Some(children) = &field.child {
+                for child_field in children {
+                    process_single_field(&mut object, child_field, enable_random, rng);
+                }
+            }
+            
+            // 设置处理后的对象
+            set_field_value(data, &field.field_name, object);
         }
         FieldType::Enum => {
             if enable_random {
@@ -88,22 +110,92 @@ pub fn process_fields(data: &mut Value, fields: &Vec<MqttFieldStruct>, enable_ra
                             .map(|pv| pv.probability)
                             .sum();
                         
-                        let random_value = rng.gen_range(0.0..total_probability);
-                        
-                        let mut cumulative_prob = 0.0;
-                        for pv in possible_values {
-                            cumulative_prob += pv.probability;
-                            if random_value <= cumulative_prob {
-                                data[&field.field_name] = Value::from(pv.value);
-                                break;
+                        if total_probability > 0.0 {
+                            let random_value = rng.gen_range(0.0..total_probability);
+                            
+                            let mut cumulative_prob = 0.0;
+                            for pv in possible_values {
+                                cumulative_prob += pv.probability;
+                                if random_value <= cumulative_prob {
+                                    set_field_value(data, &field.field_name, pv.value.clone());
+                                    break;
+                                }
                             }
                         }
                     }
                 }
             }
         }
-        _ => {}
-    })
+        FieldType::String => {
+            // 处理字符串类型，如果有可能值则随机选择
+            if enable_random {
+                if let Some(possible_values) = &field.possible_values {
+                    if !possible_values.is_empty() {
+                        let random_index = rng.gen_range(0..possible_values.len());
+                        let selected_value = &possible_values[random_index];
+                        set_field_value(data, &field.field_name, selected_value.value.clone());
+                    }
+                }
+            }
+        }
+        FieldType::Array => {
+            // 保持现有数组结构，如果不存在则创建空数组
+            if !has_field(data, &field.field_name) {
+                set_field_value(data, &field.field_name, Value::Array(vec![]));
+            }
+        }
+        _ => {
+            // 其他类型保持现有值不变
+        }
+    }
+}
+
+/// 安全地设置字段值，支持嵌套路径
+/// 
+/// # 参数
+/// * `data` - JSON数据
+/// * `field_name` - 字段名称
+/// * `value` - 要设置的值
+fn set_field_value(data: &mut Value, field_name: &str, value: Value) {
+    if let Some(obj) = data.as_object_mut() {
+        obj.insert(field_name.to_string(), value);
+    }
+}
+
+/// 获取或创建对象字段
+/// 
+/// # 参数
+/// * `data` - JSON数据
+/// * `field_name` - 字段名称
+/// 
+/// # 返回值
+/// * 返回现有对象或新创建的空对象
+fn get_or_create_object(data: &Value, field_name: &str) -> Value {
+    if let Some(obj) = data.as_object() {
+        if let Some(existing_field) = obj.get(field_name) {
+            if existing_field.is_object() {
+                return existing_field.clone();
+            }
+        }
+    }
+    // 如果字段不存在或不是对象，创建新的空对象
+    Value::Object(Default::default())
+}
+
+/// 检查字段是否存在
+/// 
+/// # 参数
+/// * `data` - JSON数据
+/// * `field_name` - 字段名称
+/// 
+/// # 返回值
+/// * 如果字段存在返回true，否则返回false
+fn has_field(data: &Value, field_name: &str) -> bool {
+    if let Some(obj) = data.as_object() {
+        obj.contains_key(field_name)
+    } else {
+        false
+    }
 }
 
 /// MQTT字段结构体
@@ -135,7 +227,7 @@ pub struct MqttFieldStruct {
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct PossibleValue {
-    pub value: u32,
+    pub value: Value,
     pub probability: f64,
 }
 

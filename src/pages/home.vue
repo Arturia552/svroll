@@ -124,6 +124,7 @@
              :with-header="false"
              :close-on-click-modal="false">
     <tabs-config v-if="configDrawerVisible"
+                 ref="tabsConfigRef"
                  v-model:config-form="config"
                  v-model:valid="valid"
                  @close="closeConfigDrawer"
@@ -166,6 +167,7 @@ const terminalLog = ref<rs2JsEntity[]>([])
 const clientConnectionInfo = ref<ClientInfo[]>([])
 const editorMode = ref<'json' | 'hex'>("json")
 const codeEditorRef = ref<InstanceType<typeof CodeEditor> | null>(null)
+const tabsConfigRef = ref<InstanceType<typeof TabsConfig> | null>(null)
 const stopping = ref<boolean>(false)
 const showDashboard = ref<boolean>(false)
 const config = ref<ConnectConfig>(ConfigManager.createDefaultConfig())
@@ -187,6 +189,13 @@ const showNewConfig = () => {
   // 在打开配置窗口前，先从编辑器数据中同步fieldStruct
   syncFieldStructFromEditor()
   configDrawerVisible.value = true
+  
+  // 在下一个tick中刷新DataModel，确保组件已经渲染
+  nextTick(() => {
+    if (tabsConfigRef.value) {
+      tabsConfigRef.value.refreshDataModel()
+    }
+  })
 }
 
 const syncFieldStructFromEditor = () => {

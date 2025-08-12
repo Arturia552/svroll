@@ -346,7 +346,6 @@ const newField = ref<JsonStruct>({
 const fieldRules = {
   fieldName: [
     { required: true, message: '请输入字段名称', trigger: 'blur' },
-    { pattern: /^[a-zA-Z][a-zA-Z0-9_]*$/, message: '字段名称只能包含字母、数字和下划线，且必须以字母开头', trigger: 'blur' }
   ],
   fieldType: [
     { required: true, message: '请选择字段类型', trigger: 'change' }
@@ -554,9 +553,15 @@ const confirmAddField = () => {
       if (fieldToAdd.fieldType === FieldTypeEnum.Object) {
         fieldToAdd.children = fieldToAdd.children || []
         fieldToAdd.possibleValues = []
+        // 清空对象类型的数值范围
+        fieldToAdd.minValue = undefined
+        fieldToAdd.maxValue = undefined
       } else if (fieldToAdd.fieldType === FieldTypeEnum.Enum) {
         // 如果是枚举类型，设置possibleValues为数组
         fieldToAdd.possibleValues = convertPossibleValuesType([...possibleValuesArray.value], fieldToAdd.fieldType)
+        // 清空枚举类型的数值范围
+        fieldToAdd.minValue = undefined
+        fieldToAdd.maxValue = undefined
       } else if (fieldToAdd.fieldType !== FieldTypeEnum.Array) {
         // 非enum类型的probability固定为100%
         let defaultValue = singleDefaultValue.value
@@ -585,6 +590,13 @@ const confirmAddField = () => {
           value: convertValueByFieldType(defaultValue, fieldToAdd.fieldType), 
           probability: 100 
         }]
+        
+        // 对于非数字类型，清空数值范围
+        if (fieldToAdd.fieldType !== FieldTypeEnum.Integer && 
+            fieldToAdd.fieldType !== FieldTypeEnum.Float) {
+          fieldToAdd.minValue = undefined
+          fieldToAdd.maxValue = undefined
+        }
       }
 
       // 根据选择的父字段确定添加位置
@@ -633,9 +645,15 @@ const confirmEditField = () => {
       if (currentEditField.value.fieldType === FieldTypeEnum.Object) {
         currentEditField.value.children = currentEditField.value.children || []
         currentEditField.value.possibleValues = []
+        // 清空对象类型的数值范围
+        currentEditField.value.minValue = undefined
+        currentEditField.value.maxValue = undefined
       } else if (currentEditField.value.fieldType === FieldTypeEnum.Enum) {
         // 如果是枚举类型，设置possibleValues为数组
         currentEditField.value.possibleValues = convertPossibleValuesType([...editPossibleValuesArray.value], currentEditField.value.fieldType)
+        // 清空枚举类型的数值范围
+        currentEditField.value.minValue = undefined
+        currentEditField.value.maxValue = undefined
       } else if (currentEditField.value.fieldType !== FieldTypeEnum.Array) {
         // 非enum类型的probability固定为100%
         let defaultValue = editSingleDefaultValue.value
@@ -664,17 +682,28 @@ const confirmEditField = () => {
           value: convertValueByFieldType(defaultValue, currentEditField.value.fieldType), 
           probability: 100 
         }]
+        
+        // 对于非数字类型，清空数值范围
+        if (currentEditField.value.fieldType !== FieldTypeEnum.Integer && 
+            currentEditField.value.fieldType !== FieldTypeEnum.Float) {
+          currentEditField.value.minValue = undefined
+          currentEditField.value.maxValue = undefined
+        }
       }
 
-      // 找到字段并更新
-      const updateField = (arr: JsonStruct[], fieldId: string) => {
+      // 找到字段并更新（支持嵌套查找）
+      const updateField = (arr: JsonStruct[], fieldId: string): boolean => {
         for (let i = 0; i < arr.length; i++) {
           if (arr[i].fieldName === fieldId) {
-            // 更新字段属性
+            // 更新字段属性，保留minValue和maxValue
             arr[i] = { ...currentEditField.value }
             return true
           }
-
+          
+          // 递归查找子字段
+          if (arr[i].children && updateField(arr[i].children, fieldId)) {
+            return true
+          }
         }
         return false
       }
@@ -749,9 +778,11 @@ watch(() => currentEditField.value.fieldType, (newType) => {
   // 清空编辑表单的默认值数据
   editPossibleValuesArray.value = []
   
-  // 清空数值范围
-  currentEditField.value.minValue = undefined
-  currentEditField.value.maxValue = undefined
+  // 只对非数字类型清空数值范围
+  if (newType !== FieldTypeEnum.Integer && newType !== FieldTypeEnum.Float) {
+    currentEditField.value.minValue = undefined
+    currentEditField.value.maxValue = undefined
+  }
   currentEditField.value.possibleValues = []
   
   // 根据新类型设置合适的默认值
@@ -793,9 +824,11 @@ watch(() => newField.value.fieldType, (_newType) => {
   possibleValuesArray.value = []
   singleDefaultValue.value = undefined
   
-  // 清空数值范围
-  newField.value.minValue = undefined
-  newField.value.maxValue = undefined
+  // 只对非数字类型清空数值范围
+  if (_newType !== FieldTypeEnum.Integer && _newType !== FieldTypeEnum.Float) {
+    newField.value.minValue = undefined
+    newField.value.maxValue = undefined
+  }
   newField.value.possibleValues = []
   if (_newType === FieldTypeEnum.Object) {
     newField.value.children = []
