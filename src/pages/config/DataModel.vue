@@ -35,6 +35,9 @@
       <el-table :data="config.fieldStruct"
                 style="width: 100%"
                 :height="ModelTableHeight"
+                size="small"
+                row-key="fieldName"
+                :tree-props="{ children: 'children' }"
                 border
                 stripe
                 highlight-current-row>
@@ -51,7 +54,7 @@
         <el-table-column prop="minValue" label="最小值" min-width="15%">
           <template #default="scope">
             <div class="cell-content">
-              {{ scope.row.minValue ?? "--" }}
+              {{ scope.row.fieldType === FieldTypeEnum.Object ? "--" : (scope.row.minValue ?? "--") }}
             </div>
           </template>
         </el-table-column>
@@ -59,7 +62,7 @@
         <el-table-column prop="maxValue" label="最大值" min-width="15%">
           <template #default="scope">
             <div class="cell-content">
-              {{ scope.row.maxValue ?? "--" }}
+              {{ scope.row.fieldType === FieldTypeEnum.Object ? "--" : (scope.row.maxValue ?? "--") }}
             </div>
           </template>
         </el-table-column>
@@ -67,11 +70,21 @@
         <el-table-column prop="possibleValues" label="有效值" min-width="20%">
           <template #default="scope">
             <div class="cell-content">
-              <el-tag v-for="(item, index) in scope.row.possibleValues"
-                      :key="index" 
-                      class="possible-value-tag">
-                <span> {{ item.value }}</span><span v-if="scope.row.fieldType === FieldTypeEnum.Enum"> ({{ item.probability }}%)</span>
-              </el-tag>
+              <template v-if="scope.row.fieldType === FieldTypeEnum.Object">
+                <el-tag type="info">
+                  子字段：{{ scope.row.children?.length || 0 }}
+                </el-tag>
+              </template>
+              <template v-else>
+                <template v-if="scope.row.possibleValues && scope.row.possibleValues.length > 0">
+                  <el-tag v-for="(item, index) in scope.row.possibleValues"
+                          :key="index" 
+                          class="possible-value-tag">
+                    <span> {{ item.value }}</span><span v-if="scope.row.fieldType === FieldTypeEnum.Enum"> ({{ item.probability }}%)</span>
+                  </el-tag>
+                </template>
+                <span v-else class="no-value">--</span>
+              </template>
             </div>
           </template>
         </el-table-column>
@@ -107,6 +120,18 @@
                :model="newField"
                label-width="100px"
                :rules="fieldRules">
+        <el-form-item label="添加到" prop="parentField">
+          <el-select v-model="selectedParentFieldId"
+                     placeholder="请选择添加位置（空为根级）"
+                     style="width: 100%"
+                     clearable>
+            <el-option value="" label="根级字段" />
+            <el-option v-for="field in objectFields"
+                       :key="field.id"
+                       :label="field.label"
+                       :value="field.id" />
+          </el-select>
+        </el-form-item>
         <el-form-item label="字段名称" prop="fieldName">
           <el-input v-model="newField.fieldName" placeholder="请输入字段名称" />
         </el-form-item>
@@ -118,8 +143,8 @@
                        :value="item.value" />
           </el-select>
         </el-form-item>
-        <template v-if="newField.fieldType !== FieldTypeEnum.Array">
-          <el-form-item v-if="newField.fieldType" label="默认值">
+        <template v-if="newField.fieldType !== FieldTypeEnum.Array && newField.fieldType !== FieldTypeEnum.Object">
+          <el-form-item v-if="newField.fieldType" label="有效值">
             <div v-if="newField.fieldType === FieldTypeEnum.Enum">
               <div class="possible-values-table">
                 <el-table :data="possibleValuesArray" 
@@ -167,7 +192,7 @@
             </div>
             <div v-else>
               <!-- 非枚举类型只有一个值 -->
-              <el-input v-model="singleDefaultValue" placeholder="默认值" style="width: 100%;" />
+              <el-input v-model="singleDefaultValue" placeholder="有效值" style="width: 100%;" />
             </div>
           </el-form-item>
           <template v-if="newField.fieldType === FieldTypeEnum.Integer || newField.fieldType === FieldTypeEnum.Float">
@@ -212,8 +237,8 @@
           </el-select>
         </el-form-item>
         <template
-          v-if="currentEditField.fieldType !== FieldTypeEnum.Array">
-          <el-form-item v-if="currentEditField.fieldType" label="默认值">
+          v-if="currentEditField.fieldType !== FieldTypeEnum.Array && currentEditField.fieldType !== FieldTypeEnum.Object">
+          <el-form-item v-if="currentEditField.fieldType" label="有效值">
             <div v-if="currentEditField.fieldType === FieldTypeEnum.Enum">
               <div class="possible-values-table">
                 <el-table :data="editPossibleValuesArray" 
@@ -261,7 +286,7 @@
             </div>
             <div v-else>
               <!-- 非枚举类型只有一个值 -->
-              <el-input v-model="editSingleDefaultValue" placeholder="默认值" style="width: 100%;" />
+              <el-input v-model="editSingleDefaultValue" placeholder="有效值" style="width: 100%;" />
             </div>
           </el-form-item>
           <template
@@ -300,12 +325,11 @@ const config = inject<any>("config")
 const loading = ref<boolean>(true)
 const addFieldDialogVisible = ref(false)
 const editFieldDialogVisible = ref(false)
-const currentParent = ref<JsonStruct | null>(null)
 const currentEditField = ref<JsonStruct>({})
 const fieldFormRef = ref<FormInstance>()
 const editFieldFormRef = ref<FormInstance>()
-
-
+const objectFields = ref<{ id: string, label: string }[]>([])
+const selectedParentFieldId = ref<string>('')
 
 const ModelTableHeight = computed(() => {
   return height.value - 400
@@ -336,6 +360,7 @@ const fieldTypeOptions = [
   { value: FieldTypeEnum.Boolean, label: '布尔值(Boolean)' },
   { value: FieldTypeEnum.Enum, label: '枚举(Array)' },
   { value: FieldTypeEnum.Array, label: '数组(Array)' },
+  { value: FieldTypeEnum.Object, label: '对象(Object)' },
   { value: FieldTypeEnum.DateTime, label: '日期时间(DateTime)' },
   { value: FieldTypeEnum.Timestamp, label: '时间戳(Timestamp)' }
 ]
@@ -399,6 +424,31 @@ const getFieldTypeName = (type: FieldTypeEnum): string => {
 }
 
 
+
+
+// 获取所有Object类型字段
+const getAllObjectFields = (fields: JsonStruct[], prefix: string = ''): { id: string, label: string }[] => {
+  let result: { id: string, label: string }[] = []
+  
+  fields.forEach(field => {
+    const fullPath = prefix ? `${prefix}.${field.fieldName}` : field.fieldName
+    
+    if (field.fieldType === FieldTypeEnum.Object) {
+      result.push({
+        id: field.fieldName,
+        label: fullPath
+      })
+      
+      // 递归获取子对象字段
+      if (field.children && field.children.length > 0) {
+        result = result.concat(getAllObjectFields(field.children, fullPath))
+      }
+    }
+  })
+  
+  return result
+}
+
 // 刷新数据结构
 const refreshStructure = () => {
   loading.value = true
@@ -429,29 +479,67 @@ const showAddFieldDialog = () => {
     fieldType: FieldTypeEnum.String,
     minValue: undefined,
     maxValue: undefined,
-    possibleValues: []
+    possibleValues: [],
+    children: []
   }
   
   possibleValuesArray.value = []
   singleDefaultValue.value = undefined
 
-  currentParent.value = null
+  // 获取所有Object类型字段
+  objectFields.value = getAllObjectFields(config.value.fieldStruct || [])
+  selectedParentFieldId.value = ''
+
   addFieldDialogVisible.value = true
 }
 
+// 控制是否是编辑对话框初始化阶段
+const isEditDialogInitializing = ref(false)
+
 // 显示编辑字段对话框
 const showEditFieldDialog = (row: JsonStruct) => {
+  isEditDialogInitializing.value = true
+  
   currentEditField.value = JSON.parse(JSON.stringify(row))
   
-  // 初始化编辑表单中的可能值数组
-  if (currentEditField.value.fieldType === FieldTypeEnum.Enum) {
-    editPossibleValuesArray.value = [...(currentEditField.value.possibleValues || [])]
-  } else if (currentEditField.value.fieldType !== FieldTypeEnum.Array && 
-             currentEditField.value.possibleValues?.length) {
-    editSingleDefaultValue.value = currentEditField.value.possibleValues[0]?.value
-  } else {
-    editSingleDefaultValue.value = undefined
-  }
+  // 使用 nextTick 确保响应式更新完成后再设置值
+  nextTick(() => {
+    // 初始化编辑表单中的可能值数组
+    if (currentEditField.value.fieldType === FieldTypeEnum.Enum) {
+      editPossibleValuesArray.value = [...(currentEditField.value.possibleValues || [])]
+      editSingleDefaultValue.value = undefined
+    } else if (currentEditField.value.fieldType !== FieldTypeEnum.Array && 
+               currentEditField.value.fieldType !== FieldTypeEnum.Object) {
+      // 对于非枚举、非数组、非对象类型，回显第一个有效值
+      if (currentEditField.value.possibleValues?.length) {
+        editSingleDefaultValue.value = currentEditField.value.possibleValues[0]?.value
+      } else {
+        // 如果没有有效值，根据字段类型设置合适的空值
+        switch (currentEditField.value.fieldType) {
+          case FieldTypeEnum.Integer:
+          case FieldTypeEnum.Float:
+          case FieldTypeEnum.Timestamp:
+            editSingleDefaultValue.value = 0
+            break
+          case FieldTypeEnum.Boolean:
+            editSingleDefaultValue.value = false
+            break
+          case FieldTypeEnum.String:
+          case FieldTypeEnum.DateTime:
+          default:
+            editSingleDefaultValue.value = ''
+            break
+        }
+      }
+      editPossibleValuesArray.value = []
+    } else {
+      // Object 或 Array 类型
+      editSingleDefaultValue.value = undefined
+      editPossibleValuesArray.value = []
+    }
+    
+    isEditDialogInitializing.value = false
+  })
   
   editFieldDialogVisible.value = true
 }
@@ -462,18 +550,72 @@ const confirmAddField = () => {
     if (valid) {
       const fieldToAdd = { ...newField.value }
 
-      // 如果是枚举类型，设置possibleValues为数组
-      if (fieldToAdd.fieldType === FieldTypeEnum.Enum) {
+      // 对象类型：仅初始化 children，不设置默认值
+      if (fieldToAdd.fieldType === FieldTypeEnum.Object) {
+        fieldToAdd.children = fieldToAdd.children || []
+        fieldToAdd.possibleValues = []
+      } else if (fieldToAdd.fieldType === FieldTypeEnum.Enum) {
+        // 如果是枚举类型，设置possibleValues为数组
         fieldToAdd.possibleValues = convertPossibleValuesType([...possibleValuesArray.value], fieldToAdd.fieldType)
       } else if (fieldToAdd.fieldType !== FieldTypeEnum.Array) {
         // 非enum类型的probability固定为100%
-        fieldToAdd.possibleValues = singleDefaultValue.value !== undefined 
-          ? [{ value: convertValueByFieldType(singleDefaultValue.value, fieldToAdd.fieldType), probability: 100 }] 
-          : []
+        let defaultValue = singleDefaultValue.value
+        
+        // 如果用户没有输入默认值，根据类型设置默认值
+        if (defaultValue === undefined || defaultValue === '') {
+          switch (fieldToAdd.fieldType) {
+            case FieldTypeEnum.String:
+            case FieldTypeEnum.DateTime:
+              defaultValue = ''
+              break
+            case FieldTypeEnum.Integer:
+            case FieldTypeEnum.Float:
+            case FieldTypeEnum.Timestamp:
+              defaultValue = 0
+              break
+            case FieldTypeEnum.Boolean:
+              defaultValue = false
+              break
+            default:
+              defaultValue = ''
+          }
+        }
+        
+        fieldToAdd.possibleValues = [{ 
+          value: convertValueByFieldType(defaultValue, fieldToAdd.fieldType), 
+          probability: 100 
+        }]
       }
 
-      // 添加为根级字段
-      config.value.fieldStruct.push(fieldToAdd)
+      // 根据选择的父字段确定添加位置
+      if (selectedParentFieldId.value) {
+        // 添加到指定的Object字段的children中
+        const findAndAddToParent = (arr: JsonStruct[], parentId: string): boolean => {
+          for (let i = 0; i < arr.length; i++) {
+            if (arr[i].fieldName === parentId && arr[i].fieldType === FieldTypeEnum.Object) {
+              if (!arr[i].children) {
+                arr[i].children = []
+              }
+              arr[i].children!.push(fieldToAdd)
+              return true
+            }
+            
+            // 递归查找子对象
+            if (arr[i].children && findAndAddToParent(arr[i].children, parentId)) {
+              return true
+            }
+          }
+          return false
+        }
+        
+        if (!findAndAddToParent(config.value.fieldStruct, selectedParentFieldId.value)) {
+          ElMessage.error('未找到指定的父字段')
+          return
+        }
+      } else {
+        // 添加为根级字段
+        config.value.fieldStruct.push(fieldToAdd)
+      }
 
       addFieldDialogVisible.value = false
       updateJsonFromStruct()
@@ -487,14 +629,41 @@ const confirmEditField = () => {
   editFieldFormRef.value?.validate((valid) => {
     if (valid) {
       
-      // 如果是枚举类型，设置possibleValues为数组
-      if (currentEditField.value.fieldType === FieldTypeEnum.Enum) {
+      // 对象类型：不设置默认值
+      if (currentEditField.value.fieldType === FieldTypeEnum.Object) {
+        currentEditField.value.children = currentEditField.value.children || []
+        currentEditField.value.possibleValues = []
+      } else if (currentEditField.value.fieldType === FieldTypeEnum.Enum) {
+        // 如果是枚举类型，设置possibleValues为数组
         currentEditField.value.possibleValues = convertPossibleValuesType([...editPossibleValuesArray.value], currentEditField.value.fieldType)
       } else if (currentEditField.value.fieldType !== FieldTypeEnum.Array) {
-        // 非enum类型的probability固定为1
-        currentEditField.value.possibleValues = editSingleDefaultValue.value !== undefined 
-          ? [{ value: convertValueByFieldType(editSingleDefaultValue.value, currentEditField.value.fieldType), probability: 100 }] 
-          : []
+        // 非enum类型的probability固定为100%
+        let defaultValue = editSingleDefaultValue.value
+        
+        // 如果用户没有输入默认值，根据类型设置默认值
+        if (defaultValue === undefined || defaultValue === '') {
+          switch (currentEditField.value.fieldType) {
+            case FieldTypeEnum.String:
+            case FieldTypeEnum.DateTime:
+              defaultValue = ''
+              break
+            case FieldTypeEnum.Integer:
+            case FieldTypeEnum.Float:
+            case FieldTypeEnum.Timestamp:
+              defaultValue = 0
+              break
+            case FieldTypeEnum.Boolean:
+              defaultValue = false
+              break
+            default:
+              defaultValue = ''
+          }
+        }
+        
+        currentEditField.value.possibleValues = [{ 
+          value: convertValueByFieldType(defaultValue, currentEditField.value.fieldType), 
+          probability: 100 
+        }]
       }
 
       // 找到字段并更新
@@ -551,6 +720,14 @@ watch(() => config.value.fieldStruct, (newVal) => {
 
 onMounted(() => {
   loading.value = true
+  
+  // 如果已经有fieldStruct配置，则不需要重新从sendData解析
+  if (config.value.fieldStruct && config.value.fieldStruct.length > 0) {
+    loading.value = false
+    return
+  }
+  
+  // 只有当没有fieldStruct时，才从sendData解析生成初始结构
   let parsedData = {}
   try {
     parsedData = JSON.parse(config.value.sendData || '{}')
@@ -558,24 +735,55 @@ onMounted(() => {
     console.error(e)
     ElMessage.error('JSON格式错误，无法解析')
   }
-  config.value.fieldStruct = convertToJsonStruct(parsedData, config.value.fieldStruct || [])
+  config.value.fieldStruct = convertToJsonStruct(parsedData, [])
   loading.value = false
 })
 
-// 在处理编辑对话框时初始化默认值
+// 在处理编辑对话框时，字段类型切换时的处理
 watch(() => currentEditField.value.fieldType, (newType) => {
+  // 如果是对话框初始化阶段，跳过watcher处理
+  if (isEditDialogInitializing.value) {
+    return
+  }
+  
   // 清空编辑表单的默认值数据
   editPossibleValuesArray.value = []
-  editSingleDefaultValue.value = undefined
   
   // 清空数值范围
   currentEditField.value.minValue = undefined
   currentEditField.value.maxValue = undefined
   currentEditField.value.possibleValues = []
   
-  // 如果新类型不是枚举类型且原来有默认值，则尝试恢复第一个值
-  if (newType !== FieldTypeEnum.Enum && currentEditField.value.possibleValues?.length) {
-    editSingleDefaultValue.value = currentEditField.value.possibleValues[0]?.value
+  // 根据新类型设置合适的默认值
+  if (newType === FieldTypeEnum.Enum) {
+    editSingleDefaultValue.value = undefined
+    editPossibleValuesArray.value = []
+  } else if (newType !== FieldTypeEnum.Object && newType !== FieldTypeEnum.Array) {
+    // 为非枚举、非对象、非数组类型设置类型相关的默认值
+    switch (newType) {
+      case FieldTypeEnum.Integer:
+      case FieldTypeEnum.Float:
+      case FieldTypeEnum.Timestamp:
+        editSingleDefaultValue.value = 0
+        break
+      case FieldTypeEnum.Boolean:
+        editSingleDefaultValue.value = false
+        break
+      case FieldTypeEnum.String:
+      case FieldTypeEnum.DateTime:
+      default:
+        editSingleDefaultValue.value = ''
+        break
+    }
+  } else {
+    editSingleDefaultValue.value = undefined
+  }
+  
+  // 如果是Object类型，初始化children
+  if (newType === FieldTypeEnum.Object) {
+    currentEditField.value.children = []
+  } else {
+    currentEditField.value.children = undefined
   }
 })
 
@@ -589,10 +797,33 @@ watch(() => newField.value.fieldType, (_newType) => {
   newField.value.minValue = undefined
   newField.value.maxValue = undefined
   newField.value.possibleValues = []
+  if (_newType === FieldTypeEnum.Object) {
+    newField.value.children = []
+  } else {
+    newField.value.children = undefined
+  }
 })
 </script>
 <style lang="scss" scoped>
 .data-model {
+  .header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+
+    .title {
+      font-size: 18px;
+      font-weight: 500;
+      color: var(--el-text-color-primary);
+    }
+
+    .actions {
+      display: flex;
+      gap: 8px;
+    }
+  }
+
   .table-container {
     margin-bottom: 20px;
   }
@@ -610,6 +841,16 @@ watch(() => newField.value.fieldType, (_newType) => {
         margin-right: 8px;
       }
     }
+  }
+
+  .no-value {
+    color: var(--el-text-color-placeholder);
+    font-style: italic;
+  }
+
+  .possible-value-tag {
+    margin-right: 5px;
+    margin-bottom: 5px;
   }
 }
 </style>

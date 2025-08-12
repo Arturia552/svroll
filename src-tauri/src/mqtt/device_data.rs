@@ -75,6 +75,11 @@ pub fn process_fields(data: &mut Value, fields: &Vec<MqttFieldStruct>, enable_ra
                 data[&field.field_name] = Value::from(random_float);
             }
         }
+        FieldType::Object => {
+            let mut object = Value::Object(Default::default());
+            process_fields(&mut object, &field.child.as_ref().unwrap(), enable_random);
+            data[&field.field_name] = object;
+        }
         FieldType::Enum => {
             if enable_random {
                 if let Some(possible_values) = &field.possible_values {
@@ -122,6 +127,9 @@ pub struct MqttFieldStruct {
     /// 可能的取值列表（对枚举类型有效）
     #[serde(rename = "possibleValues")]
     pub possible_values: Option<Vec<PossibleValue>>,
+    /// 子字段列表（对对象类型有效）
+    #[serde(rename = "children", default)]
+    pub child: Option<Vec<MqttFieldStruct>>,
 }
 
 
@@ -157,6 +165,8 @@ pub enum FieldType {
     Enum,
     /// 数组类型
     Array,
+    /// 对象类型，包含子字段
+    Object,
     /// 空值
     Null,
     /// 未定义类型

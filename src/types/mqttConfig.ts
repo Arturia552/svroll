@@ -59,10 +59,12 @@ export interface JsonStruct {
   minValue?: number;
   maxValue?: number;
   possibleValues?: PossibleValue[];
+  // For object type, nested children definitions
+  children?: JsonStruct[];
 }
 
 export interface PossibleValue {
-  value: number;
+  value: any;  // 支持各种类型的值：number, string, boolean等
   probability: number;
 }
 
@@ -83,6 +85,7 @@ export enum FieldTypeEnum {
   Time = "Time",
   Enum = "Enum",
   Array = "Array",
+  Object = "Object",
   Null = "Null",
   Unknown = "Unknown",
 }

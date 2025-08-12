@@ -146,7 +146,7 @@ import DashboardPanel from "@/components/Dashboard/DashboardPanel.vue"
 import HistoryComponent from "@/components/History/index.vue"
 import { ConnectConfig, rs2JsEntity, ClientInfo } from "@/types/mqttConfig"
 import { Clock, Back, Delete, Edit, Upload, Download, VideoPlay, VideoPause } from '@element-plus/icons-vue'
-
+import { syncFieldStructFromEditorData }  from '@/hooks/processJsonStruct'
 import { TauriService } from "@/services/tauriService"
 import { EventManager, type EventCallbacks } from "@/services/eventManager"
 import { TimerManager, type ClientInfoSummary } from "@/services/timerManager"
@@ -184,7 +184,25 @@ provide("config", config)
 provide("clientConnectionInfo", clientConnectionInfo)
 
 const showNewConfig = () => {
+  // 在打开配置窗口前，先从编辑器数据中同步fieldStruct
+  syncFieldStructFromEditor()
   configDrawerVisible.value = true
+}
+
+const syncFieldStructFromEditor = () => {
+  try {
+    // 只有在MQTT协议下才需要同步fieldStruct
+    if (config.value.protocol !== 'Mqtt') {
+      return
+    }
+    config.value.fieldStruct = syncFieldStructFromEditorData(
+      config.value.sendData || '{}',
+      config.value.fieldStruct || []
+    )
+  } catch (error) {
+    console.warn('同步编辑器数据到fieldStruct失败:', error)
+    // 不显示错误信息给用户，因为这是后台同步操作
+  }
 }
 
 const showHistory = () => {

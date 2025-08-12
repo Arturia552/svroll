@@ -34,8 +34,8 @@ const formatHex = () => {
   }
 }
 
-// 验证JSON是否为扁平结构（只允许一层）
-const validateFlatJson = (jsonStr: string): { isValid: boolean; error?: string } => {
+// 验证JSON格式（支持嵌套结构）
+const validateJson = (jsonStr: string): { isValid: boolean; error?: string; position?: { line: number; column: number } } => {
   if (!jsonStr.trim()) return { isValid: true }
   
   try {
@@ -43,19 +43,37 @@ const validateFlatJson = (jsonStr: string): { isValid: boolean; error?: string }
     
     // 必须是对象类型
     if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
-      return { isValid: false, error: 'JSON数据必须是对象格式' }
+      return { isValid: false, error: 'JSON数据必须是对象格式', position: { line: 1, column: 1 } }
     }
     
-    // 检查是否有嵌套对象
-    for (const [key, value] of Object.entries(parsed)) {
-      if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
-        return { isValid: false, error: `字段 "${key}" 不能包含嵌套对象，只支持扁平结构` }
+    // 支持嵌套对象，只进行基本的JSON格式验证
+    return { isValid: true }
+  } catch (error) {
+    const errorMsg = (error as Error).message
+    let line = 1
+    let column = 1
+    
+    // 尝试从错误信息中提取位置信息
+    const positionMatch = errorMsg.match(/at position (\d+)|line (\d+) column (\d+)/i)
+    if (positionMatch) {
+      if (positionMatch[1]) {
+        // "at position X" 格式
+        const position = parseInt(positionMatch[1])
+        const lines = jsonStr.substring(0, position).split('\n')
+        line = lines.length
+        column = lines[lines.length - 1].length + 1
+      } else if (positionMatch[2] && positionMatch[3]) {
+        // "line X column Y" 格式
+        line = parseInt(positionMatch[2])
+        column = parseInt(positionMatch[3])
       }
     }
     
-    return { isValid: true }
-  } catch (_) {
-    return { isValid: false, error: 'JSON格式错误' }
+    return { 
+      isValid: false, 
+      error: 'JSON格式错误: ' + errorMsg,
+      position: { line, column }
+    }
   }
 }
 
@@ -127,21 +145,22 @@ onMounted(() => {
         return
       }
     } else if (props.language === 'json') {
-      // 如果是JSON模式，验证扁平结构
-      const validation = validateFlatJson(value)
+      // 如果是JSON模式，验证JSON格式
+      const validation = validateJson(value)
       if (!validation.isValid && validation.error) {
         // 显示错误标记，但不阻止输入
-        monaco.editor.setModelMarkers(editorInstance!.getModel()!, 'flatJsonValidator', [{
-          startLineNumber: 1,
-          startColumn: 1,
-          endLineNumber: 1,
-          endColumn: 1,
+        const position = validation.position || { line: 1, column: 1 }
+        monaco.editor.setModelMarkers(editorInstance!.getModel()!, 'jsonValidator', [{
+          startLineNumber: position.line,
+          startColumn: position.column,
+          endLineNumber: position.line,
+          endColumn: position.column + 1,
           message: validation.error,
           severity: monaco.MarkerSeverity.Error
         }])
       } else {
         // 清除错误标记
-        monaco.editor.setModelMarkers(editorInstance!.getModel()!, 'flatJsonValidator', [])
+        monaco.editor.setModelMarkers(editorInstance!.getModel()!, 'jsonValidator', [])
       }
     }
     
@@ -173,14 +192,15 @@ onMounted(() => {
     editorInstance.setValue(modelValue.value)
     if (props.language === 'json') {
       editorInstance.getAction("editor.action.formatDocument")?.run()
-      // 初始化时也进行扁平结构校验
-      const validation = validateFlatJson(modelValue.value)
+      // 初始化时也进行JSON格式校验
+      const validation = validateJson(modelValue.value)
       if (!validation.isValid && validation.error) {
-        monaco.editor.setModelMarkers(editorInstance.getModel()!, 'flatJsonValidator', [{
-          startLineNumber: 1,
-          startColumn: 1,
-          endLineNumber: 1,
-          endColumn: 1,
+        const position = validation.position || { line: 1, column: 1 }
+        monaco.editor.setModelMarkers(editorInstance.getModel()!, 'jsonValidator', [{
+          startLineNumber: position.line,
+          startColumn: position.column,
+          endLineNumber: position.line,
+          endColumn: position.column + 1,
           message: validation.error,
           severity: monaco.MarkerSeverity.Error
         }])
