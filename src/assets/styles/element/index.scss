@@ -1,85 +1,84 @@
-// Grafana风格浅色主题变量 
 $--colors: (
-  'primary': (
-    'base': #3274d9,
-  ),
-  'success': (
-    'base': #37872d,
-  ),
-  'warning': (
-    'base': #f58220,
-  ),
-  'danger': (
-    'base': #e02f44,
-  ),
-  'error': (
-    'base': #e02f44,
-  ),
-  'info': (
-    'base': #606266,
-  )
+    "primary": (
+        "base": #26364f,
+    ),
+    "success": (
+        "base": #37872d,
+    ),
+    "warning": (
+        "base": #f58220,
+    ),
+    "danger": (
+        "base": #e02f44,
+    ),
+    "error": (
+        "base": #e02f44,
+    ),
+    "info": (
+        "base": #606266,
+    ),
 );
 
 // 额外的Element样式变量
 $--border-radius: (
-  'base': 3px,
-  'small': 2px,
-  'round': 20px,
-  'circle': 100%
+    "base": 3px,
+    "small": 2px,
+    "round": 20px,
+    "circle": 100%,
 );
 
 // 背景色
 $--bg-color: (
-  'page': #f2f5fa,
-  '': #ffffff,
-  'overlay': #ffffff,
+    "page": #f2f5fa,
+    "": #ffffff,
+    "overlay": #ffffff,
 );
 
 // 文本色
 $--text-color: (
-  'primary': #181b1f,
-  'regular': #5c6370,
-  'secondary': #7f8fa4,
-  'placeholder': #a7b6c8,
-  'disabled': #c0cad8
+    "primary": #181b1f,
+    "regular": #5c6370,
+    "secondary": #7f8fa4,
+    "placeholder": #a7b6c8,
+    "disabled": #c0cad8,
 );
 
 // 边框色
 $--border-color: (
-  '': #dcdfe6,
-  'light': #e4e7ed,
-  'lighter': #ebeef5,
-  'extra-light': #f2f6fc
+    "": #dcdfe6,
+    "light": #e4e7ed,
+    "lighter": #ebeef5,
+    "extra-light": #f2f6fc,
 );
 
 // 填充色
 $--fill-color: (
-  '': #f5f7fa,
-  'light': #f9fafc,
-  'lighter': #fcfdff,
-  'extra-light': #fefeff,
-  'blank': #ffffff
+    "": #f5f7fa,
+    "light": #f9fafc,
+    "lighter": #fcfdff,
+    "extra-light": #fefeff,
+    "blank": #ffffff,
 );
 
 // 盒子阴影
 $--box-shadow: (
-  '': 0 2px 4px rgba(0, 0, 0, 0.12),
-  'light': 0 1px 3px rgba(0, 0, 0, 0.1),
-  'lighter': 0 2px 6px rgba(0, 0, 0, 0.08),
-  'dark': 0 4px 8px rgba(0, 0, 0, 0.2)
+    "": 0 2px 4px rgba(0, 0, 0, 0.12),
+    "light": 0 1px 3px rgba(0, 0, 0, 0.1),
+    "lighter": 0 2px 6px rgba(0, 0, 0, 0.08),
+    "dark": 0 4px 8px rgba(0, 0, 0, 0.2),
 );
 
-@forward 'element-plus/theme-chalk/src/common/var.scss' with (
-  $colors: $--colors,
-  $border-radius: $--border-radius,
-  $bg-color: $--bg-color,
-  $text-color: $--text-color,
-  $border-color: $--border-color,
-  $fill-color: $--fill-color,
-  $box-shadow: $--box-shadow,
-  $drawer: (
-    'padding-primary': 16px 
-  )
+@forward "element-plus/theme-chalk/src/common/var.scss" with (
+    $colors: $--colors,
+    $border-radius: $--border-radius,
+    $bg-color: $--bg-color,
+    $text-color: $--text-color,
+    $border-color: $--border-color,
+    $fill-color: $--fill-color,
+    $box-shadow: $--box-shadow,
+    $drawer: (
+        "padding-primary": 16px,
+    )
 );
 
-@use './dark.scss';
+@use "./dark.scss";

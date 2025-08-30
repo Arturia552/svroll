@@ -1,7 +1,9 @@
+use std::sync::Arc;
+
 use crate::{
-    param::{BasicConfig, Protocol},
     context::get_app_state,
     mqtt::{MqttFieldStruct, TopicConfig},
+    param::{BasicConfig, Protocol},
     tcp::tcp_client::{TcpClient, TcpSendData},
     MqttClientData, MqttSendData,
 };
@@ -10,7 +12,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 /// 连接参数配置
-/// 
+///
 /// 包含从前端传递的所有连接和发送配置
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ConnectParam {
@@ -47,9 +49,9 @@ pub struct ConnectParam {
 
 impl ConnectParam {
     /// 转换为MQTT配置
-    /// 
+    ///
     /// 将通用连接参数转换为MQTT特定的基准测试配置
-    /// 
+    ///
     /// # 返回
     /// 成功返回MQTT配置，失败返回错误
     pub async fn into_config(&self) -> Result<BasicConfig<MqttSendData, MqttClientData>> {
@@ -70,16 +72,16 @@ impl ConnectParam {
                 .insert(client_data.get_client_id().to_string(), client_data.clone());
             clients.push(client_data);
         }
-        Ok(BasicConfig {
+        Ok(BasicConfig::new(
             send_data,
-            protocol_type: Protocol::Mqtt,
             clients,
-            thread_size: self.thread_size,
-            enable_random: self.enable_random,
-            broker: self.broker.clone(),
-            max_connect_per_second: self.max_connect_per_second,
-            send_interval: self.send_interval,
-        })
+            Protocol::Mqtt,
+            self.thread_size,
+            self.enable_random,
+            self.broker.clone(),
+            self.max_connect_per_second,
+            self.send_interval,
+        ))
     }
 
     pub async fn set_send_data(&mut self, send_data: String) {
@@ -87,9 +89,9 @@ impl ConnectParam {
     }
 
     /// 转换为TCP配置
-    /// 
+    ///
     /// 将通用连接参数转换为TCP特定的基准测试配置
-    /// 
+    ///
     /// # 返回
     /// 成功返回TCP配置，失败返回错误
     pub async fn into_tcp_config(&self) -> Result<BasicConfig<TcpSendData, TcpClient>> {
@@ -108,7 +110,9 @@ impl ConnectParam {
         }
 
         Ok(BasicConfig::new(
-            TcpSendData { data: send_data },
+            TcpSendData {
+                data: Arc::new(send_data),
+            },
             clients,
             Protocol::Tcp,
             self.thread_size,

@@ -1,30 +1,36 @@
 <template>
   <div class="tabs-config">
     <div v-show="activeTab === 'basic'" class="config-panel">
-      <basic-config ref="basicConfigRef" v-model:config-form="configForm" />
+      <basic-config
+        ref="basicConfigRef"
+        v-model:config-form="configForm" />
     </div>
 
     <div v-show="activeTab === 'client'" class="config-panel">
       <client-config ref="clientConfigRef" />
     </div>
 
-    <div v-show="activeTab === 'data' && configForm.protocol === 'Mqtt'" class="config-panel">
+    <div
+      v-show="activeTab === 'data' && configForm.protocol === 'Mqtt'"
+      class="config-panel">
       <data-model ref="dataModelRef" />
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, reactive } from 'vue'
-import DataModel from './DataModel.vue'
-import ClientConfig from './ClientConfig.vue'
-import BasicConfig from './BasicConfig.vue'
-import { ConnectConfig } from '@/types/mqttConfig'
-import { ElMessage } from 'element-plus'
+import { ref, reactive } from "vue"
+import DataModel from "./DataModel.vue"
+import ClientConfig from "./ClientConfig.vue"
+import BasicConfig from "./BasicConfig.vue"
+import { ConnectConfig } from "@/types/mqttConfig"
+import { ElMessage } from "element-plus"
 
-const configForm = defineModel<ConnectConfig>('configForm')
+const configForm = defineModel<ConnectConfig>("configForm")
 // 添加对activeTab状态的双向绑定
-const activeTab = defineModel<'basic' | 'client' | 'data'>('activeTab', { default: 'basic' })
+const activeTab = defineModel<"basic" | "client" | "data">("activeTab", {
+    default: "basic",
+})
 
 const basicConfigRef = ref()
 const clientConfigRef = ref()
@@ -34,7 +40,7 @@ const dataModelRef = ref()
 const formErrors = reactive({
     basic: false,
     client: false,
-    data: false
+    data: false,
 })
 
 // 清除所有错误标记
@@ -49,7 +55,7 @@ const validateClientConfig = (): boolean => {
     // 如果有客户端，则检查是否至少有一个客户端
     if (configForm.value.clients && configForm.value.clients.length === 0) {
         formErrors.client = true
-        ElMessage.warning('请添加至少一个客户端')
+        ElMessage.warning("请添加至少一个客户端")
         return false
     }
     return true
@@ -57,14 +63,17 @@ const validateClientConfig = (): boolean => {
 
 // 检查数据配置
 const validateDataConfig = (): boolean => {
-    if(configForm.value.protocol !== 'Mqtt') {
+    if (configForm.value.protocol !== "Mqtt") {
         return true
     }
 
     // 检查是否有字段结构
-    if (!configForm.value.fieldStruct || configForm.value.fieldStruct.length === 0) {
+    if (
+        !configForm.value.fieldStruct ||
+        configForm.value.fieldStruct.length === 0
+    ) {
         formErrors.data = true
-        ElMessage.warning('请添加至少一个数据字段')
+        ElMessage.warning("请添加至少一个数据字段")
         return false
     }
     return true
@@ -80,36 +89,35 @@ const validateForm = async (): Promise<boolean> => {
 
         if (!basicValid) {
             formErrors.basic = true
-            activeTab.value = 'basic'
+            activeTab.value = "basic"
             return false
         }
 
         // 然后验证客户端配置
         if (!validateClientConfig()) {
-            activeTab.value = 'client'
+            activeTab.value = "client"
             return false
         }
 
         // 最后验证数据配置
         if (!validateDataConfig()) {
-            activeTab.value = 'data'
+            activeTab.value = "data"
             return false
         }
 
         return true
-
     } catch (error) {
-        console.error('Form validation error:', error)
-        ElMessage.error('表单验证出错，请检查各项配置')
+        console.error("Form validation error:", error)
+        ElMessage.error("表单验证出错，请检查各项配置")
         return false
     }
 }
 
 // 刷新数据模型
 const refreshDataModel = () => {
-    if (dataModelRef.value && configForm.value.protocol === 'Mqtt') {
+    if (dataModelRef.value && configForm.value.protocol === "Mqtt") {
         nextTick(() => {
-            dataModelRef.value.refreshStructure()
+            dataModelRef.value?.refreshStructure()
         })
     }
 }
@@ -118,7 +126,7 @@ const refreshDataModel = () => {
 defineExpose({
     refreshDataModel,
     formErrors,
-    validateForm
+    validateForm,
 })
 </script>
 

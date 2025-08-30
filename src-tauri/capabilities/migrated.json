@@ -2,9 +2,7 @@
   "identifier": "migrated",
   "description": "permissions that were migrated from v1",
   "local": true,
-  "windows": [
-    "main"
-  ],
+  "windows": ["main"],
   "permissions": [
     "core:default",
     "fs:allow-read-file",
@@ -20,6 +18,20 @@
     "dialog:allow-ask",
     "dialog:allow-confirm",
     "fs:default",
-    "dialog:default"
+    "dialog:default",
+    "core:window:default",
+    "core:window:allow-close",
+    "core:window:allow-minimize",
+    "core:window:allow-maximize",
+    "core:window:allow-unmaximize",
+    "core:window:allow-hide",
+    "core:window:allow-show",
+    "core:window:allow-is-maximized",
+    "core:window:allow-is-minimized",
+    "core:window:allow-is-visible",
+    "core:window:allow-start-dragging",
+    "core:window:allow-center",
+    "core:window:allow-set-decorations",
+    "core:window:allow-set-title"
   ]
 }

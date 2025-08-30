@@ -1,16 +1,17 @@
 use anyhow::{Context, Result};
+use std::sync::Arc;
 use tokio::{io::AsyncWriteExt, sync::RwLock};
 use tracing::{error, info};
-use std::sync::Arc;
 
 use crate::{
-    model::Rs2JsEntity, mqtt::Client, param::BasicConfig, tcp::tcp_client::{TcpClient, TcpClientContext, TcpSendData}, Rs2JsMsgType
+    model::Rs2JsEntity,
+    mqtt::Client,
+    param::BasicConfig,
+    tcp::tcp_client::{TcpClient, TcpClientContext, TcpSendData},
+    Rs2JsMsgType,
 };
 
-use super::{
-    types::Task,
-    utils::log_and_notify,
-};
+use super::{types::Task, utils::log_and_notify};
 
 /// 启动TCP客户端
 ///
@@ -28,9 +29,7 @@ pub async fn start_tcp(
     tx: tauri::async_runtime::Sender<Rs2JsEntity>,
     task: Arc<RwLock<Task>>,
 ) -> Result<String> {
-    let tcp_client = TcpClientContext::new(
-        Arc::new(benchmark_config.send_data.clone()),
-    );
+    let tcp_client = TcpClientContext::new(benchmark_config.send_data.clone());
 
     let mut clients = tcp_client
         .setup_clients(&benchmark_config)

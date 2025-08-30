@@ -117,7 +117,6 @@ const getProtocolTagType = (protocol: string): any => {
 
 <style lang="scss" scoped>
 .history-container {
-    padding: 20px;
     height: 100%;
     display: flex;
     flex-direction: column;
@@ -150,7 +149,6 @@ const getProtocolTagType = (protocol: string): any => {
             border-left: 3px solid var(--el-color-primary);
 
             &:hover {
-                transform: translateY(-2px);
                 background-color: var(--el-fill-color);
                 box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
             }

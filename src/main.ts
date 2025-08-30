@@ -1,7 +1,6 @@
 import { createApp } from "vue"
 
-import ElementPlus from "element-plus"
-import locale from "element-plus/dist/locale/zh-cn.mjs"
+import "element-plus/theme-chalk/src/index.scss"
 import * as ElementPlusIconsVue from "@element-plus/icons-vue"
 import "./assets/styles/index.scss"
 import "./assets/styles/common.scss"
@@ -13,10 +12,25 @@ import router from "./router"
 const app = createApp(App)
 app.use(store)
 app.use(router)
-app.use(ElementPlus, {
-  locale: locale,
-})
 for (const [key, component] of Object.entries(ElementPlusIconsVue)) {
   app.component(key, component)
 }
+
 app.mount("#app")
+
+if ((window as any).__TAURI__) {
+  document.addEventListener("contextmenu", (e) => {
+    if (import.meta.env.PROD) {
+      e.preventDefault()
+    }
+  })
+
+  document.addEventListener("selectstart", (e) => {
+    const target = e.target as HTMLElement
+    if (target?.closest("[data-tauri-drag-region]")) {
+      e.preventDefault()
+    }
+  })
+
+  console.log("Tauri app initialized")
+}

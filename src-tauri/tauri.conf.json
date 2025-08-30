@@ -16,7 +16,7 @@
       "icons/icon.ico"
     ]
   },
-  
+
   "productName": "svroll",
   "mainBinaryName": "svroll",
   "version": "0.0.2",
@@ -31,7 +31,21 @@
         "title": "svroll",
         "width": 1024,
         "height": 768,
-        "useHttpsScheme": true
+        "minWidth": 800,
+        "minHeight": 600,
+        "useHttpsScheme": true,
+        "decorations": false,
+        "titleBarStyle": "Overlay",
+        "theme": "Dark",
+        "resizable": true,
+        "maximizable": true,
+        "minimizable": true,
+        "closable": true,
+        "center": true,
+        "skipTaskbar": false,
+        "alwaysOnTop": false,
+        "shadow": true,
+        "transparent": false
       }
     ]
   }

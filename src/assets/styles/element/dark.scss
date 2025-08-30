@@ -1,71 +1,70 @@
-// Grafana风格深色主题变量
 $dark-colors: (
-  'primary': (
-    'base': #5794f2,
-  ),
-  'success': (
-    'base': #70e0b3,
-  ),
-  'warning': (
-    'base': #eb7b18,
-  ),
-  'danger': (
-    'base': #e02f44,
-  ),
-  'error': (
-    'base': #e02f44,
-  ),
-  'info': (
-    'base': #717171,
-  )
+    "primary": (
+        "base": #26364f,
+    ),
+    "success": (
+        "base": #70e0b3,
+    ),
+    "warning": (
+        "base": #eb7b18,
+    ),
+    "danger": (
+        "base": #e02f44,
+    ),
+    "error": (
+        "base": #e02f44,
+    ),
+    "info": (
+        "base": #717171,
+    ),
 );
 
 // 背景色
 $dark-bg-color: (
-  'page': #1f1f20,
-  '': #161719,
-  'overlay': #212124,
+    "page": #1f1f20,
+    "": #161719,
+    "overlay": #212124,
 );
 
 // 文本色
 $dark-text-color: (
-  'primary': #d8d9da,
-  'regular': #bbbcbd,
-  'secondary': #9fa7b3,
-  'placeholder': #7e818a,
-  'disabled': #595c63
+    "primary": #d8d9da,
+    "regular": #bbbcbd,
+    "secondary": #9fa7b3,
+    "placeholder": #7e818a,
+    "disabled": #595c63,
 );
 
 // 边框色
 $dark-border-color: (
-  '': #33373d,
-  'light': #292b30,
-  'lighter': #1f2126,
-  'extra-light': #18191c
+    "": #33373d,
+    "light": #292b30,
+    "lighter": #1f2126,
+    "extra-light": #18191c,
 );
 
 // 填充色
 $dark-fill-color: (
-  '': #1f1f20,
-  'light': #262628,
-  'lighter': #2a2a2c,
-  'extra-light': #2f2f32,
-  'blank': #161719
+    "": #1f1f20,
+    "light": #262628,
+    "lighter": #2a2a2c,
+    "extra-light": #2f2f32,
+    "blank": #161719,
 );
 
 // 盒子阴影
 $dark-box-shadow: (
-  '': 0 2px 12px 0 rgba(0, 0, 0, 0.3),
-  'light': 0 1px 6px 0 rgba(0, 0, 0, 0.3),
-  'lighter': 0 2px 8px rgba(0, 0, 0, 0.2),
-  'dark': 0 6px 16px 0 rgba(0, 0, 0, 0.5)
+    "": 0 2px 12px 0 rgba(0, 0, 0, 0.3),
+    "light": 0 1px 6px 0 rgba(0, 0, 0, 0.3),
+    "lighter": 0 2px 8px rgba(0, 0, 0, 0.2),
+    "dark": 0 6px 16px 0 rgba(0, 0, 0, 0.5),
 );
 
-@forward 'element-plus/theme-chalk/src/dark/var.scss' with (
-  $colors: $dark-colors,
-  $bg-color: $dark-bg-color,
-  $text-color: $dark-text-color,
-  $border-color: $dark-border-color,
-  $fill-color: $dark-fill-color,
-  $box-shadow: $dark-box-shadow
+@forward "element-plus/theme-chalk/src/dark/var.scss" with (
+    $colors: $dark-colors,
+    $bg-color: $dark-bg-color,
+    $text-color: $dark-text-color,
+    $border-color: $dark-border-color,
+    $fill-color: $dark-fill-color,
+    $box-shadow: $dark-box-shadow
 );

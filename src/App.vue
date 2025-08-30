@@ -1,13 +1,26 @@
 <template>
-  <router-view />
+  <div class="app-container">
+    <title-bar title="svroll" />
+    <div class="app-content">
+      <router-view />
+    </div>
+  </div>
 </template>
+
 <script setup lang="ts">
-
-import { useDark,useToggle } from '@vueuse/core'
-const isDark = useDark()
-
-const toggleTheme = useToggle(isDark)
-
-toggleTheme()
+import TitleBar from "@/components/TitleBar/index.vue"
 </script>
-<style></style>
+
+<style lang="scss">
+.app-container {
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.app-content {
+    flex: 1;
+    overflow: auto;
+}
+</style>

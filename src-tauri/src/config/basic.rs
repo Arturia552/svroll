@@ -1,4 +1,4 @@
-use std::fmt::Debug;
+use std::{fmt::Debug, sync::Arc};
 
 use anyhow::Result;
 use serde::{de::DeserializeOwned, Serialize};
@@ -8,16 +8,16 @@ use super::types::Protocol;
 /// 客户端手动输入的配置信息
 ///
 /// 包含连接、发送和性能参数的综合配置
-#[derive(Debug, Serialize, serde::Deserialize)]
+#[derive(Debug, Serialize, serde::Deserialize, Clone)]
 pub struct BasicConfig<T, C> {
     /// 设置需发送的数据内容
-    pub send_data: T,
+    pub send_data: Arc<T>,
 
     /// 使用的数据传输协议，默认为mqtt
     pub protocol_type: Protocol,
 
     /// 客户端配置列表
-    pub clients: Vec<C>,
+    pub clients: Arc<Vec<C>>,
 
     /// 设置启动协程数量,默认为200
     pub thread_size: usize,
@@ -26,7 +26,7 @@ pub struct BasicConfig<T, C> {
     pub enable_random: bool,
 
     /// 设置broker地址,默认为mqtt://localhost:1883
-    pub broker: String,
+    pub broker: Arc<String>,
 
     /// 每秒最多启动连接数
     pub max_connect_per_second: usize,
@@ -47,7 +47,6 @@ where
     /// * `clients` - 客户端配置列表
     /// * `protocol_type` - 使用的协议类型
     /// * `thread_size` - 线程数量
-    /// * `enable_register` - 是否启用注册机制
     /// * `enable_random` - 是否启用随机值
     /// * `broker` - 服务器地址
     /// * `max_connect_per_second` - 每秒最大连接数
@@ -63,12 +62,12 @@ where
         send_interval: u64,
     ) -> Self {
         Self {
-            send_data,
+            send_data: Arc::new(send_data),
             protocol_type,
-            clients,
+            clients: Arc::new(clients),
             thread_size,
             enable_random,
-            broker,
+            broker: Arc::new(broker),
             max_connect_per_second,
             send_interval,
         }
@@ -104,7 +103,12 @@ where
     /// # 参数
     /// * `data` - 要设置的数据内容
     pub fn set_send_data(&mut self, data: T) {
-        self.send_data = data;
+        self.send_data = Arc::new(data);
+    }
+
+    /// 获取发送数据内容的Arc引用
+    pub fn get_send_data_arc(&self) -> &Arc<T> {
+        &self.send_data
     }
 
     /// 获取发送数据内容
@@ -119,6 +123,11 @@ where
 
     /// 获取客户端配置列表
     pub fn get_clients(&self) -> &Vec<C> {
+        &self.clients
+    }
+
+    /// 获取客户端配置列表的Arc引用
+    pub fn get_clients_arc(&self) -> &Arc<Vec<C>> {
         &self.clients
     }
 

@@ -1,39 +1,26 @@
-use std::{
-    sync::{
-        atomic::{AtomicBool, AtomicU32, Ordering},
-        Arc,
-    },
-    time::Duration,
-    vec,
+use std::sync::{
+    atomic::{AtomicBool, Ordering},
+    Arc,
 };
 
 use anyhow::{Error, Result};
-use rumqttc::{AsyncClient, Event, EventLoop, MqttOptions, Packet};
+use rumqttc::AsyncClient;
 use serde::{Deserialize, Serialize};
-use tokio::{
-    sync::{RwLock, Semaphore},
-    task::JoinHandle,
-    time::sleep,
-};
-use tracing::{debug, error, info};
+use tokio::{sync::RwLock, task::JoinHandle};
 
-use crate::{
-    context::get_app_state, mqtt::device_data::process_fields, param::BasicConfig, task::Task,
-    ConnectionState, MqttSendData, TopicWrap,
-};
+use crate::{param::BasicConfig, task::Task, ConnectionState, MqttSendData, TopicWrap};
 
 use super::Client;
 
-/// MQTT客户端
+/// MQTT客户端句柄
 ///
-/// 处理MQTT连接、消息发送和事件处理
-/// 负责客户端的创建、连接管理和消息收发
+/// 实际的客户端数据存储在全局状态中
+use super::manager::{ConnectionStats, MqttClientManager};
+
 #[derive(Clone)]
 pub struct MqttClient {
-    /// 要发送的数据模板
-    pub send_data: Arc<MqttSendData>,
-    /// 数据发送主题配置
-    pub data_topic: Arc<TopicWrap>,
+    /// 客户端管理器
+    manager: Arc<MqttClientManager>,
 }
 
 impl MqttClient {
@@ -43,275 +30,63 @@ impl MqttClient {
     /// * `send_data` - 要发送的数据模板
     /// * `data_topic` - 数据发送主题配置
     pub fn new(send_data: MqttSendData, data_topic: TopicWrap) -> Self {
+        let manager = MqttClientManager::new(Vec::new(), Arc::new(send_data), Arc::new(data_topic));
+
         MqttClient {
-            send_data: Arc::new(send_data),
-            data_topic: Arc::new(data_topic),
+            manager: Arc::new(manager),
         }
     }
 
-    pub fn get_send_data(&self) -> &MqttSendData {
-        &self.send_data
+    pub fn get_send_data(&self) -> &Arc<MqttSendData> {
+        &self.manager.get_send_data()
     }
 
-    /// 处理MQTT事件循环
-    ///
-    /// 持续监听和处理MQTT连接事件
-    ///
-    /// # 参数
-    /// * `client_id` - 客户端ID
-    /// * `event_loop` - MQTT事件循环
-    /// * `self_clone` - 客户端实例的克隆
-    ///
-    /// # 返回
-    /// 返回任务句柄
-    async fn handle_event_loop(client_id: String, mut event_loop: EventLoop) -> JoinHandle<()> {
-        let app_state = get_app_state();
-
-        tokio::spawn(async move {
-            loop {
-                if !app_state.mqtt_clients().contains_key(&client_id) {
-                    break;
-                }
-                match event_loop.poll().await {
-                    Ok(event) => {
-                        Self::process_event(&event, &client_id).await;
-                    }
-                    Err(e) => {
-                        if let Some(mut client_entry) = app_state.mqtt_clients().get_mut(&client_id)
-                        {
-                            if !client_entry.disconnecting.load(Ordering::SeqCst) {
-                                error!("MQTT事件循环错误: {:?}", e);
-                            }
-
-                            let client_entry_clone = client_entry.clone();
-                            tokio::spawn(async move {
-                                if let Err(e) = client_entry_clone.safe_disconnect().await {
-                                    error!("断开连接失败: {:?}", e);
-                                }
-                            });
-                            break;
-                        } else {
-                            error!("MQTT事件循环错误: {:?}", e);
-                        }
-
-                        if !app_state.mqtt_clients().contains_key(&client_id) {
-                            break;
-                        }
-                        sleep(Duration::from_secs(2)).await;
-                    }
-                }
-            }
-
-            // 循环结束后的清理工作
-            if let Some(mut client) = app_state.mqtt_clients().get_mut(&client_id) {
-                if client.client.is_some() {
-                    client.client = None;
-                }
-            }
-        })
+    /// 获取连接统计信息
+    pub fn get_connection_stats(&self) -> ConnectionStats {
+        self.manager.get_connection_stats()
     }
 
-    /// 处理MQTT事件
-    ///
-    /// 处理ConnAck等MQTT事件，更新客户端连接状态
-    ///
-    /// # 参数
-    /// * `event` - MQTT事件
-    /// * `client_id` - 客户端ID
-    async fn process_event(event: &Event, client_id: &str) {
-        if let Event::Incoming(Packet::ConnAck(_)) = event {
-            debug!("收到ConnAck事件，客户端ID: {}", client_id);
+    /// 创建新的管理器实例
+    pub fn create_with_client_ids(
+        client_ids: Vec<String>,
+        send_data: MqttSendData,
+        data_topic: TopicWrap,
+    ) -> Self {
+        let manager = MqttClientManager::new(client_ids, Arc::new(send_data), Arc::new(data_topic));
 
-            let app_state = get_app_state();
-            if let Some(mut client) = app_state.mqtt_clients().get_mut(client_id) {
-                client.set_connection_state(ConnectionState::Connected);
-                debug!("已更新客户端连接状态为已连接: {}", client_id);
-            }
-        } else {
-            debug!("处理其他MQTT事件: {:?}", event);
+        MqttClient {
+            manager: Arc::new(manager),
         }
     }
 }
 
 /// 实现Client trait，定义MQTT客户端的核心功能
 impl Client<MqttSendData, MqttClientData> for MqttClient {
-    type Item = MqttClientData;
+    type Item = String; // 直接使用客户端ID作为Item类型
 
     async fn setup_clients(
         &self,
         config: &BasicConfig<MqttSendData, MqttClientData>,
-    ) -> Result<Vec<MqttClientData>, Error> {
-        let mut clients = vec![];
-
-        let app_state = get_app_state();
-        let broker = config.get_broker();
-        let semaphore = Arc::new(Semaphore::new(config.get_max_connect_per_second()));
-
-        let broker_parts: Vec<&str> = broker.split(':').collect();
-        let host = broker_parts[0].trim_start_matches("tcp://");
-        let port = broker_parts
-            .get(1)
-            .unwrap_or(&"1883")
-            .parse::<u16>()
-            .unwrap_or(1883);
-
-        for client_ref in config.get_clients() {
-            let permit = semaphore.acquire().await?;
-
-            let mut client = client_ref.clone();
-            let mut mqtt_options = MqttOptions::new(&client.client_id, host, port);
-
-            mqtt_options.set_clean_session(true);
-            mqtt_options.set_keep_alive(Duration::from_secs(20));
-            mqtt_options.set_credentials(&client.client_id, client.get_password());
-            mqtt_options.set_request_channel_capacity(10);
-
-            let (cli, event_loop) = AsyncClient::new(mqtt_options, 10);
-            let client_id = client.client_id.clone();
-            let event_loop_handle: JoinHandle<()> =
-                Self::handle_event_loop(client_id.clone(), event_loop).await;
-            client.event_loop_handle = Some(Arc::new(RwLock::new(Some(event_loop_handle))));
-            client.set_client(Some(cli.clone()));
-
-            app_state.add_mqtt_client(client.get_client_id().to_string(), client.clone());
-            clients.push(client.clone());
-
-            drop(permit);
-
-            if clients.len() % config.get_max_connect_per_second() == 0 {
-                sleep(Duration::from_secs(1)).await;
-            }
-        }
-
-        Ok(clients)
+    ) -> Result<Vec<String>, Error> {
+        // 使用管理器进行批量设置
+        self.manager.batch_setup_clients(config).await
     }
 
     async fn spawn_message(
         &self,
-        clients: Vec<Self::Item>,
+        client_ids: Vec<Self::Item>,
         task: &Task,
         config: &BasicConfig<MqttSendData, MqttClientData>,
     ) -> Result<Vec<JoinHandle<()>>, Error> {
-        info!("开始发送消息...");
-
-        let clients_per_thread = (clients.len() + config.thread_size - 1) / config.thread_size;
-        let clients_group = clients.chunks(clients_per_thread);
-        let mut handles: Vec<JoinHandle<()>> = vec![];
-        let app_state = get_app_state();
-
-        for group in clients_group {
-            let group = group.to_vec();
-            let send_data = Arc::clone(&self.send_data);
-            let counter: Arc<AtomicU32> = task.counter.clone();
-            let status: Arc<AtomicBool> = task.status.clone();
-            let topic = Arc::clone(&self.data_topic);
-            let send_interval = config.send_interval;
-            let enable_random = config.enable_random;
-
-            let handle = tokio::spawn(async move {
-                let mut interval = tokio::time::interval(Duration::from_secs(send_interval));
-                loop {
-                    if !status.load(Ordering::SeqCst) {
-                        info!("停止发送消息");
-                        break;
-                    }
-
-                    interval.tick().await;
-                    for cli in &group {
-                        let client_id = cli.get_client_id().to_string();
-                        let Some(client_data) = app_state.mqtt_clients().get(&client_id) else {
-                            continue;
-                        };
-
-                        if !client_data.is_connected() {
-                            continue;
-                        }
-
-                        let real_topic = match client_data.get_identify_key() {
-                            Some(identify_key) => {
-                                topic.get_pushlish_real_topic_identify_key(identify_key.clone())
-                            }
-                            None => {
-                                topic.get_publish_real_topic(Some(client_data.get_device_key()))
-                            }
-                        };
-
-                        let mut msg_value = (*send_data).clone();
-                        process_fields(&mut msg_value.data, &msg_value.fields, enable_random);
-                        let json_msg = match serde_json::to_string(&msg_value.data) {
-                            Ok(msg) => msg,
-                            Err(e) => {
-                                eprintln!("序列化JSON失败: {}", e);
-                                return;
-                            }
-                        };
-
-                        let qos = topic.get_publish_qos();
-
-                        let client = match cli.get_client() {
-                            Some(c) => c,
-                            None => {
-                                error!("客户端未初始化");
-                                continue;
-                            }
-                        };
-                        if let Err(e) = client.publish(real_topic, qos, false, json_msg).await {
-                            error!("发布消息失败: {:?}", e);
-                            continue;
-                        }
-
-                        counter.fetch_add(1, Ordering::SeqCst);
-                    }
-                }
-            });
-            handles.push(handle);
-        }
-        anyhow::Result::Ok(handles)
+        // 使用管理器启动消息发送任务
+        self.manager
+            .spawn_message_tasks(client_ids, task, config)
+            .await
     }
 
-    async fn wait_for_connections(&self, clients: &mut [MqttClientData]) -> bool {
-        let mut futures = Vec::with_capacity(clients.len());
-        let app_state = get_app_state();
-        for client in clients.iter() {
-            let client_id = client.get_client_id().to_string();
-            futures.push(tokio::spawn(async move {
-                let mut attempts = 0;
-                const MAX_ATTEMPTS: usize = 100;
-                // 10秒重连， 每100ms检查一次
-                while attempts < MAX_ATTEMPTS {
-                    if let Some(client_data) = app_state.mqtt_clients().get(&client_id) {
-                        if client_data.is_connected() {
-                            break;
-                        }
-                    }
-                    sleep(Duration::from_millis(100)).await;
-                    attempts += 1;
-                }
-
-                if attempts >= MAX_ATTEMPTS {
-                    if let Some(mut client) = app_state.mqtt_clients().get_mut(&client_id) {
-                        client.set_connection_state(ConnectionState::Failed);
-                    }
-                    error!("客户端 {} 连接超时", client_id);
-                    return false;
-                }
-                false
-            }));
-        }
-        let mut all_connected = true;
-        for future in futures {
-            match future.await {
-                Ok(is_connected) => {
-                    if !is_connected {
-                        all_connected = false;
-                    }
-                }
-                Err(e) => {
-                    error!("等待连接任务失败: {:?}", e);
-                }
-            }
-        }
-        all_connected
+    async fn wait_for_connections(&self, client_ids: &mut [String]) -> bool {
+        // 使用管理器等待连接
+        self.manager.wait_for_connections(client_ids).await
     }
 }
 
@@ -340,8 +115,8 @@ pub struct MqttClientData {
     pub connection_state: ConnectionState,
     /// MQTT异步客户端实例
     #[serde(skip)]
-    pub client: Option<AsyncClient>,
-    /// 事件循环处理任务句柄 - 使用RwLock提高读取性能
+    pub client: Option<Arc<AsyncClient>>,
+    /// 事件循环处理任务句柄
     #[serde(skip)]
     pub event_loop_handle: Option<Arc<RwLock<Option<JoinHandle<()>>>>>,
     /// 是否正在断开连接
@@ -393,11 +168,11 @@ impl MqttClientData {
         serde_json::from_str(json)
     }
 
-    pub fn set_client(&mut self, client: Option<AsyncClient>) {
+    pub fn set_client(&mut self, client: Option<Arc<AsyncClient>>) {
         self.client = client;
     }
 
-    pub fn get_client(&self) -> Option<AsyncClient> {
+    pub fn get_client(&self) -> Option<Arc<AsyncClient>> {
         self.client.clone()
     }
 

@@ -17,15 +17,16 @@ use tokio_stream::StreamExt;
 use tokio_util::codec::FramedRead;
 use tracing::error;
 
-use super::RequestCodec;
+use super::{manager::TcpClientManager, RequestCodec};
 
 /// TCP发送数据结构
 ///
 /// 包含要通过TCP发送的二进制数据
+/// 使用Arc包装以减少克隆开销
 #[derive(Debug, Clone, Deserialize)]
 pub struct TcpSendData {
     #[serde(deserialize_with = "deserialize_bytes")]
-    pub data: Vec<u8>,
+    pub data: Arc<Vec<u8>>,
 }
 
 /// 反序列化十六进制字符串为字节数组的辅助函数
@@ -35,23 +36,23 @@ pub struct TcpSendData {
 ///
 /// # 返回
 /// 成功返回字节数组，失败返回反序列化错误
-pub fn deserialize_bytes<'de, D>(deserializer: D) -> Result<Vec<u8>, D::Error>
+pub fn deserialize_bytes<'de, D>(deserializer: D) -> Result<Arc<Vec<u8>>, D::Error>
 where
     D: Deserializer<'de>,
 {
     let s = String::deserialize(deserializer)?;
     let bytes = hex::decode(s)
         .map_err(|e| serde::de::Error::custom(format!("无效的十六进制字符串: {}", e)))?;
-    Ok(bytes)
+    Ok(Arc::new(bytes))
 }
 
 /// TCP客户端上下文
 ///
 /// 管理TCP客户端配置和数据发送
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct TcpClientContext {
-    /// 要发送的数据
-    pub send_data: Arc<TcpSendData>,
+    /// 客户端管理器
+    manager: Arc<TcpClientManager>,
 }
 
 impl TcpClientContext {
@@ -60,28 +61,29 @@ impl TcpClientContext {
     /// # 参数
     /// * `send_data` - 要发送的数据模板
     pub fn new(send_data: Arc<TcpSendData>) -> Self {
-        Self { send_data }
+        // 预先创建空的客户端MAC列表，将在setup_clients中填充
+        let manager = TcpClientManager::new(Vec::new(), send_data);
+        Self {
+            manager: Arc::new(manager),
+        }
     }
 
-    /// 处理读取的数据
-    ///
-    /// # 参数
-    /// * `reader` - TCP流的读取端
-    async fn process_read(reader: OwnedReadHalf) {
-        let mut frame_reader = FramedRead::new(reader, RequestCodec);
-        loop {
-            match frame_reader.next().await {
-                None => {
-                    break;
-                }
-                Some(Err(_e)) => {
-                    break;
-                }
-                Some(Ok(req_resp)) => {
-                    println!("Received request: {:?}", req_resp);
-                }
-            }
+    /// 使用客户端MAC地址列表创建上下文
+    pub fn create_with_client_macs(client_macs: Vec<String>, send_data: Arc<TcpSendData>) -> Self {
+        let manager = TcpClientManager::new(client_macs, send_data);
+        Self {
+            manager: Arc::new(manager),
         }
+    }
+
+    /// 获取发送数据的引用
+    pub fn get_send_data(&self) -> &Arc<TcpSendData> {
+        &self.manager.get_send_data()
+    }
+
+    /// 获取连接统计信息
+    pub fn get_connection_stats(&self) -> super::manager::TcpConnectionStats {
+        self.manager.get_connection_stats()
     }
 }
 
@@ -128,118 +130,30 @@ impl TcpClient {
 
 /// 实现Client trait，定义TCP客户端的核心功能
 impl Client<TcpSendData, TcpClient> for TcpClientContext {
-    type Item = TcpClient;
+    type Item = String; // 直接使用客户端MAC地址作为Item类型
 
     async fn setup_clients(
         &self,
         config: &BasicConfig<TcpSendData, TcpClient>,
-    ) -> Result<Vec<TcpClient>, Error> {
-        let mut clients = config.get_clients().clone();
-        let app_state = get_app_state();
-        let max_conn_per_second = config.get_max_connect_per_second();
-        let (tx, mut rx) = tokio::sync::mpsc::channel(clients.len());
-
-        let mut interval =
-            tokio::time::interval(Duration::from_millis(1000 / max_conn_per_second as u64));
-
-        for (idx, client) in clients.iter().enumerate() {
-            interval.tick().await;
-
-            let broker = config.broker.clone();
-            let client_mac = client.get_mac();
-            let tx = tx.clone();
-
-            let start_time = Instant::now();
-
-            tokio::spawn(async move {
-                match TcpStream::connect(broker).await {
-                    Ok(conn) => {
-                        let (reader, writer) = conn.into_split();
-                        let tcp_client = TcpClient {
-                            mac: client_mac.clone(),
-                            connection_state: ConnectionState::Connected,
-                        };
-                        app_state
-                            .tcp_clients()
-                            .insert(client_mac.clone(), (tcp_client, Some(writer)));
-                        tokio::spawn(async move {
-                            Self::process_read(reader).await;
-                        });
-
-                        let elapsed = start_time.elapsed();
-                        if elapsed > Duration::from_secs(1) {
-                            error!("TCP连接耗时过长: {:?}, 客户端: {}", elapsed, client_mac);
-                        }
-
-                        let _ = tx.send((idx, true)).await;
-                    }
-                    Err(e) => {
-                        error!("TCP连接失败: {}, 客户端: {}", e, client_mac);
-                        let _ = tx.send((idx, false)).await;
-                    }
-                }
-            });
-        }
-
-        drop(tx);
-
-        while let Some((idx, success)) = rx.recv().await {
-            if success {
-                clients[idx].set_connection_state(ConnectionState::Connected);
-            } else {
-                clients[idx].set_connection_state(ConnectionState::Failed);
-            }
-        }
-
-        Ok(clients)
+    ) -> Result<Vec<String>, Error> {
+        // 使用管理器进行批量设置
+        self.manager.batch_setup_clients(config).await
     }
 
     async fn spawn_message(
         &self,
-        clients: Vec<TcpClient>,
+        client_macs: Vec<String>,
         task: &Task,
         config: &BasicConfig<TcpSendData, TcpClient>,
     ) -> Result<Vec<tokio::task::JoinHandle<()>>, Error> {
-        let app_state = get_app_state();
-        let startup_thread_size = clients.len() / config.thread_size
-            + if clients.len() % config.thread_size != 0 {
-                1
-            } else {
-                0
-            };
-        let clients_group = clients.chunks(startup_thread_size);
-        let mut hanldes = vec![];
-
-        for group in clients_group {
-            let mut groups = group.to_vec();
-            let msg_value = Arc::clone(&self.send_data);
-            let counter = task.counter.clone();
-            let send_interval = config.send_interval;
-
-            let handle = tokio::spawn(async move {
-                let mut interval = tokio::time::interval(Duration::from_secs(send_interval));
-                loop {
-                    interval.tick().await;
-                    for client in groups.iter_mut() {
-                        if let Some(mut client_ref) =
-                            app_state.tcp_clients().get_mut(&client.get_mac())
-                        {
-                            if let Some(writer) = client_ref.1.as_mut() {
-                                if writer.writable().await.is_ok() {
-                                    let _ = writer.write_all(&msg_value.data).await;
-                                    counter.fetch_add(1, Ordering::SeqCst);
-                                }
-                            }
-                        }
-                    }
-                }
-            });
-            hanldes.push(handle);
-        }
-        Ok(hanldes)
+        // 使用管理器启动消息发送任务
+        self.manager
+            .spawn_message_tasks(client_macs, task, config)
+            .await
     }
 
-    async fn wait_for_connections(&self, _clients: &mut [Self::Item]) -> bool {
-        true
+    async fn wait_for_connections(&self, client_macs: &mut [String]) -> bool {
+        // 使用管理器等待连接
+        self.manager.wait_for_connections(client_macs).await
     }
 }
