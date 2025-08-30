@@ -95,7 +95,7 @@
         <template #header>
           <div class="card-header">
             <span>测试日志</span>
-            <el-button type="text" size="small">
+            <el-button link size="small" type="danger">
               清除
             </el-button>
           </div>
@@ -115,7 +115,7 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref, watch, PropType, h, inject } from "vue"
+import { onMounted, ref, watch, PropType, h, inject, computed } from "vue"
 import { useResizeObserver, useWindowSize } from "@vueuse/core"
 import { ArrowUp } from "@element-plus/icons-vue"
 import { ElTableV2 } from "element-plus"
@@ -198,7 +198,7 @@ const columns = ref<TableV2Props["columns"]>([
                     type = "info"
                     text = "未知"
             }
-            return h(ElTag, { type: type }, text)
+            return h(ElTag, { type: type }, () => text)
         },
     },
 ])
