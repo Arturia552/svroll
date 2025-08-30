@@ -1,5 +1,5 @@
-import autoImport from "unplugin-auto-import/vite";
-import { ElementPlusResolver } from "unplugin-vue-components/resolvers";
+import autoImport from "unplugin-auto-import/vite"
+import { ElementPlusResolver } from "unplugin-vue-components/resolvers"
 
 export default function createAutoImport() {
   return autoImport({
@@ -9,5 +9,5 @@ export default function createAutoImport() {
     eslintrc: {
       enabled: true,
     },
-  });
+  })
 }

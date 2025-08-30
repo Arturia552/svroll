@@ -7,12 +7,12 @@ export {}
 /* prettier-ignore */
 declare module 'vue' {
   export interface GlobalComponents {
-    AudioWave: typeof import('./src/components/AudioWave/index.vue')['default']
     CodeEditor: typeof import('./src/components/CodeEditor/index.vue')['default']
     DashboardPanel: typeof import('./src/components/Dashboard/DashboardPanel.vue')['default']
     ElButton: typeof import('element-plus/es')['ElButton']
     ElCard: typeof import('element-plus/es')['ElCard']
     ElCol: typeof import('element-plus/es')['ElCol']
+    ElConfigProvider: typeof import('element-plus/es')['ElConfigProvider']
     ElDialog: typeof import('element-plus/es')['ElDialog']
     ElDivider: typeof import('element-plus/es')['ElDivider']
     ElDrawer: typeof import('element-plus/es')['ElDrawer']
@@ -35,8 +35,6 @@ declare module 'vue' {
     ElTag: typeof import('element-plus/es')['ElTag']
     ElTooltip: typeof import('element-plus/es')['ElTooltip']
     History: typeof import('./src/components/History/index.vue')['default']
-    LoadingScreen: typeof import('./src/components/LoadingScreen/index.vue')['default']
-    LoadingWithAudio: typeof import('./src/components/LoadingScreen/LoadingWithAudio.vue')['default']
     RouterLink: typeof import('vue-router')['RouterLink']
     RouterView: typeof import('vue-router')['RouterView']
     ThemeSwitch: typeof import('./src/components/ThemeSwitch/index.vue')['default']

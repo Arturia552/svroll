@@ -2,11 +2,12 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 use svroll::{
-    context, model::{
-        db_com
-    }, rs2js, AsyncProcInputTx, 
+    context,
+    model::db_com,
+    rs2js,
     // 更新引用路径
-    task::commands as task_com
+    task::commands as task_com,
+    AsyncProcInputTx,
 };
 use tokio::sync::{mpsc, Mutex};
 use tracing::info;
