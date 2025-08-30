@@ -8,7 +8,7 @@ use std::{
 };
 
 use anyhow::{Error, Result};
-use rumqttc::{AsyncClient, EventLoop, MqttOptions, Packet, Event};
+use rumqttc::{AsyncClient, Event, EventLoop, MqttOptions, Packet};
 use serde::{Deserialize, Serialize};
 use tokio::{
     sync::{RwLock, Semaphore},
@@ -79,8 +79,6 @@ impl MqttClient {
                     Err(e) => {
                         if let Some(mut client_entry) = app_state.mqtt_clients().get_mut(&client_id)
                         {
-                            client_entry.set_connection_state(ConnectionState::Failed);
-
                             if !client_entry.disconnecting.load(Ordering::SeqCst) {
                                 error!("MQTT事件循环错误: {:?}", e);
                             }
@@ -106,7 +104,6 @@ impl MqttClient {
 
             // 循环结束后的清理工作
             if let Some(mut client) = app_state.mqtt_clients().get_mut(&client_id) {
-                client.set_connection_state(ConnectionState::Failed);
                 if client.client.is_some() {
                     client.client = None;
                 }
@@ -124,7 +121,7 @@ impl MqttClient {
     async fn process_event(event: &Event, client_id: &str) {
         if let Event::Incoming(Packet::ConnAck(_)) = event {
             debug!("收到ConnAck事件，客户端ID: {}", client_id);
-            
+
             let app_state = get_app_state();
             if let Some(mut client) = app_state.mqtt_clients().get_mut(client_id) {
                 client.set_connection_state(ConnectionState::Connected);
@@ -272,7 +269,7 @@ impl Client<MqttSendData, MqttClientData> for MqttClient {
         anyhow::Result::Ok(handles)
     }
 
-    async fn wait_for_connections(&self, clients: &mut [MqttClientData]) {
+    async fn wait_for_connections(&self, clients: &mut [MqttClientData]) -> bool {
         let mut futures = Vec::with_capacity(clients.len());
         let app_state = get_app_state();
         for client in clients.iter() {
@@ -280,7 +277,7 @@ impl Client<MqttSendData, MqttClientData> for MqttClient {
             futures.push(tokio::spawn(async move {
                 let mut attempts = 0;
                 const MAX_ATTEMPTS: usize = 100;
-
+                // 10秒重连， 每100ms检查一次
                 while attempts < MAX_ATTEMPTS {
                     if let Some(client_data) = app_state.mqtt_clients().get(&client_id) {
                         if client_data.is_connected() {
@@ -292,16 +289,29 @@ impl Client<MqttSendData, MqttClientData> for MqttClient {
                 }
 
                 if attempts >= MAX_ATTEMPTS {
+                    if let Some(mut client) = app_state.mqtt_clients().get_mut(&client_id) {
+                        client.set_connection_state(ConnectionState::Failed);
+                    }
                     error!("客户端 {} 连接超时", client_id);
+                    return false;
                 }
+                false
             }));
         }
-
+        let mut all_connected = true;
         for future in futures {
-            if let Err(e) = future.await {
-                error!("等待连接任务失败: {:?}", e);
+            match future.await {
+                Ok(is_connected) => {
+                    if !is_connected {
+                        all_connected = false;
+                    }
+                }
+                Err(e) => {
+                    error!("等待连接任务失败: {:?}", e);
+                }
             }
         }
+        all_connected
     }
 }
 

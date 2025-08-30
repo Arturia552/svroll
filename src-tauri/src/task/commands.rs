@@ -202,7 +202,7 @@ pub async fn start_task(
         // 继续执行，不影响主流程
     }
 
-    Ok("开始发送消息...".to_string())
+    Ok("开始执行任务...".to_string())
 }
 
 /// 停止通信任务命令
@@ -251,7 +251,9 @@ pub async fn stop_task(
     {
         // 先更新原子状态
         let task_read = task.read().await;
-        task_read.status.store(false, std::sync::atomic::Ordering::SeqCst);
+        task_read
+            .status
+            .store(false, std::sync::atomic::Ordering::SeqCst);
         drop(task_read);
 
         // 再处理句柄

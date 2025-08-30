@@ -1,4 +1,4 @@
-use anyhow::{Context, Result};
+use anyhow::{anyhow, Context, Result};
 use std::sync::Arc;
 use tokio::sync::RwLock;
 use tracing::{error, info};
@@ -35,7 +35,9 @@ pub async fn start_mqtt(
     let mqtt_config = topic_config.unwrap_or_else(TopicConfig::default);
     log_and_notify(&tx, Rs2JsMsgType::Terminal, "初始化MQTT客户端成功").await?;
 
-    let mqtt_client = init_mqtt_context(&param, mqtt_config).await.context("初始化MQTT上下文失败")?;
+    let mqtt_client = init_mqtt_context(&param, mqtt_config)
+        .await
+        .context("初始化MQTT上下文失败")?;
 
     log_and_notify(&tx, Rs2JsMsgType::Terminal, "初始化客户端...").await?;
     let mut clients = mqtt_client
@@ -44,7 +46,13 @@ pub async fn start_mqtt(
         .context("设置MQTT客户端失败")?;
 
     log_and_notify(&tx, Rs2JsMsgType::Terminal, "等待连接...").await?;
-    mqtt_client.wait_for_connections(&mut clients).await;
+    let all_connected = mqtt_client.wait_for_connections(&mut clients).await;
+
+    if !all_connected {
+        log_and_notify(&tx, Rs2JsMsgType::Terminal, "客户端连接失败，请检查配置。").await?;
+        return Err(anyhow!("客户端连接失败，请检查配置"));
+    }
+
     log_and_notify(&tx, Rs2JsMsgType::Terminal, "客户端已全部连接!").await?;
 
     // 启动消息发送

@@ -1,69 +1,15 @@
 <template>
   <div class="tabs-config">
-    <el-tabs v-model="activeName" class="custom-tabs" type="border-card">
-      <el-tab-pane label="基础配置" name="basic">
-        <template #label>
-          <div class="tab-label">
-            <el-icon>
-              <Setting />
-            </el-icon>
-            <span>基础配置</span>
-            <el-tag v-if="formErrors.basic"
-                    type="danger"
-                    size="small"
-                    effect="dark"
-                    class="error-tag">
-              !
-            </el-tag>
-          </div>
-        </template>
-        <basic-config ref="basicConfigRef" v-model:config-form="configForm" />
-      </el-tab-pane>
-      <el-tab-pane label="客户端配置" name="client">
-        <template #label>
-          <div class="tab-label">
-            <el-icon>
-              <User />
-            </el-icon>
-            <span>客户端配置</span>
-            <el-tag v-if="formErrors.client"
-                    type="danger"
-                    size="small"
-                    effect="dark"
-                    class="error-tag">
-              !
-            </el-tag>
-          </div>
-        </template>
-        <client-config ref="clientConfigRef" />
-      </el-tab-pane>
-      <el-tab-pane v-if="configForm.protocol === 'Mqtt'" label="数据配置" name="data">
-        <template #label>
-          <div class="tab-label">
-            <el-icon>
-              <Document />
-            </el-icon>
-            <span>数据配置</span>
-            <el-tag v-if="formErrors.data"
-                    type="danger"
-                    size="small"
-                    effect="dark"
-                    class="error-tag">
-              !
-            </el-tag>
-          </div>
-        </template>
-        <data-model ref="dataModelRef" />
-      </el-tab-pane>
-    </el-tabs>
+    <div v-show="activeTab === 'basic'" class="config-panel">
+      <basic-config ref="basicConfigRef" v-model:config-form="configForm" />
+    </div>
 
-    <div class="action-buttons">
-      <el-button type="primary" :loading="submitting" @click="onSubmit">
-        确定
-      </el-button>
-      <el-button @click="$emit('close')">
-        取消
-      </el-button>
+    <div v-show="activeTab === 'client'" class="config-panel">
+      <client-config ref="clientConfigRef" />
+    </div>
+
+    <div v-show="activeTab === 'data' && configForm.protocol === 'Mqtt'" class="config-panel">
+      <data-model ref="dataModelRef" />
     </div>
   </div>
 </template>
@@ -77,19 +23,12 @@ import { ConnectConfig } from '@/types/mqttConfig'
 import { ElMessage } from 'element-plus'
 
 const configForm = defineModel<ConnectConfig>('configForm')
-// 添加对valid状态的双向绑定
-const valid = defineModel<boolean>('valid', { default: false })
+// 添加对activeTab状态的双向绑定
+const activeTab = defineModel<'basic' | 'client' | 'data'>('activeTab', { default: 'basic' })
 
-const emit = defineEmits<{
-    (e: 'close'): void;
-    (e: 'submit'): void;
-}>()
-
-const activeName = ref<string>("basic")
 const basicConfigRef = ref()
 const clientConfigRef = ref()
 const dataModelRef = ref()
-const submitting = ref(false)
 
 // 跟踪表单错误状态
 const formErrors = reactive({
@@ -131,9 +70,8 @@ const validateDataConfig = (): boolean => {
     return true
 }
 
-// 表单提交
-const onSubmit = async () => {
-    submitting.value = true
+// 表单校验方法，供外部调用
+const validateForm = async (): Promise<boolean> => {
     clearErrors()
 
     try {
@@ -142,35 +80,28 @@ const onSubmit = async () => {
 
         if (!basicValid) {
             formErrors.basic = true
-            activeName.value = 'basic'
-            return
+            activeTab.value = 'basic'
+            return false
         }
 
         // 然后验证客户端配置
         if (!validateClientConfig()) {
-            activeName.value = 'client'
-            return
+            activeTab.value = 'client'
+            return false
         }
 
         // 最后验证数据配置
         if (!validateDataConfig()) {
-            activeName.value = 'data'
-            return
+            activeTab.value = 'data'
+            return false
         }
 
-        // 所有验证通过，设置valid为true
-        nextTick(() => {
-            valid.value = true
-        })
-        // 提交表单
-        emit('submit')
-        emit('close')
+        return true
 
     } catch (error) {
         console.error('Form validation error:', error)
         ElMessage.error('表单验证出错，请检查各项配置')
-    } finally {
-        submitting.value = false
+        return false
     }
 }
 
@@ -185,7 +116,9 @@ const refreshDataModel = () => {
 
 // 暴露方法供父组件调用
 defineExpose({
-    refreshDataModel
+    refreshDataModel,
+    formErrors,
+    validateForm
 })
 </script>
 
@@ -194,8 +127,12 @@ defineExpose({
     width: 100%;
     display: flex;
     flex-direction: column;
-    min-height: calc(100vh - 150px);
     position: relative;
-    padding-bottom: 80px; /* 为固定的按钮留出空间 */
+    font-size: 13px; /* 整体缩小字号 */
+}
+
+.config-panel {
+    width: 100%;
+    flex: 1;
 }
 </style>
