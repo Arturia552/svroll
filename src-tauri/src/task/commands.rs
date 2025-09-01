@@ -5,6 +5,7 @@ use tokio::time::Duration;
 use tracing::{error, info};
 
 use crate::model::connect_param::ConnectParam;
+use crate::task::file_handler::CsvClientInfo;
 use crate::MqttClientData;
 use crate::Rs2JsMsgType;
 use crate::{
@@ -80,7 +81,7 @@ pub async fn load_config(file_path: String) -> Result<ConnectParam, String> {
 /// # 返回
 /// 成功返回客户端数据列表，失败返回错误信息
 #[command]
-pub async fn process_client_file(file_path: String) -> Result<Vec<MqttClientData>, String> {
+pub async fn process_client_file(file_path: String) -> Result<Vec<CsvClientInfo>, String> {
     process_csv_file(&file_path)
         .await
         .map_err(|e| e.to_string())

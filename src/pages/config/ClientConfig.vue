@@ -103,7 +103,7 @@ const tableWidth = computed(() => {
 })
 
 const ClientTableHeight = computed(() => {
-    return Math.max(500, height.value - 500) // 调整为更小的高度，最小520px
+    return Math.max(480, height.value - 480) // 调整为更小的高度，最小520px
 })
 
 // 定义表格列

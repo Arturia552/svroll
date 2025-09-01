@@ -1,4 +1,5 @@
 use anyhow::{Context, Result};
+use serde::{Deserialize, Serialize};
 use tokio::fs;
 use tracing::info;
 
@@ -57,12 +58,24 @@ pub async fn write_file_content(file_path: &str, content: &str) -> Result<()> {
 ///
 /// # 返回
 /// 成功返回客户端数据列表，失败返回错误
-pub async fn process_csv_file(file_path: &str) -> Result<Vec<MqttClientData>> {
+pub async fn process_csv_file(file_path: &str) -> Result<Vec<CsvClientInfo>> {
     info!("处理CSV文件: {}", file_path);
-    let client_data: Vec<MqttClientData> = read_from_csv_into_struct(file_path)
+    let client_data: Vec<CsvClientInfo> = read_from_csv_into_struct(file_path)
         .await
         .with_context(|| format!("解析CSV文件失败: {}", file_path))?;
     
     info!("CSV解析成功，客户端数量: {}", client_data.len());
     Ok(client_data)
+}
+
+/// CSV文件中的客户端信息结构体
+#[derive(Debug, Deserialize, Serialize)]
+pub struct CsvClientInfo {
+
+    #[serde(rename = "clientId")]
+    pub client_id: String,
+    pub username: String,
+    pub password: String,
+    #[serde(rename = "identifyKey")]
+    pub identify_key: String,
 }

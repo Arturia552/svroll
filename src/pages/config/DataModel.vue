@@ -399,7 +399,7 @@ const objectFields = ref<{ id: string; label: string }[]>([])
 const selectedParentFieldId = ref<string>("")
 
 const ModelTableHeight = computed(() => {
-  return Math.max(520, height.value - 550) // 调整为更小的高度，最小520px
+  return Math.max(490, height.value - 490) // 调整为更小的高度，最小520px
 })
 
 const newField = ref<JsonStruct>({

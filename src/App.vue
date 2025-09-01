@@ -1,6 +1,6 @@
 <template>
   <div class="app-container">
-    <el-config-provider :message="config">
+    <el-config-provider :message="config" :locale="zhCn">
       <title-bar title="svroll" />
       <div class="app-content">
         <router-view />
@@ -11,7 +11,13 @@
 
 <script setup lang="ts">
 import TitleBar from "@/components/TitleBar/index.vue"
+import { invoke } from '@tauri-apps/api/core'
+import zhCn from 'element-plus/dist/locale/zh-cn.mjs'
 
+
+document.addEventListener("DOMContentLoaded", async () => {
+                await invoke("close_splashscreen")
+            })
 const config = reactive({
     placement: "bottom",
 })

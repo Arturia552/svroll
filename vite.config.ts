@@ -3,7 +3,7 @@ import path from "path"
 import createVitePlugins from "./vite/plugins"
 
 export default ({ command }: ConfigEnv): UserConfig => ({
-  plugins: createVitePlugins(command === "build"),
+  plugins: [...createVitePlugins(command === "build")],
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "src"),
@@ -52,9 +52,6 @@ export default ({ command }: ConfigEnv): UserConfig => ({
           }
         },
         chunkFileNames: (chunkInfo) => {
-          const facadeModuleId = chunkInfo.facadeModuleId
-            ? chunkInfo.facadeModuleId.split("/").pop()
-            : "chunk"
           return `js/${chunkInfo.name}-[hash].js`
         },
       },

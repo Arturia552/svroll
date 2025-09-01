@@ -9,6 +9,7 @@ use svroll::{
     task::commands as task_com,
     AsyncProcInputTx,
 };
+use tauri::Manager;
 use tokio::sync::{mpsc, Mutex};
 use tracing::info;
 
@@ -24,6 +25,7 @@ async fn main() {
             inner: Mutex::new(async_proc_output_tx),
         })
         .invoke_handler(tauri::generate_handler![
+            close_splashscreen,
             task_com::receive_file,
             task_com::start_task,
             task_com::stop_task,
@@ -37,7 +39,6 @@ async fn main() {
         ])
         .setup(|app| {
             let app_handle = app.handle().to_owned();
-
             let db_app_handle = app_handle.clone();
             tokio::spawn(async move {
                 if let Err(e) = context::init_app_state(&db_app_handle).await {
@@ -60,4 +61,14 @@ async fn main() {
         })
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
+}
+
+#[tauri::command]
+async fn close_splashscreen(window: tauri::Window) {
+    // 关闭启动屏幕
+    if let Some(splashscreen) = window.get_webview_window("splashscreen") {
+        splashscreen.close().unwrap();
+    }
+    // 显示主窗口
+    window.get_webview_window("main").unwrap().show().unwrap();
 }
