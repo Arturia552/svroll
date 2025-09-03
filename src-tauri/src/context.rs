@@ -20,7 +20,7 @@ pub async fn init_app_state(app_handle: &AppHandle) -> Result<()> {
     if !app_dir.exists() {
         std::fs::create_dir_all(&app_dir)?;
     }
-    let database = Database::new(&app_handle).await?;
+    let database = Database::new(app_handle).await?;
 
     // 创建并存储应用状态
     let state = AppState::new(database);
@@ -35,6 +35,6 @@ pub fn get_app_state() -> &'static Arc<AppState> {
 }
 
 /// 获取数据库引用
-pub async fn get_database() -> Arc<RwLock<Database>> {
+pub fn get_database() -> Arc<RwLock<Database>> {
     get_app_state().database().clone()
 }

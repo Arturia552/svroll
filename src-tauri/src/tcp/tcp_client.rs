@@ -1,28 +1,14 @@
-use std::{
-    sync::{atomic::Ordering, Arc},
-    time::Duration,
-};
+use std::sync::Arc;
 
-use crate::{
-    context::get_app_state, mqtt::Client, param::BasicConfig, task::Task, ConnectionState,
-};
+use crate::{mqtt::Client, param::BasicConfig, task::Task, ConnectionState};
 use anyhow::{Error, Result};
 use serde::{Deserialize, Deserializer, Serialize};
-use tokio::{
-    io::AsyncWriteExt,
-    net::{tcp::OwnedReadHalf, TcpStream},
-    time::Instant,
-};
-use tokio_stream::StreamExt;
-use tokio_util::codec::FramedRead;
-use tracing::error;
 
-use super::{manager::TcpClientManager, RequestCodec};
+use super::manager::TcpClientManager;
 
 /// TCP发送数据结构
 ///
 /// 包含要通过TCP发送的二进制数据
-/// 使用Arc包装以减少克隆开销
 #[derive(Debug, Clone, Deserialize)]
 pub struct TcpSendData {
     #[serde(deserialize_with = "deserialize_bytes")]
@@ -78,7 +64,7 @@ impl TcpClientContext {
 
     /// 获取发送数据的引用
     pub fn get_send_data(&self) -> &Arc<TcpSendData> {
-        &self.manager.get_send_data()
+        self.manager.get_send_data()
     }
 
     /// 获取连接统计信息

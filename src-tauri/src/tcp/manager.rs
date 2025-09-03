@@ -193,7 +193,7 @@ impl TcpClientManager {
         let mut handles: Vec<JoinHandle<()>> = Vec::with_capacity(mac_groups.len());
 
         for group in mac_groups {
-            let handle = self.spawn_single_message_task(group, task, config).await;
+            let handle = self.spawn_single_message_task(group, task, config);
             handles.push(handle);
         }
 
@@ -201,7 +201,7 @@ impl TcpClientManager {
     }
 
     /// 启动单个消息发送任务
-    async fn spawn_single_message_task(
+    fn spawn_single_message_task(
         &self,
         client_macs: Vec<String>,
         task: &Task,
@@ -263,7 +263,7 @@ impl TcpClientManager {
         if let Some(writer) = conn_map.get_mut(client_mac) {
             // 检查连接是否可写
             if writer.writable().await.is_ok() {
-                writer.write_all(&**send_data.data).await?;
+                writer.write_all(&send_data.data).await?;
                 counter.fetch_add(1, Ordering::SeqCst);
             } else {
                 // 连接不可写，移除连接并更新状态

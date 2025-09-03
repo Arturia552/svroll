@@ -38,7 +38,7 @@ impl MqttClient {
     }
 
     pub fn get_send_data(&self) -> &Arc<MqttSendData> {
-        &self.manager.get_send_data()
+        self.manager.get_send_data()
     }
 
     /// 获取连接统计信息

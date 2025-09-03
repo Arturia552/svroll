@@ -60,7 +60,7 @@ impl TopicWrap {
 
     /// 获取发布主题路径
     pub fn get_publish_topic(&self) -> &str {
-        &self.publish.get_topic()
+        self.publish.get_topic()
     }
 
     /// 获取订阅主题路径
@@ -103,15 +103,15 @@ impl TopicWrap {
     ///
     /// # 参数
     /// * `key_value` - 可选的关键值，用于替换主题路径中的占位符
-    pub fn get_publish_real_topic<'a>(&'a self, key_value: Option<&str>) -> Cow<'a, str> {
+    pub fn get_publish_real_topic(&self, key_value: Option<&str>) -> Cow<'_, str> {
         wrap_real_topic(&self.publish, key_value)
     }
 
-    pub fn get_pushlish_real_topic_identify_key<'a>(&'a self, identify_key: String) -> Cow<'a,str> {
+    pub fn get_publish_real_topic_identify_key(&self, identify_key: String) -> Cow<'_,str> {
         let topic = &self.publish;
         let key_index = topic.key_index;
         if key_index.is_none() || identify_key.trim().is_empty() || key_index == Some(0) {
-            return Cow::Borrowed(&topic.topic);
+            Cow::Borrowed(&topic.topic)
         }else {
             let key_index = key_index.unwrap();
             let parts: Vec<&str> = topic.topic.split('/').collect();
@@ -122,9 +122,9 @@ impl TopicWrap {
                 new_topic_parts.extend(&parts[key_index..]);
 
                 let new_topic = new_topic_parts.join("/");
-                return Cow::Owned(new_topic);
+                return Cow::Owned(new_topic)
             }
-            return Cow::Borrowed(&topic.topic);
+            Cow::Borrowed(&topic.topic)
         }
         
     }
@@ -159,7 +159,7 @@ pub fn wrap_real_topic<'a>(topic: &'a TopicInfo, key_value: Option<&str>) -> Cow
         || key_value.is_none()
         || key_value.is_some_and(|val| val.is_empty())
     {
-        return Cow::Borrowed(&topic.topic);
+        Cow::Borrowed(&topic.topic)
     } else {
         let key_index = topic.key_index.unwrap_or(0);
         let parts: Vec<&str> = topic.topic.split('/').collect();

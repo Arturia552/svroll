@@ -13,7 +13,7 @@ use super::{connect_param::ConnectParam, database::HistoryConfig};
 /// 成功返回历史配置记录列表，失败返回错误信息
 #[command]
 pub async fn get_history_config() -> Result<Vec<HistoryConfig>, String> {
-    let db = context::get_database().await;
+    let db = context::get_database();
     // 使用读锁访问数据库
     let db_read = db.read().await;
     db_read
@@ -33,7 +33,7 @@ pub async fn get_history_config() -> Result<Vec<HistoryConfig>, String> {
 /// 成功返回连接参数，失败返回错误信息
 #[command]
 pub async fn load_history_config(id: i64) -> Result<ConnectParam, String> {
-    let db = context::get_database().await;
+    let db = context::get_database();
     // 使用读锁访问数据库
     let db_read = db.read().await;
 
@@ -56,7 +56,7 @@ pub async fn load_history_config(id: i64) -> Result<ConnectParam, String> {
 /// 成功返回true，失败返回错误信息
 #[command]
 pub async fn clear_history_config() -> Result<bool, String> {
-    let db = context::get_database().await;
+    let db = context::get_database();
     // 使用读锁访问数据库 - 即使是删除操作，数据库内部也会处理锁
     let db_read = db.read().await;
     db_read.delete_all_configs().await.map_err(|_| "清除配置记录失败".to_string())

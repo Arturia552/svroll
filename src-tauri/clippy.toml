@@ -1,0 +1,22 @@
+# 严格级别配置
+msrv = "1.70"  # 最小支持的Rust版本
+warn-on-all-wildcard-imports = true
+allow-expect-in-tests = true
+allow-unwrap-in-tests = true
+allow-dbg-in-tests = true
+avoid-breaking-exported-api = true
+allow-private-module-inception = true
+
+
+cognitive-complexity-threshold = 30
+type-complexity-threshold = 250
+too-many-arguments-threshold = 7
+too-many-lines-threshold = 100
+large-error-threshold = 128
+
+
+trivial-copy-size-limit = 128
+pass-by-value-size-limit = 256
+vec-box-size-threshold = 4096
+
+enum-variant-name-threshold = 3

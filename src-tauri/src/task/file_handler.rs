@@ -5,7 +5,6 @@ use tracing::info;
 
 use crate::{
     model::connect_param::ConnectParam,
-    MqttClientData,
     param::read_from_csv_into_struct,
 };
 

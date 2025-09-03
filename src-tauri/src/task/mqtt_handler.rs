@@ -32,7 +32,7 @@ pub async fn start_mqtt(
 ) -> Result<String> {
     log_and_notify(&tx, Rs2JsMsgType::Terminal, "开始初始化MQTT配置...").await?;
 
-    let mqtt_config = topic_config.unwrap_or_else(TopicConfig::default);
+    let mqtt_config = topic_config.unwrap_or_default();
     log_and_notify(&tx, Rs2JsMsgType::Terminal, "初始化MQTT客户端成功").await?;
 
     let mqtt_client = init_mqtt_context(&param, mqtt_config)

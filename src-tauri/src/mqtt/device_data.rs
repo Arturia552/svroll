@@ -41,7 +41,7 @@ impl MqttSendData {
 /// * `data` - 要处理的JSON数据
 /// * `fields` - 字段定义列表
 /// * `enable_random` - 是否启用随机值生成
-pub fn process_fields(data: &mut Value, fields: &Vec<MqttFieldStruct>, enable_random: bool) {
+pub fn process_fields(data: &mut Value, fields: &[MqttFieldStruct], enable_random: bool) {
     let mut rng = rand::thread_rng();
     
     for field in fields.iter() {

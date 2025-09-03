@@ -54,7 +54,7 @@ impl ConnectParam {
     ///
     /// # 返回
     /// 成功返回MQTT配置，失败返回错误
-    pub async fn into_config(&self) -> Result<BasicConfig<MqttSendData, MqttClientData>> {
+    pub fn into_config(&self) -> Result<BasicConfig<MqttSendData, MqttClientData>> {
         let data: Value =
             serde_json::from_str(self.send_data.as_str()).with_context(|| "发送数据格式错误")?;
         let send_data = MqttSendData {
@@ -84,7 +84,7 @@ impl ConnectParam {
         ))
     }
 
-    pub async fn set_send_data(&mut self, send_data: String) {
+    pub fn set_send_data(&mut self, send_data: String) {
         self.send_data = send_data;
     }
 
@@ -94,7 +94,7 @@ impl ConnectParam {
     ///
     /// # 返回
     /// 成功返回TCP配置，失败返回错误
-    pub async fn into_tcp_config(&self) -> Result<BasicConfig<TcpSendData, TcpClient>> {
+    pub fn into_tcp_config(&self) -> Result<BasicConfig<TcpSendData, TcpClient>> {
         let send_data = hex::decode(&self.send_data).with_context(|| "发送数据格式错误")?;
 
         let mut clients = vec![];

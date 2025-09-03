@@ -80,7 +80,7 @@ impl MqttClientManager {
             let permit = semaphore.acquire().await?;
 
             match self
-                .setup_single_client(client_config, host, port, &app_state)
+                .setup_single_client(client_config, host, port, app_state)
                 .await
             {
                 Ok(_) => {
@@ -147,7 +147,7 @@ impl MqttClientManager {
 
                 match event_loop.poll().await {
                     Ok(event) => {
-                        Self::process_event(&event, &client_id).await;
+                        Self::process_event(&event, &client_id);
                     }
                     Err(e) => {
                         if let Some(client_entry) = app_state.mqtt_clients().get_mut(&client_id) {
@@ -187,7 +187,7 @@ impl MqttClientManager {
     }
 
     /// 处理MQTT事件
-    async fn process_event(event: &rumqttc::Event, client_id: &str) {
+    fn process_event(event: &rumqttc::Event, client_id: &str) {
         use rumqttc::{Event, Packet};
 
         if let Event::Incoming(Packet::ConnAck(_)) = event {
@@ -289,7 +289,7 @@ impl MqttClientManager {
         enable_random: bool,
     ) -> Result<(), Error> {
         let real_topic = match client_data.get_identify_key() {
-            Some(identify_key) => topic.get_pushlish_real_topic_identify_key(identify_key.clone()),
+            Some(identify_key) => topic.get_publish_real_topic_identify_key(identify_key.clone()),
             None => topic.get_publish_real_topic(Some(client_data.get_device_key())),
         };
 

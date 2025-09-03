@@ -6,7 +6,6 @@ use tracing::{error, info};
 
 use crate::model::connect_param::ConnectParam;
 use crate::task::file_handler::CsvClientInfo;
-use crate::MqttClientData;
 use crate::Rs2JsMsgType;
 use crate::{
     context::{self, get_app_state},
@@ -125,7 +124,7 @@ pub async fn start_task(
         match param.protocol {
             Protocol::Mqtt => {
                 let topic_config = param.topic_config.clone();
-                match param.into_config().await {
+                match param.into_config() {
                     Ok(config) => {
                         if let Err(e) =
                             start_mqtt(config, topic_config, tx.clone(), task.clone()).await
@@ -150,7 +149,7 @@ pub async fn start_task(
                     }
                 }
             }
-            Protocol::Tcp => match param.into_tcp_config().await {
+            Protocol::Tcp => match param.into_tcp_config() {
                 Ok(config) => {
                     if let Err(e) = start_tcp(config, tx.clone(), task.clone()).await {
                         error!("TCP 任务启动失败: {:#}", e);
@@ -184,7 +183,7 @@ pub async fn start_task(
 
     // 保存到数据库
     let save_result: Result<()> = async {
-        let db = context::get_database().await;
+        let db = context::get_database();
         // 使用读锁访问数据库
         let db_read = db.read().await;
         let config = serde_json::to_value(&param_clone).context("配置序列化失败")?;
@@ -282,12 +281,12 @@ pub async fn stop_task(
     // 根据协议类型停止客户端
     match protocol {
         Some(Protocol::Mqtt) | None => {
-            if let Err(e) = stop_mqtt_clients(&app_state, &tx).await {
+            if let Err(e) = stop_mqtt_clients(app_state, &tx).await {
                 error!("停止MQTT客户端失败: {:#}", e);
             }
         }
         Some(Protocol::Tcp) => {
-            if let Err(e) = stop_tcp_clients(&app_state).await {
+            if let Err(e) = stop_tcp_clients(app_state).await {
                 error!("停止TCP客户端失败: {:#}", e);
             }
         }
