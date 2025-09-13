@@ -12,6 +12,11 @@ use svroll::{
 use tauri::Manager;
 use tokio::sync::{mpsc, Mutex};
 use tracing::info;
+use mimalloc::MiMalloc;
+
+
+#[global_allocator]
+static GLOBAL: MiMalloc = MiMalloc;
 
 #[tokio::main]
 async fn main() {
