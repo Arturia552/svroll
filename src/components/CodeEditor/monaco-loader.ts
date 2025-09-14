@@ -22,41 +22,24 @@ class MonacoLoader {
       this.monacoPromise = this.dynamicImportMonaco()
     }
 
-    const monaco = await this.monacoPromise
-    this.isLoaded = true
-    return monaco
+    try {
+      const monaco = await this.monacoPromise
+      this.isLoaded = true
+      return monaco
+    } catch (error) {
+      console.error('Failed to load Monaco Editor:', error)
+      // 重置状态以允许重试
+      this.monacoPromise = null
+      this.isLoaded = false
+      throw error
+    }
   }
 
   private async dynamicImportMonaco(): Promise<typeof import("monaco-editor")> {
     // 动态导入Monaco Editor
+    // vite-plugin-monaco-editor-esm 插件会处理环境配置
     const monaco = await import("monaco-editor")
-
-    // 配置Monaco环境
-    this.configureMonacoEnvironment()
-
     return monaco
-  }
-
-  private configureMonacoEnvironment(): void {
-    // 设置Monaco环境配置
-    if (typeof window !== "undefined") {
-      (window as any).MonacoEnvironment = {
-        getWorkerUrl: function (workerId: string, label: string) {
-          // 只加载JSON相关的worker
-          if (label === "json") {
-            return new URL(
-              "monaco-editor/esm/vs/language/json/json.worker.js",
-              import.meta.url
-            ).href
-          }
-          // 默认editor worker
-          return new URL(
-            "monaco-editor/esm/vs/editor/editor.worker.js",
-            import.meta.url
-          ).href
-        },
-      }
-    }
   }
 
   // 注册自定义hex语言
@@ -92,7 +75,25 @@ class MonacoLoader {
     options: editor.IStandaloneEditorConstructionOptions
   ): Promise<editor.IStandaloneCodeEditor> {
     const monaco = await this.loadMonaco()
-    return monaco.editor.create(container, options)
+    
+    // 检查容器是否有效
+    if (!container) {
+      throw new Error('Editor container is null or undefined')
+    }
+    
+    // 确保容器在DOM中且有尺寸
+    const rect = container.getBoundingClientRect()
+    if (rect.width === 0 || rect.height === 0) {
+      // 给容器设置最小尺寸以防止错误
+      container.style.minHeight = '200px'
+      container.style.minWidth = '100%'
+    }
+    
+    try {
+      return monaco.editor.create(container, options)
+    } catch (error) {
+      throw new Error(`Failed to create Monaco Editor: ${error}`)
+    }
   }
 
   // 验证JSON格式

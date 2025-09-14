@@ -42,7 +42,7 @@ impl MqttSendData {
 /// * `fields` - 字段定义列表
 /// * `enable_random` - 是否启用随机值生成
 pub fn process_fields(data: &mut Value, fields: &[MqttFieldStruct], enable_random: bool) {
-    let mut rng = rand::thread_rng();
+    let mut rng = rand::rng();
     
     for field in fields.iter() {
         process_single_field(data, field, enable_random, &mut rng);
@@ -69,21 +69,21 @@ fn process_single_field(data: &mut Value, field: &MqttFieldStruct, enable_random
         FieldType::Integer => {
             if enable_random {
                 if let (Some(min), Some(max)) = (field.min_value, field.max_value) {
-                    let random_integer = rng.gen_range(min as i64..=max as i64);
+                    let random_integer = rng.random_range(min as i64..=max as i64);
                     set_field_value(data, &field.field_name, Value::from(random_integer));
                 }
             }
         }
         FieldType::Boolean => {
             if enable_random {
-                let random_boolean = rng.gen_bool(0.5);
+                let random_boolean = rng.random_bool(0.5);
                 set_field_value(data, &field.field_name, Value::from(random_boolean));
             }
         }
         FieldType::Float => {
             if enable_random {
                 if let (Some(min), Some(max)) = (field.min_value, field.max_value) {
-                    let random_float = rng.gen_range(min..=max);
+                    let random_float = rng.random_range(min..=max);
                     set_field_value(data, &field.field_name, Value::from(random_float));
                 }
             }
@@ -111,7 +111,7 @@ fn process_single_field(data: &mut Value, field: &MqttFieldStruct, enable_random
                             .sum();
                         
                         if total_probability > 0.0 {
-                            let random_value = rng.gen_range(0.0..total_probability);
+                            let random_value = rng.random_range(0.0..total_probability);
                             
                             let mut cumulative_prob = 0.0;
                             for pv in possible_values {
@@ -131,7 +131,7 @@ fn process_single_field(data: &mut Value, field: &MqttFieldStruct, enable_random
             if enable_random {
                 if let Some(possible_values) = &field.possible_values {
                     if !possible_values.is_empty() {
-                        let random_index = rng.gen_range(0..possible_values.len());
+                        let random_index = rng.random_range(0..possible_values.len());
                         let selected_value = &possible_values[random_index];
                         set_field_value(data, &field.field_name, selected_value.value.clone());
                     }

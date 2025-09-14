@@ -98,12 +98,32 @@ const handleContentChange = async () => {
 
 // 初始化编辑器
 const initializeEditor = async () => {
-    if (!editorRef.value) return
+    if (!editorRef.value) {
+        console.warn('Editor container not ready')
+        return
+    }
+
+    // 如果已经存在实例，先清理
+    if (editorInstance) {
+        editorInstance.dispose()
+        editorInstance = null
+    }
 
     try {
         // 注册hex语言
         await monacoLoader.registerHexLanguage()
 
+        // 确保容器有尺寸
+        await nextTick()
+        
+        // 检查容器尺寸
+        const rect = editorRef.value.getBoundingClientRect()
+        if (rect.width === 0 || rect.height === 0) {
+            console.warn('Editor container has zero dimensions, waiting for layout...')
+            // 等待布局完成
+            await new Promise(resolve => setTimeout(resolve, 50))
+        }
+        
         // 创建编辑器实例
         editorInstance = await monacoLoader.createEditor(editorRef.value, {
             language: props.language,
@@ -199,8 +219,12 @@ defineExpose({
 })
 
 // 生命周期
-onMounted(() => {
-    initializeEditor()
+onMounted(async () => {
+    // 确保DOM完全渲染
+    await nextTick()
+    
+    // 添加小延迟确保容器有正确的尺寸
+    setTimeout(initializeEditor, 100)
 })
 
 onBeforeUnmount(() => {

@@ -15,13 +15,15 @@ use tokio::{
     task::JoinHandle,
     time::{sleep, Instant},
 };
+use tokio_stream::StreamExt;
+use tokio_util::codec::FramedRead;
 use tracing::{debug, error, info};
 
 use crate::{
     config::BasicConfig,
     context::get_app_state,
     task::Task,
-    tcp::{tcp_client::TcpSendData, TcpClient},
+    tcp::{tcp_client::TcpSendData, RequestCodec, TcpClient},
     ConnectionState,
 };
 
@@ -145,10 +147,6 @@ impl TcpClientManager {
 
     /// 处理TCP读取数据
     async fn process_read(reader: tokio::net::tcp::OwnedReadHalf, client_mac: String) {
-        use crate::tcp::RequestCodec;
-        use tokio_stream::StreamExt;
-        use tokio_util::codec::FramedRead;
-
         let mut frame_reader = FramedRead::new(reader, RequestCodec);
 
         loop {
