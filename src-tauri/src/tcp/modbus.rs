@@ -1,7 +1,6 @@
 use anyhow::Result;
-use bytes::{Bytes, BytesMut, BufMut, Buf};
+use bytes::{Bytes, BytesMut, BufMut};
 use crc16::{State, MODBUS};
-use tracing::info;
 
 /// Modbus RTU帧结构
 /// 

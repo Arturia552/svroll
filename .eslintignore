@@ -11,4 +11,5 @@ script/test/cypress
 _site
 temp*
 static/
+src-tauri/target
 !.prettierrc.js

@@ -266,9 +266,9 @@ impl MqttClientManager {
 
                     if let Err(e) = Self::send_single_message(
                         &client_data,
-                        &send_data,
-                        &topic,
-                        &counter,
+                        Arc::clone(&send_data),
+                        Arc::clone(&topic),
+                        Arc::clone(&counter),
                         enable_random,
                     )
                     .await
@@ -283,9 +283,9 @@ impl MqttClientManager {
     /// 发送单条消息
     async fn send_single_message(
         client_data: &MqttClientData,
-        send_data: &Arc<MqttSendData>,
-        topic: &Arc<TopicWrap>,
-        counter: &Arc<AtomicU32>,
+        send_data: Arc<MqttSendData>,
+        topic: Arc<TopicWrap>,
+        counter: Arc<AtomicU32>,
         enable_random: bool,
     ) -> Result<(), Error> {
         let real_topic = match client_data.get_identify_key() {
@@ -293,7 +293,7 @@ impl MqttClientManager {
             None => topic.get_publish_real_topic(Some(client_data.get_device_key())),
         };
 
-        let mut msg_value = (**send_data).clone();
+        let mut msg_value = (*send_data).clone();
         process_fields(&mut msg_value.data, &msg_value.fields, enable_random);
         let json_msg = serde_json::to_string(&msg_value.data)?;
 

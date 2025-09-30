@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm install:*)",
+      "Bash(pnpm add:*)",
+      "Bash(pnpm run lint:*)",
+      "Bash(npm run typecheck:*)",
+      "Bash(npx tsc:*)",
+      "WebFetch(domain:vueflow.dev)",
+      "Bash(npx vue-tsc:*)",
+      "Bash(npm run build:*)",
+      "mcp__ide__getDiagnostics"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

@@ -63,7 +63,7 @@
           <template #default="scope">
             <div class="cell-content">
               {{
-                scope.row.fieldType === FieldTypeEnum.Object
+                isContainerType(scope.row.fieldType)
                   ? "--"
                   : (scope.row.minValue ?? "--")
               }}
@@ -75,7 +75,7 @@
           <template #default="scope">
             <div class="cell-content">
               {{
-                scope.row.fieldType === FieldTypeEnum.Object
+                isContainerType(scope.row.fieldType)
                   ? "--"
                   : (scope.row.maxValue ?? "--")
               }}
@@ -171,10 +171,7 @@
                        :value="item.value" />
           </el-select>
         </el-form-item>
-        <template v-if="
-          newField.fieldType !== FieldTypeEnum.Array &&
-            newField.fieldType !== FieldTypeEnum.Object
-        ">
+        <template v-if="!isContainerType(newField.fieldType)">
           <el-form-item v-if="newField.fieldType" label="有效值">
             <div v-if="newField.fieldType === FieldTypeEnum.Enum">
               <div class="possible-values-table">
@@ -230,10 +227,7 @@
               <el-input v-model="singleDefaultValue" placeholder="有效值" style="width: 100%" />
             </div>
           </el-form-item>
-          <template v-if="
-            newField.fieldType === FieldTypeEnum.Integer ||
-              newField.fieldType === FieldTypeEnum.Float
-          ">
+          <template v-if="isNumericType(newField.fieldType)">
             <el-form-item label="最小值">
               <el-input-number v-model="newField.minValue"
                                :precision="newField.fieldType === FieldTypeEnum.Float
@@ -280,10 +274,7 @@
                        :value="item.value" />
           </el-select>
         </el-form-item>
-        <template v-if="
-          currentEditField.fieldType !== FieldTypeEnum.Array &&
-            currentEditField.fieldType !== FieldTypeEnum.Object
-        ">
+        <template v-if="!isContainerType(currentEditField.fieldType)">
           <el-form-item v-if="currentEditField.fieldType" label="有效值">
             <div v-if="
               currentEditField.fieldType ===
@@ -342,11 +333,7 @@
               <el-input v-model="editSingleDefaultValue" placeholder="有效值" style="width: 100%" />
             </div>
           </el-form-item>
-          <template v-if="
-            currentEditField.fieldType ===
-              FieldTypeEnum.Integer ||
-              currentEditField.fieldType === FieldTypeEnum.Float
-          ">
+          <template v-if="isNumericType(currentEditField.fieldType)">
             <el-form-item label="最小值">
               <el-input-number v-model="currentEditField.minValue"
                                :precision="currentEditField.fieldType ===
@@ -434,6 +421,30 @@ const editPossibleValuesArray = ref<PossibleValue[]>([])
 const singleDefaultValue = ref<any>(undefined)
 const editSingleDefaultValue = ref<any>(undefined)
 
+// 字段类型工具函数
+const isNumericType = (fieldType: FieldTypeEnum): boolean => {
+  return fieldType === FieldTypeEnum.Integer || fieldType === FieldTypeEnum.Float
+}
+
+const isContainerType = (fieldType: FieldTypeEnum): boolean => {
+  return fieldType === FieldTypeEnum.Object || fieldType === FieldTypeEnum.Array
+}
+
+const getDefaultValueByType = (fieldType: FieldTypeEnum): any => {
+  switch (fieldType) {
+    case FieldTypeEnum.Integer:
+    case FieldTypeEnum.Float:
+    case FieldTypeEnum.Timestamp:
+      return 0
+    case FieldTypeEnum.Boolean:
+      return false
+    case FieldTypeEnum.String:
+    case FieldTypeEnum.DateTime:
+    default:
+      return ""
+  }
+}
+
 // 根据字段类型转换值
 const convertValueByFieldType = (value: any, fieldType: FieldTypeEnum): any => {
   switch (fieldType) {
@@ -464,6 +475,59 @@ const convertPossibleValuesType = (
     value: convertValueByFieldType(item.value, fieldType),
     probability: item.probability,
   }))
+}
+
+// 字段操作工具函数
+const resetFieldNumericProps = (field: JsonStruct): void => {
+  if (!isNumericType(field.fieldType)) {
+    field.minValue = undefined
+    field.maxValue = undefined
+  }
+}
+
+const processFieldPossibleValues = (
+  field: JsonStruct,
+  singleValue: any,
+  enumValues: PossibleValue[]
+): void => {
+  if (field.fieldType === FieldTypeEnum.Object) {
+    field.children = field.children || []
+    field.possibleValues = []
+  } else if (field.fieldType === FieldTypeEnum.Enum) {
+    field.possibleValues = convertPossibleValuesType([...enumValues], field.fieldType)
+  } else if (!isContainerType(field.fieldType)) {
+    const defaultValue = singleValue !== undefined && singleValue !== ""
+      ? singleValue
+      : getDefaultValueByType(field.fieldType)
+
+    field.possibleValues = [{
+      value: convertValueByFieldType(defaultValue, field.fieldType),
+      probability: 100,
+    }]
+  }
+
+  resetFieldNumericProps(field)
+}
+
+// 表单清理和初始化函数
+const clearFormData = (isEdit: boolean = false): void => {
+  if (isEdit) {
+    editPossibleValuesArray.value = []
+    editSingleDefaultValue.value = undefined
+  } else {
+    possibleValuesArray.value = []
+    singleDefaultValue.value = undefined
+  }
+}
+
+const initializeDefaultValueByType = (fieldType: FieldTypeEnum, isEdit: boolean = false): void => {
+  const defaultValue = getDefaultValueByType(fieldType)
+
+  if (isEdit) {
+    editSingleDefaultValue.value = defaultValue
+  } else {
+    singleDefaultValue.value = defaultValue
+  }
 }
 
 // 添加可能值（创建表单）
@@ -585,37 +649,18 @@ const showEditFieldDialog = (row: JsonStruct) => {
         ...(currentEditField.value.possibleValues || []),
       ]
       editSingleDefaultValue.value = undefined
-    } else if (
-      currentEditField.value.fieldType !== FieldTypeEnum.Array &&
-      currentEditField.value.fieldType !== FieldTypeEnum.Object
-    ) {
-      // 对于非枚举、非数组、非对象类型，回显第一个有效值
+    } else if (!isContainerType(currentEditField.value.fieldType)) {
+      // 对于非容器类型，回显第一个有效值或设置默认值
       if (currentEditField.value.possibleValues?.length) {
         editSingleDefaultValue.value =
           currentEditField.value.possibleValues[0]?.value
       } else {
-        // 如果没有有效值，根据字段类型设置合适的空值
-        switch (currentEditField.value.fieldType) {
-          case FieldTypeEnum.Integer:
-          case FieldTypeEnum.Float:
-          case FieldTypeEnum.Timestamp:
-            editSingleDefaultValue.value = 0
-            break
-          case FieldTypeEnum.Boolean:
-            editSingleDefaultValue.value = false
-            break
-          case FieldTypeEnum.String:
-          case FieldTypeEnum.DateTime:
-          default:
-            editSingleDefaultValue.value = ""
-            break
-        }
+        editSingleDefaultValue.value = getDefaultValueByType(currentEditField.value.fieldType)
       }
       editPossibleValuesArray.value = []
     } else {
-      // Object 或 Array 类型
-      editSingleDefaultValue.value = undefined
-      editPossibleValuesArray.value = []
+      // 容器类型 (Object 或 Array)
+      clearFormData(true)
     }
 
     isEditDialogInitializing.value = false
@@ -630,65 +675,12 @@ const confirmAddField = () => {
     if (valid) {
       const fieldToAdd = { ...newField.value }
 
-      // 对象类型：仅初始化 children，不设置默认值
-      if (fieldToAdd.fieldType === FieldTypeEnum.Object) {
-        fieldToAdd.children = fieldToAdd.children || []
-        fieldToAdd.possibleValues = []
-        // 清空对象类型的数值范围
-        fieldToAdd.minValue = undefined
-        fieldToAdd.maxValue = undefined
-      } else if (fieldToAdd.fieldType === FieldTypeEnum.Enum) {
-        // 如果是枚举类型，设置possibleValues为数组
-        fieldToAdd.possibleValues = convertPossibleValuesType(
-          [...possibleValuesArray.value],
-          fieldToAdd.fieldType,
-        )
-        // 清空枚举类型的数值范围
-        fieldToAdd.minValue = undefined
-        fieldToAdd.maxValue = undefined
-      } else if (fieldToAdd.fieldType !== FieldTypeEnum.Array) {
-        // 非enum类型的probability固定为100%
-        let defaultValue = singleDefaultValue.value
-
-        // 如果用户没有输入默认值，根据类型设置默认值
-        if (defaultValue === undefined || defaultValue === "") {
-          switch (fieldToAdd.fieldType) {
-            case FieldTypeEnum.String:
-            case FieldTypeEnum.DateTime:
-              defaultValue = ""
-              break
-            case FieldTypeEnum.Integer:
-            case FieldTypeEnum.Float:
-            case FieldTypeEnum.Timestamp:
-              defaultValue = 0
-              break
-            case FieldTypeEnum.Boolean:
-              defaultValue = false
-              break
-            default:
-              defaultValue = ""
-          }
-        }
-
-        fieldToAdd.possibleValues = [
-          {
-            value: convertValueByFieldType(
-              defaultValue,
-              fieldToAdd.fieldType,
-            ),
-            probability: 100,
-          },
-        ]
-
-        // 对于非数字类型，清空数值范围
-        if (
-          fieldToAdd.fieldType !== FieldTypeEnum.Integer &&
-          fieldToAdd.fieldType !== FieldTypeEnum.Float
-        ) {
-          fieldToAdd.minValue = undefined
-          fieldToAdd.maxValue = undefined
-        }
-      }
+      // 使用工具函数处理字段的可能值和属性
+      processFieldPossibleValues(
+        fieldToAdd,
+        singleDefaultValue.value,
+        possibleValuesArray.value
+      )
 
       // 根据选择的父字段确定添加位置
       if (selectedParentFieldId.value) {
@@ -745,72 +737,12 @@ const confirmAddField = () => {
 const confirmEditField = () => {
   editFieldFormRef.value?.validate((valid) => {
     if (valid) {
-      // 对象类型：不设置默认值
-      if (currentEditField.value.fieldType === FieldTypeEnum.Object) {
-        currentEditField.value.children =
-          currentEditField.value.children || []
-        currentEditField.value.possibleValues = []
-        // 清空对象类型的数值范围
-        currentEditField.value.minValue = undefined
-        currentEditField.value.maxValue = undefined
-      } else if (
-        currentEditField.value.fieldType === FieldTypeEnum.Enum
-      ) {
-        // 如果是枚举类型，设置possibleValues为数组
-        currentEditField.value.possibleValues =
-          convertPossibleValuesType(
-            [...editPossibleValuesArray.value],
-            currentEditField.value.fieldType,
-          )
-        // 清空枚举类型的数值范围
-        currentEditField.value.minValue = undefined
-        currentEditField.value.maxValue = undefined
-      } else if (
-        currentEditField.value.fieldType !== FieldTypeEnum.Array
-      ) {
-        // 非enum类型的probability固定为100%
-        let defaultValue = editSingleDefaultValue.value
-
-        // 如果用户没有输入默认值，根据类型设置默认值
-        if (defaultValue === undefined || defaultValue === "") {
-          switch (currentEditField.value.fieldType) {
-            case FieldTypeEnum.String:
-            case FieldTypeEnum.DateTime:
-              defaultValue = ""
-              break
-            case FieldTypeEnum.Integer:
-            case FieldTypeEnum.Float:
-            case FieldTypeEnum.Timestamp:
-              defaultValue = 0
-              break
-            case FieldTypeEnum.Boolean:
-              defaultValue = false
-              break
-            default:
-              defaultValue = ""
-          }
-        }
-
-        currentEditField.value.possibleValues = [
-          {
-            value: convertValueByFieldType(
-              defaultValue,
-              currentEditField.value.fieldType,
-            ),
-            probability: 100,
-          },
-        ]
-
-        // 对于非数字类型，清空数值范围
-        if (
-          currentEditField.value.fieldType !==
-          FieldTypeEnum.Integer &&
-          currentEditField.value.fieldType !== FieldTypeEnum.Float
-        ) {
-          currentEditField.value.minValue = undefined
-          currentEditField.value.maxValue = undefined
-        }
-      }
+      // 使用工具函数处理字段的可能值和属性
+      processFieldPossibleValues(
+        currentEditField.value,
+        editSingleDefaultValue.value,
+        editPossibleValuesArray.value
+      )
 
       // 找到字段并更新（支持嵌套查找）
       const updateField = (
@@ -916,45 +848,17 @@ watch(
       return
     }
 
-    // 清空编辑表单的默认值数据
-    editPossibleValuesArray.value = []
-
-    // 只对非数字类型清空数值范围
-    if (
-      newType !== FieldTypeEnum.Integer &&
-      newType !== FieldTypeEnum.Float
-    ) {
-      currentEditField.value.minValue = undefined
-      currentEditField.value.maxValue = undefined
-    }
+    // 清空表单数据
+    clearFormData(true)
+    resetFieldNumericProps(currentEditField.value)
     currentEditField.value.possibleValues = []
 
     // 根据新类型设置合适的默认值
     if (newType === FieldTypeEnum.Enum) {
-      editSingleDefaultValue.value = undefined
-      editPossibleValuesArray.value = []
-    } else if (
-      newType !== FieldTypeEnum.Object &&
-      newType !== FieldTypeEnum.Array
-    ) {
-      // 为非枚举、非对象、非数组类型设置类型相关的默认值
-      switch (newType) {
-        case FieldTypeEnum.Integer:
-        case FieldTypeEnum.Float:
-        case FieldTypeEnum.Timestamp:
-          editSingleDefaultValue.value = 0
-          break
-        case FieldTypeEnum.Boolean:
-          editSingleDefaultValue.value = false
-          break
-        case FieldTypeEnum.String:
-        case FieldTypeEnum.DateTime:
-        default:
-          editSingleDefaultValue.value = ""
-          break
-      }
-    } else {
-      editSingleDefaultValue.value = undefined
+      // 枚举类型不需要单个默认值
+    } else if (!isContainerType(newType)) {
+      // 为非容器类型设置默认值
+      initializeDefaultValueByType(newType, true)
     }
 
     // 如果是Object类型，初始化children
@@ -969,21 +873,14 @@ watch(
 // 在处理新建字段时，字段类型切换时清空默认值表单
 watch(
   () => newField.value.fieldType,
-  (_newType) => {
-    // 清空所有默认值相关的表单数据
-    possibleValuesArray.value = []
-    singleDefaultValue.value = undefined
-
-    // 只对非数字类型清空数值范围
-    if (
-      _newType !== FieldTypeEnum.Integer &&
-      _newType !== FieldTypeEnum.Float
-    ) {
-      newField.value.minValue = undefined
-      newField.value.maxValue = undefined
-    }
+  (newType) => {
+    // 清空表单数据
+    clearFormData(false)
+    resetFieldNumericProps(newField.value)
     newField.value.possibleValues = []
-    if (_newType === FieldTypeEnum.Object) {
+
+    // 如果是Object类型，初始化children
+    if (newType === FieldTypeEnum.Object) {
       newField.value.children = []
     } else {
       newField.value.children = undefined
