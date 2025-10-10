@@ -1,17 +1,17 @@
 use anyhow::{Context as AnyhowContext, Result};
-use tauri::{command, State};
-use tokio::time::sleep;
+use tauri::{State, command};
 use tokio::time::Duration;
+use tokio::time::sleep;
 use tracing::{error, info};
 
+use crate::Rs2JsMsgType;
 use crate::model::connect_param::ConnectParam;
 use crate::task::file_handler::CsvClientInfo;
-use crate::Rs2JsMsgType;
 use crate::{
-    context::{self, get_app_state},
-    model::{database::HistoryConfig, Rs2JsEntity},
-    param::Protocol,
     AsyncProcInputTx,
+    context::{self, get_app_state},
+    model::{Rs2JsEntity, database::HistoryConfig},
+    param::Protocol,
 };
 
 use super::{
@@ -101,7 +101,8 @@ pub async fn start_task(
     param: ConnectParam,
     async_proc_output_tx: State<'_, AsyncProcInputTx>,
 ) -> Result<String, String> {
-    let task: &'static std::sync::Arc<tokio::sync::RwLock<crate::task::Task>> = get_or_init_task().await;
+    let task: &'static std::sync::Arc<tokio::sync::RwLock<crate::task::Task>> =
+        get_or_init_task().await;
     let tx: tauri::async_runtime::Sender<Rs2JsEntity> =
         async_proc_output_tx.inner.lock().await.clone();
     let param_clone = param.clone();
@@ -235,29 +236,18 @@ pub async fn stop_task(
         }
     };
 
-    // 读取任务状态
-    {
-        let task_read = task.read().await;
-        // 检查任务状态
-        if !task_read.status.load(std::sync::atomic::Ordering::SeqCst) {
-            return Ok("无正在运行的任务".to_string());
-        }
+    let task = task.read().await;
+    if !task.status.load(std::sync::atomic::Ordering::SeqCst) {
+        return Ok("无正在运行的任务".to_string());
     }
 
-    // 更新任务状态和句柄
+    task.status
+        .store(false, std::sync::atomic::Ordering::SeqCst);
+
     let message_handles;
     let count_handle;
     {
-        // 先更新原子状态
-        let task_read = task.read().await;
-        task_read
-            .status
-            .store(false, std::sync::atomic::Ordering::SeqCst);
-        drop(task_read);
-
-        // 再处理句柄
-        let task_read = task.read().await;
-        let mut handles = task_read.handles.write().await;
+        let mut handles = task.handles.write().await;
         // 中止主任务
         if let Some(handle) = handles.task_handle.take() {
             handle.abort();

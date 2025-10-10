@@ -50,7 +50,7 @@ impl Database {
 
         // 创建连接池
         let pool = SqlitePoolOptions::new()
-            .max_connections(5)
+            .max_connections(1)
             .connect_with(connect_options)
             .await?;
 

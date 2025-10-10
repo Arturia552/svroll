@@ -1,7 +1,7 @@
 use std::{fmt::Debug, sync::Arc};
 
 use anyhow::Result;
-use serde::{de::DeserializeOwned, Serialize};
+use serde::{Serialize, de::DeserializeOwned};
 
 use super::types::Protocol;
 
@@ -79,22 +79,12 @@ where
     ///
     /// # 返回
     /// 成功返回Ok，配置无效返回错误信息
-    pub async fn validate(&self) -> Result<(), String> {
-        if self.thread_size == 0 {
-            return Err("线程数量不能为0".into());
-        }
-        if self.max_connect_per_second == 0 {
-            return Err("每秒最大连接数不能为0".into());
-        }
-        if self.send_interval == 0 {
-            return Err("发送间隔不能为0".into());
-        }
-        if self.clients.is_empty() {
-            return Err("客户端配置不能为空".into());
-        }
-        if self.broker.is_empty() {
-            return Err("broker地址不能为空".into());
-        }
+    pub fn validate(&self) -> Result<()> {
+        anyhow::ensure!(self.thread_size > 0, "线程数量不能为0");
+        anyhow::ensure!(self.max_connect_per_second > 0, "每秒最大连接数不能为0");
+        anyhow::ensure!(self.send_interval > 0, "发送间隔不能为0");
+        anyhow::ensure!(!self.clients.is_empty(), "客户端配置不能为空");
+        anyhow::ensure!(!self.broker.is_empty(), "broker地址不能为空");
         Ok(())
     }
 

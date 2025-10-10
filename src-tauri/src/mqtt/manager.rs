@@ -1,7 +1,7 @@
 use std::{
     sync::{
-        atomic::{AtomicU32, Ordering},
         Arc,
+        atomic::{AtomicU32, Ordering},
     },
     time::Duration,
 };
@@ -15,12 +15,12 @@ use tokio::{
 use tracing::{debug, error, info};
 
 use crate::{
+    ConnectionState, MqttSendData, TopicWrap,
     config::BasicConfig,
     context::get_app_state,
     mqtt::{client_data::MqttClientData, device_data::process_fields},
     state::AppState,
     task::Task,
-    MqttSendData, TopicWrap,
 };
 
 /// 高效的MQTT客户端管理器
@@ -117,9 +117,9 @@ impl MqttClientManager {
         mqtt_options.set_clean_session(true);
         mqtt_options.set_keep_alive(Duration::from_secs(20));
         mqtt_options.set_credentials(client_id, client_config.get_password());
-        mqtt_options.set_request_channel_capacity(10);
+        mqtt_options.set_request_channel_capacity(1);
 
-        let (cli, event_loop) = AsyncClient::new(mqtt_options, 10);
+        let (cli, event_loop) = AsyncClient::new(mqtt_options, 1);
         let event_loop_handle = self.spawn_event_loop(client_id.clone(), event_loop).await;
 
         let mut client_data = client_config.clone();
@@ -137,9 +137,9 @@ impl MqttClientManager {
         client_id: String,
         mut event_loop: rumqttc::EventLoop,
     ) -> JoinHandle<()> {
-        let app_state = get_app_state();
-
         tokio::spawn(async move {
+            let app_state = get_app_state();
+
             loop {
                 if !app_state.mqtt_clients().contains_key(&client_id) {
                     break;
@@ -147,7 +147,7 @@ impl MqttClientManager {
 
                 match event_loop.poll().await {
                     Ok(event) => {
-                        Self::process_event(&event, &client_id);
+                        Self::process_event(&event, &client_id, app_state);
                     }
                     Err(e) => {
                         if let Some(client_entry) = app_state.mqtt_clients().get_mut(&client_id) {
@@ -187,15 +187,14 @@ impl MqttClientManager {
     }
 
     /// 处理MQTT事件
-    fn process_event(event: &rumqttc::Event, client_id: &str) {
+    fn process_event(event: &rumqttc::Event, client_id: &str, app_state: &AppState) {
         use rumqttc::{Event, Packet};
 
         if let Event::Incoming(Packet::ConnAck(_)) = event {
             debug!("收到ConnAck事件，客户端ID: {}", client_id);
 
-            let app_state = get_app_state();
             if let Some(mut client) = app_state.mqtt_clients().get_mut(client_id) {
-                client.set_connection_state(crate::ConnectionState::Connected);
+                client.set_connection_state(ConnectionState::Connected);
                 debug!("已更新客户端连接状态为已连接: {}", client_id);
             }
         } else {
@@ -245,6 +244,7 @@ impl MqttClientManager {
 
         tokio::spawn(async move {
             let mut interval = tokio::time::interval(Duration::from_secs(send_interval));
+            let app_state = get_app_state();
 
             loop {
                 if !status.load(Ordering::SeqCst) {
@@ -254,8 +254,11 @@ impl MqttClientManager {
 
                 interval.tick().await;
 
+                let send_data_ref = &send_data;
+                let topic_ref = &topic;
+                let counter_ref = &counter;
+
                 for client_id in &client_ids {
-                    let app_state = get_app_state();
                     let Some(client_data) = app_state.mqtt_clients().get(client_id) else {
                         continue;
                     };
@@ -266,9 +269,9 @@ impl MqttClientManager {
 
                     if let Err(e) = Self::send_single_message(
                         &client_data,
-                        Arc::clone(&send_data),
-                        Arc::clone(&topic),
-                        Arc::clone(&counter),
+                        send_data_ref,
+                        topic_ref,
+                        counter_ref,
                         enable_random,
                     )
                     .await
@@ -283,26 +286,27 @@ impl MqttClientManager {
     /// 发送单条消息
     async fn send_single_message(
         client_data: &MqttClientData,
-        send_data: Arc<MqttSendData>,
-        topic: Arc<TopicWrap>,
-        counter: Arc<AtomicU32>,
+        send_data: &Arc<MqttSendData>,
+        topic: &Arc<TopicWrap>,
+        counter: &Arc<AtomicU32>,
         enable_random: bool,
     ) -> Result<(), Error> {
         let real_topic = match client_data.get_identify_key() {
-            Some(identify_key) => topic.get_publish_real_topic_identify_key(identify_key.clone()),
+            Some(identify_key) => topic.get_publish_real_topic_identify_key(identify_key.as_str()),
             None => topic.get_publish_real_topic(Some(client_data.get_device_key())),
         };
 
-        let mut msg_value = (*send_data).clone();
-        process_fields(&mut msg_value.data, &msg_value.fields, enable_random);
-        let json_msg = serde_json::to_string(&msg_value.data)?;
+        let mut msg_data = send_data.data.clone();
+        process_fields(&mut msg_data, &send_data.fields, enable_random);
 
+        let json_bytes =
+            serde_json::to_vec(&msg_data).map_err(|e| anyhow::anyhow!("序列化消息失败: {}", e))?;
         let qos = topic.get_publish_qos();
         let client = client_data
             .get_client()
             .ok_or_else(|| anyhow::anyhow!("客户端未初始化"))?;
 
-        client.publish(real_topic, qos, false, json_msg).await?;
+        client.publish(real_topic, qos, false, json_bytes).await?;
         counter.fetch_add(1, Ordering::SeqCst);
 
         Ok(())

@@ -107,7 +107,7 @@ impl TopicWrap {
         wrap_real_topic(&self.publish, key_value)
     }
 
-    pub fn get_publish_real_topic_identify_key(&self, identify_key: String) -> Cow<'_,str> {
+    pub fn get_publish_real_topic_identify_key(&self, identify_key: &str) -> Cow<'_,str> {
         let topic = &self.publish;
         let key_index = topic.key_index;
         if key_index.is_none() || identify_key.trim().is_empty() || key_index == Some(0) {

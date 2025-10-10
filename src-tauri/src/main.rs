@@ -1,19 +1,18 @@
 // Prevents additional console window on Windows in release, DO NOT REMOVE!!
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+use mimalloc::MiMalloc;
 use svroll::{
+    AsyncProcInputTx,
     context,
     model::db_com,
     rs2js,
     // 更新引用路径
     task::commands as task_com,
-    AsyncProcInputTx,
 };
 use tauri::Manager;
-use tokio::sync::{mpsc, Mutex};
+use tokio::sync::{Mutex, mpsc};
 use tracing::info;
-use mimalloc::MiMalloc;
-
 
 #[global_allocator]
 static GLOBAL: MiMalloc = MiMalloc;
@@ -56,7 +55,9 @@ async fn main() {
             tokio::spawn(async move {
                 loop {
                     if let Some(output) = async_proc_output_rx.recv().await {
-                        rs2js(output, &app_handle);
+                        if let Err(e) = rs2js(output, &app_handle) {
+                            tracing::error!("发送 rs2js 消息失败: {}", e);
+                        }
                     }
                 }
             });
@@ -69,11 +70,14 @@ async fn main() {
 }
 
 #[tauri::command]
-async fn close_splashscreen(window: tauri::Window) {
-    // 关闭启动屏幕
+async fn close_splashscreen(window: tauri::Window) -> Result<(), String> {
     if let Some(splashscreen) = window.get_webview_window("splashscreen") {
-        splashscreen.close().unwrap();
+        splashscreen.close().map_err(|e| e.to_string())?;
     }
-    // 显示主窗口
-    window.get_webview_window("main").unwrap().show().unwrap();
+    window
+        .get_webview_window("main")
+        .ok_or("未找到主窗口")?
+        .show()
+        .map_err(|e| e.to_string())?;
+    Ok(())
 }

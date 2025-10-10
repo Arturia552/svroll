@@ -20,11 +20,7 @@ use tokio_util::codec::FramedRead;
 use tracing::{debug, error, info};
 
 use crate::{
-    config::BasicConfig,
-    context::get_app_state,
-    task::Task,
-    tcp::{tcp_client::TcpSendData, RequestCodec, TcpClient},
-    ConnectionState,
+    config::BasicConfig, context::get_app_state, state::AppState, task::Task, tcp::{tcp_client::TcpSendData, RequestCodec, TcpClient}, ConnectionState
 };
 
 /// 高效的TCP客户端管理器
@@ -212,6 +208,8 @@ impl TcpClientManager {
         let send_interval = config.send_interval;
 
         tokio::spawn(async move {
+            // 🎯 优化：在循环外部获取 app_state，避免每次发送都调用 get_app_state()
+            let app_state = get_app_state();
             let mut interval = tokio::time::interval(Duration::from_secs(send_interval));
 
             loop {
@@ -224,7 +222,7 @@ impl TcpClientManager {
 
                 for client_mac in &client_macs {
                     if let Err(e) =
-                        Self::send_single_message(client_mac, &send_data, &connections, &counter)
+                        Self::send_single_message(client_mac, &send_data, &connections, &counter, app_state)
                             .await
                     {
                         error!("发送TCP消息失败 - 客户端MAC: {}, 错误: {:?}", client_mac, e);
@@ -240,8 +238,9 @@ impl TcpClientManager {
         send_data: &Arc<TcpSendData>,
         connections: &Arc<RwLock<HashMap<String, OwnedWriteHalf>>>,
         counter: &Arc<AtomicU32>,
+        app_state: &AppState,
     ) -> Result<(), Error> {
-        let app_state = get_app_state();
+        // 🎯 优化：使用传入的 app_state，避免重复调用 get_app_state()
 
         // 检查客户端状态
         let is_connected = {
