@@ -38,6 +38,15 @@ impl TopicInfo {
     pub fn get_qos(&self) -> i32 {
         self.qos
     }
+
+    pub fn to_qos(&self) -> QoS {
+        match self.qos {
+            0 => QoS::AtMostOnce,
+            1 => QoS::AtLeastOnce,
+            2 => QoS::ExactlyOnce,
+            _ => QoS::AtMostOnce,
+        }
+    }
 }
 
 /// 主题包装器
@@ -77,24 +86,7 @@ impl TopicWrap {
     ///
     /// 将整数QoS转换为MQTT QoS枚举
     pub fn get_publish_qos(&self) -> QoS {
-        match self.publish.get_qos() {
-            0 => QoS::AtMostOnce,
-            1 => QoS::AtLeastOnce,
-            2 => QoS::ExactlyOnce,
-            _ => QoS::AtMostOnce,
-        }
-    }
-
-    /// 获取订阅主题的QoS级别
-    ///
-    /// 将整数QoS转换为MQTT QoS枚举
-    pub fn get_subscribe_qos(&self) -> QoS {
-        match self.subscribe.as_ref().unwrap().qos {
-            0 => QoS::AtMostOnce,
-            1 => QoS::AtLeastOnce,
-            2 => QoS::ExactlyOnce,
-            _ => QoS::AtMostOnce,
-        }
+        self.publish.to_qos()
     }
 
     /// 获取实际的发布主题路径
@@ -107,12 +99,12 @@ impl TopicWrap {
         wrap_real_topic(&self.publish, key_value)
     }
 
-    pub fn get_publish_real_topic_identify_key(&self, identify_key: &str) -> Cow<'_,str> {
+    pub fn get_publish_real_topic_identify_key(&self, identify_key: &str) -> Cow<'_, str> {
         let topic = &self.publish;
         let key_index = topic.key_index;
         if key_index.is_none() || identify_key.trim().is_empty() || key_index == Some(0) {
             Cow::Borrowed(&topic.topic)
-        }else {
+        } else {
             let key_index = key_index.unwrap();
             let parts: Vec<&str> = topic.topic.split('/').collect();
 
@@ -122,11 +114,10 @@ impl TopicWrap {
                 new_topic_parts.extend(&parts[key_index..]);
 
                 let new_topic = new_topic_parts.join("/");
-                return Cow::Owned(new_topic)
+                return Cow::Owned(new_topic);
             }
             Cow::Borrowed(&topic.topic)
         }
-        
     }
 
     /// 获取实际的订阅主题路径

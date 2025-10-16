@@ -1,26 +1,30 @@
 use std::{
-    collections::HashMap,
     sync::{
-        atomic::{AtomicU32, Ordering},
         Arc,
+        atomic::{AtomicU32, Ordering},
     },
     time::Duration,
 };
 
 use anyhow::{Error, Result};
+use dashmap::DashMap;
 use tokio::{
     io::AsyncWriteExt,
-    net::{tcp::OwnedWriteHalf, TcpStream},
-    sync::RwLock,
+    net::{TcpStream, tcp::OwnedWriteHalf},
     task::JoinHandle,
-    time::{sleep, Instant},
+    time::{Instant, sleep},
 };
 use tokio_stream::StreamExt;
 use tokio_util::codec::FramedRead;
 use tracing::{debug, error, info};
 
 use crate::{
-    config::BasicConfig, context::get_app_state, state::AppState, task::Task, tcp::{tcp_client::TcpSendData, RequestCodec, TcpClient}, ConnectionState
+    ConnectionState,
+    config::BasicConfig,
+    context::get_app_state,
+    state::AppState,
+    task::Task,
+    tcp::{RequestCodec, TcpClient, tcp_client::TcpSendData},
 };
 
 /// 高效的TCP客户端管理器
@@ -32,7 +36,7 @@ pub struct TcpClientManager {
     /// 发送数据模板
     send_data: Arc<TcpSendData>,
     /// TCP连接映射表 - MAC地址到写入端的映射
-    connections: Arc<RwLock<HashMap<String, OwnedWriteHalf>>>,
+    connections: Arc<DashMap<String, OwnedWriteHalf>>,
 }
 
 impl TcpClientManager {
@@ -41,7 +45,7 @@ impl TcpClientManager {
         Self {
             client_macs: Arc::new(client_macs),
             send_data,
-            connections: Arc::new(RwLock::new(HashMap::new())),
+            connections: Arc::new(DashMap::new()),
         }
     }
 
@@ -121,16 +125,13 @@ impl TcpClientManager {
     async fn setup_single_client(
         broker: &str,
         client_mac: &str,
-        connections: Arc<RwLock<HashMap<String, OwnedWriteHalf>>>,
+        connections: Arc<DashMap<String, OwnedWriteHalf>>,
     ) -> Result<(), Error> {
         let stream = TcpStream::connect(broker).await?;
         let (reader, writer) = stream.into_split();
 
         // 将writer存储到连接池中
-        {
-            let mut conn_map = connections.write().await;
-            conn_map.insert(client_mac.to_string(), writer);
-        }
+        connections.insert(client_mac.to_string(), writer);
 
         // 启动读取任务
         let client_mac_clone = client_mac.to_string();
@@ -208,7 +209,6 @@ impl TcpClientManager {
         let send_interval = config.send_interval;
 
         tokio::spawn(async move {
-            // 🎯 优化：在循环外部获取 app_state，避免每次发送都调用 get_app_state()
             let app_state = get_app_state();
             let mut interval = tokio::time::interval(Duration::from_secs(send_interval));
 
@@ -220,10 +220,15 @@ impl TcpClientManager {
 
                 interval.tick().await;
 
-                for client_mac in &client_macs {
-                    if let Err(e) =
-                        Self::send_single_message(client_mac, &send_data, &connections, &counter, app_state)
-                            .await
+                for client_mac in client_macs.iter() {
+                    if let Err(e) = Self::send_single_message(
+                        client_mac,
+                        &send_data,
+                        &connections,
+                        &counter,
+                        app_state,
+                    )
+                    .await
                     {
                         error!("发送TCP消息失败 - 客户端MAC: {}, 错误: {:?}", client_mac, e);
                     }
@@ -236,12 +241,10 @@ impl TcpClientManager {
     async fn send_single_message(
         client_mac: &str,
         send_data: &Arc<TcpSendData>,
-        connections: &Arc<RwLock<HashMap<String, OwnedWriteHalf>>>,
+        connections: &Arc<DashMap<String, OwnedWriteHalf>>,
         counter: &Arc<AtomicU32>,
         app_state: &AppState,
     ) -> Result<(), Error> {
-        // 🎯 优化：使用传入的 app_state，避免重复调用 get_app_state()
-
         // 检查客户端状态
         let is_connected = {
             if let Some(client_data) = app_state.tcp_clients().get(client_mac) {
@@ -255,16 +258,16 @@ impl TcpClientManager {
             return Ok(()); // 客户端未连接，跳过发送
         }
 
-        // 获取连接写入端
-        let mut conn_map = connections.write().await;
-        if let Some(writer) = conn_map.get_mut(client_mac) {
+        if let Some(mut writer_ref) = connections.get_mut(client_mac) {
+            let writer: &mut OwnedWriteHalf = writer_ref.value_mut();
             // 检查连接是否可写
             if writer.writable().await.is_ok() {
                 writer.write_all(&send_data.data).await?;
                 counter.fetch_add(1, Ordering::SeqCst);
             } else {
-                // 连接不可写，移除连接并更新状态
-                conn_map.remove(client_mac);
+                // 连接不可写，先释放引用，然后移除连接并更新状态
+                drop(writer_ref);
+                connections.remove(client_mac);
                 if let Some(mut client_data) = app_state.tcp_clients().get_mut(client_mac) {
                     client_data.0.set_connection_state(ConnectionState::Failed);
                 }
@@ -310,9 +313,9 @@ impl TcpClientManager {
     async fn wait_single_connection(client_mac: String) -> bool {
         let mut attempts = 0;
         const MAX_ATTEMPTS: usize = 100; // 10秒超时
+        let app_state = get_app_state();
 
         while attempts < MAX_ATTEMPTS {
-            let app_state = get_app_state();
             if let Some(client_data) = app_state.tcp_clients().get(&client_mac) {
                 if client_data.0.is_connected() {
                     return true;
@@ -323,8 +326,6 @@ impl TcpClientManager {
             attempts += 1;
         }
 
-        // 连接超时，设置状态为失败
-        let app_state = get_app_state();
         if let Some(mut client) = app_state.tcp_clients().get_mut(&client_mac) {
             client.0.set_connection_state(ConnectionState::Failed);
         }
@@ -356,12 +357,16 @@ impl TcpClientManager {
     pub async fn shutdown(&self) {
         info!("关闭所有TCP连接...");
 
-        let mut conn_map = self.connections.write().await;
-        for (client_mac, mut writer) in conn_map.drain() {
-            if let Err(e) = writer.shutdown().await {
-                error!("关闭TCP连接失败 - 客户端MAC: {}, 错误: {:?}", client_mac, e);
+        self.connections.iter().next().map(async |entry| {
+            let client_mac = entry.key().clone();
+            drop(entry); // 释放迭代器引用
+
+            if let Some((_, mut writer)) = self.connections.remove(&client_mac) {
+                if let Err(e) = writer.shutdown().await {
+                    error!("关闭TCP连接失败 - 客户端MAC: {}, 错误: {:?}", client_mac, e);
+                }
             }
-        }
+        });
 
         // 更新客户端状态
         let app_state = get_app_state();

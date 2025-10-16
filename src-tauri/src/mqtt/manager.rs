@@ -177,7 +177,6 @@ impl MqttClientManager {
                 }
             }
 
-            // 清理工作
             if let Some(mut client) = app_state.mqtt_clients().get_mut(&client_id) {
                 if client.client.is_some() {
                     client.client = None;
@@ -254,11 +253,7 @@ impl MqttClientManager {
 
                 interval.tick().await;
 
-                let send_data_ref = &send_data;
-                let topic_ref = &topic;
-                let counter_ref = &counter;
-
-                for client_id in &client_ids {
+                for client_id in client_ids.iter() {
                     let Some(client_data) = app_state.mqtt_clients().get(client_id) else {
                         continue;
                     };
@@ -269,9 +264,9 @@ impl MqttClientManager {
 
                     if let Err(e) = Self::send_single_message(
                         &client_data,
-                        send_data_ref,
-                        topic_ref,
-                        counter_ref,
+                        &send_data,
+                        &topic,
+                        &counter,
                         enable_random,
                     )
                     .await
@@ -345,9 +340,9 @@ impl MqttClientManager {
     async fn wait_single_connection(client_id: String) -> bool {
         let mut attempts = 0;
         const MAX_ATTEMPTS: usize = 100; // 10秒超时
+        let app_state = get_app_state();
 
         while attempts < MAX_ATTEMPTS {
-            let app_state = get_app_state();
             if let Some(client_data) = app_state.mqtt_clients().get(&client_id) {
                 if client_data.is_connected() {
                     return true;
@@ -358,8 +353,6 @@ impl MqttClientManager {
             attempts += 1;
         }
 
-        // 连接超时，设置状态为失败
-        let app_state = get_app_state();
         if let Some(mut client) = app_state.mqtt_clients().get_mut(&client_id) {
             client.set_connection_state(crate::ConnectionState::Failed);
         }
