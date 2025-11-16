@@ -3,10 +3,7 @@
     <div class="actions-bar">
       <div class="buttons">
         <el-tooltip content="导入客户端文件" placement="top">
-          <el-button type="primary"
-                     size="small"
-                     class="action-btn"
-                     @click="resolveClientFile">
+          <el-button type="primary" size="small" class="action-btn" @click="resolveClientFile">
             <el-icon>
               <Upload />
             </el-icon>
@@ -14,12 +11,13 @@
           </el-button>
         </el-tooltip>
 
-        <el-popconfirm width="280"
-                       title="请输入要生成的客户端数量"
-                       confirm-button-text="生成"
-                       cancel-button-text="取消"
-                       @cancel="onCancel"
-                       @confirm="confirm">
+        <el-popconfirm
+          width="280"
+          title="请输入要生成的客户端数量"
+          confirm-button-text="生成"
+          cancel-button-text="取消"
+          @cancel="onCancel"
+          @confirm="confirm">
           <template #reference>
             <el-button type="success" size="small" class="action-btn">
               <el-icon>
@@ -28,16 +26,14 @@
               随机生成
             </el-button>
           </template>
-          <template #actions="{
-            confirm: confirmAction,
-            cancel: cancelAction,
-          }">
-            <el-input-number v-model="generateSize"
-                             style="margin-bottom: 16px"
-                             :min="1"
-                             :max="10000"
-                             controls-position="right"
-                             placeholder="输入数量" />
+          <template #actions="{ confirm: confirmAction, cancel: cancelAction }">
+            <el-input-number
+              v-model="generateSize"
+              style="margin-bottom: 16px"
+              :min="1"
+              :max="10000"
+              controls-position="right"
+              placeholder="输入数量" />
             <div class="popconfirm-actions">
               <el-button size="small" @click="cancelAction">
                 取消
@@ -55,19 +51,21 @@
 
     <div ref="tableSectionRef" class="table-section">
       <div class="table-header">
-        <el-input v-if="config.clients.length > 0"
-                  v-model="searchQuery"
-                  placeholder="搜索客户端"
-                  suffix-icon="Search"
-                  class="search-input" />
+        <el-input
+          v-if="config.clients.length > 0"
+          v-model="searchQuery"
+          placeholder="搜索客户端"
+          suffix-icon="Search"
+          class="search-input" />
       </div>
 
-      <el-table-v2 :data="filteredClients"
-                   :columns="columns"
-                   :width="tableWidth"
-                   :height="ClientTableHeight"
-                   :row-height="35"
-                   fixed />
+      <el-table-v2
+        :data="filteredClients"
+        :columns="columns"
+        :width="tableWidth"
+        :height="ClientTableHeight"
+        :row-height="35"
+        fixed />
     </div>
   </div>
 </template>
@@ -97,7 +95,6 @@ const tableWidth = computed(() => {
 const ClientTableHeight = computed(() => {
   return Math.max(480, height.value - 480) // 调整为更小的高度，最小520px
 })
-
 
 // 定义表格列
 const columns = computed(() => [
@@ -162,12 +159,8 @@ const filteredClients = computed(() => {
   if (!searchQuery.value) return config.value.clients
   return config.value.clients.filter(
     (client) =>
-      client.clientId
-        .toLowerCase()
-        .includes(searchQuery.value.toLowerCase()) ||
-      client.username
-        .toLowerCase()
-        .includes(searchQuery.value.toLowerCase()),
+      client.clientId.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
+      client.username.toLowerCase().includes(searchQuery.value.toLowerCase()),
   )
 })
 
@@ -220,4 +213,5 @@ const removeClient = (index: number) => {
 }
 </script>
 <style scoped lang="scss">
-// 特定于ClientConfig的样式，通用样式已在common.scss中定义</style>
+// 特定于ClientConfig的样式，通用样式已在common.scss中定义
+</style>

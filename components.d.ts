@@ -9,10 +9,8 @@ declare module 'vue' {
   export interface GlobalComponents {
     CodeEditor: typeof import('./src/components/CodeEditor/index.vue')['default']
     DashboardPanel: typeof import('./src/components/Dashboard/DashboardPanel.vue')['default']
-    ElAlert: typeof import('element-plus/es')['ElAlert']
     ElButton: typeof import('element-plus/es')['ElButton']
     ElCard: typeof import('element-plus/es')['ElCard']
-    ElCheckbox: typeof import('element-plus/es')['ElCheckbox']
     ElCol: typeof import('element-plus/es')['ElCol']
     ElConfigProvider: typeof import('element-plus/es')['ElConfigProvider']
     ElDialog: typeof import('element-plus/es')['ElDialog']

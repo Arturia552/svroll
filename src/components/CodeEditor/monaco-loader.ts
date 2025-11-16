@@ -27,7 +27,7 @@ class MonacoLoader {
       this.isLoaded = true
       return monaco
     } catch (error) {
-      console.error('Failed to load Monaco Editor:', error)
+      console.error("Failed to load Monaco Editor:", error)
       // 重置状态以允许重试
       this.monacoPromise = null
       this.isLoaded = false
@@ -72,23 +72,23 @@ class MonacoLoader {
   // 创建编辑器实例
   async createEditor(
     container: HTMLElement,
-    options: editor.IStandaloneEditorConstructionOptions
+    options: editor.IStandaloneEditorConstructionOptions,
   ): Promise<editor.IStandaloneCodeEditor> {
     const monaco = await this.loadMonaco()
-    
+
     // 检查容器是否有效
     if (!container) {
-      throw new Error('Editor container is null or undefined')
+      throw new Error("Editor container is null or undefined")
     }
-    
+
     // 确保容器在DOM中且有尺寸
     const rect = container.getBoundingClientRect()
     if (rect.width === 0 || rect.height === 0) {
       // 给容器设置最小尺寸以防止错误
-      container.style.minHeight = '200px'
-      container.style.minWidth = '100%'
+      container.style.minHeight = "200px"
+      container.style.minWidth = "100%"
     }
-    
+
     try {
       return monaco.editor.create(container, options)
     } catch (error) {
@@ -98,9 +98,9 @@ class MonacoLoader {
 
   // 验证JSON格式
   validateJson(jsonStr: string): {
-    isValid: boolean;
-    error?: string;
-    position?: { line: number; column: number };
+    isValid: boolean
+    error?: string
+    position?: { line: number; column: number }
   } {
     if (!jsonStr.trim()) return { isValid: true }
 
@@ -108,11 +108,7 @@ class MonacoLoader {
       const parsed = JSON.parse(jsonStr)
 
       // 必须是对象类型
-      if (
-        typeof parsed !== "object" ||
-        parsed === null ||
-        Array.isArray(parsed)
-      ) {
+      if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
         return {
           isValid: false,
           error: "JSON数据必须是对象格式",
@@ -127,9 +123,7 @@ class MonacoLoader {
       let column = 1
 
       // 尝试从错误信息中提取位置信息
-      const positionMatch = errorMsg.match(
-        /at position (\d+)|line (\d+) column (\d+)/i
-      )
+      const positionMatch = errorMsg.match(/at position (\d+)|line (\d+) column (\d+)/i)
       if (positionMatch) {
         if (positionMatch[1]) {
           const position = parseInt(positionMatch[1])
@@ -154,10 +148,10 @@ class MonacoLoader {
   async setErrorMarkers(
     editor: editor.IStandaloneCodeEditor,
     validationResult: {
-      isValid: boolean;
-      error?: string;
-      position?: { line: number; column: number };
-    }
+      isValid: boolean
+      error?: string
+      position?: { line: number; column: number }
+    },
   ): Promise<void> {
     const monaco = await this.loadMonaco()
 
@@ -179,10 +173,7 @@ class MonacoLoader {
   }
 
   // 设置编辑器语言
-  async setModelLanguage(
-    editor: editor.IStandaloneCodeEditor,
-    language: string
-  ): Promise<void> {
+  async setModelLanguage(editor: editor.IStandaloneCodeEditor, language: string): Promise<void> {
     const monaco = await this.loadMonaco()
     monaco.editor.setModelLanguage(editor.getModel()!, language)
   }

@@ -11,28 +11,27 @@
 
 <script setup lang="ts">
 import TitleBar from "@/components/TitleBar/index.vue"
-import { invoke } from '@tauri-apps/api/core'
-import zhCn from 'element-plus/dist/locale/zh-cn.mjs'
-
+import { invoke } from "@tauri-apps/api/core"
+import zhCn from "element-plus/dist/locale/zh-cn.mjs"
 
 document.addEventListener("DOMContentLoaded", async () => {
-                await invoke("close_splashscreen")
-            })
+  await invoke("close_splashscreen")
+})
 const config = reactive({
-    placement: "bottom",
+  placement: "bottom",
 })
 </script>
 
 <style lang="scss">
 .app-container {
-    height: 100vh;
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
 .app-content {
-    flex: 1;
-    overflow: auto;
+  flex: 1;
+  overflow: auto;
 }
 </style>

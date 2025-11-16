@@ -94,7 +94,17 @@
         ]
       }
     ],
-    "vue/max-attributes-per-line": "off",
+    "vue/max-attributes-per-line": [
+      "error",
+      {
+        "singleline": {
+          "max": 8
+        }, // or a higher number
+        "multiline": {
+          "max": 1
+        }
+      }
+    ],
     "no-use-before-define": "off",
     "@typescript-eslint/no-use-before-define": "off",
     "@typescript-eslint/ban-ts-comment": "off",
@@ -139,7 +149,7 @@
           "error",
           {
             "singleline": {
-              "max": 3
+              "max": 8
             },
             "multiline": {
               "max": 1

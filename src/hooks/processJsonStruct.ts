@@ -1,14 +1,11 @@
 import { FieldTypeEnum, JsonStruct, PossibleValue } from "@/types/mqttConfig"
 
-export const convertToJsonStruct = (
-  data: object,
-  jsonStructArray: JsonStruct[]
-): JsonStruct[] => {
+export const convertToJsonStruct = (data: object, jsonStructArray: JsonStruct[]): JsonStruct[] => {
   for (const [key, value] of Object.entries(data)) {
-    if(jsonStructArray.filter(item=> item.fieldName === key)?.length !== 0) {
+    if (jsonStructArray.filter((item) => item.fieldName === key)?.length !== 0) {
       // 如果已经存在相同的字段名，则跳过，并赋予id
-      const existingStruct = jsonStructArray.find(item => item.fieldName === key)
-      if(existingStruct) {
+      const existingStruct = jsonStructArray.find((item) => item.fieldName === key)
+      if (existingStruct) {
         existingStruct.id = Math.floor(Math.random() * 1000000)
       }
       continue
@@ -19,9 +16,10 @@ export const convertToJsonStruct = (
       id: Math.floor(Math.random() * 1000000),
       fieldName: key,
       fieldType: detectedType,
-      possibleValues: detectedType === FieldTypeEnum.Object || detectedType === FieldTypeEnum.Array
-        ? []
-        : ([{ value: value as any, probability: 100 }] as PossibleValue[]),
+      possibleValues:
+        detectedType === FieldTypeEnum.Object || detectedType === FieldTypeEnum.Array
+          ? []
+          : ([{ value: value as any, probability: 100 }] as PossibleValue[]),
       children: detectedType === FieldTypeEnum.Object ? [] : undefined,
     }
 
@@ -31,10 +29,18 @@ export const convertToJsonStruct = (
         jsonStruct.fieldType = FieldTypeEnum.DateTime
       }
     }
-    
+
     // 如果是对象类型，递归处理子属性
-    if (detectedType === FieldTypeEnum.Object && value && typeof value === 'object' && !Array.isArray(value)) {
-      jsonStruct.children = convertToJsonStruct(value as Record<string, any>, jsonStruct.children || [])
+    if (
+      detectedType === FieldTypeEnum.Object &&
+      value &&
+      typeof value === "object" &&
+      !Array.isArray(value)
+    ) {
+      jsonStruct.children = convertToJsonStruct(
+        value as Record<string, any>,
+        jsonStruct.children || [],
+      )
     }
 
     jsonStructArray.push(jsonStruct)
@@ -42,15 +48,12 @@ export const convertToJsonStruct = (
   return jsonStructArray
 }
 
-
 const getFieldType = (value: any): FieldTypeEnum => {
   switch (typeof value) {
     case "string":
       return FieldTypeEnum.String
     case "number":
-      return Number.isInteger(value)
-        ? FieldTypeEnum.Integer
-        : FieldTypeEnum.Float
+      return Number.isInteger(value) ? FieldTypeEnum.Integer : FieldTypeEnum.Float
     case "boolean":
       return FieldTypeEnum.Boolean
     case "object":
@@ -66,15 +69,12 @@ const getFieldType = (value: any): FieldTypeEnum => {
   }
 }
 
-export const isJsonValueNull = (
-  jsonObj: Record<string, any>,
-  ignore: string[]
-): boolean => {
+export const isJsonValueNull = (jsonObj: Record<string, any>, ignore: string[]): boolean => {
   for (const key in jsonObj) {
     if (ignore.includes(key)) {
       continue
     }
-    if (jsonObj[key] === null) { 
+    if (jsonObj[key] === null) {
       return true
     }
     if (typeof jsonObj[key] === "string" && jsonObj[key].trim() === "") {
@@ -108,7 +108,7 @@ export const convertJsonStructToJson = (jsonStructArray: JsonStruct[]): object =
     // Object: recursively convert children
     if (item.fieldType === FieldTypeEnum.Object) {
       const childObj: any = {}
-      ;(item.children || []).forEach(child => assignValue(childObj, child))
+      ;(item.children || []).forEach((child) => assignValue(childObj, child))
       resObj[item.fieldName] = childObj
       return
     }
@@ -165,29 +165,32 @@ export const convertJsonStructToJson = (jsonStructArray: JsonStruct[]): object =
     }
   }
 
-  jsonStructArray.forEach(item => assignValue(result, item))
+  jsonStructArray.forEach((item) => assignValue(result, item))
   return result
 }
 
 // 智能合并现有fieldStruct与新数据
 export const mergeFieldStructWithData = (existingStruct: JsonStruct[], data: any): JsonStruct[] => {
   const result = [...existingStruct]
-  
+
   // 递归处理函数
   const processLevel = (structArray: JsonStruct[], dataObj: any) => {
     // 为数据中的每个字段检查是否在结构中存在
     for (const [key, value] of Object.entries(dataObj)) {
-      const existingField = structArray.find(field => field.fieldName === key)
-      
+      const existingField = structArray.find((field) => field.fieldName === key)
+
       if (existingField) {
         // 字段已存在，更新其可能的值（但保留配置）
-        if (existingField.fieldType !== FieldTypeEnum.Object && existingField.fieldType !== FieldTypeEnum.Array) {
+        if (
+          existingField.fieldType !== FieldTypeEnum.Object &&
+          existingField.fieldType !== FieldTypeEnum.Array
+        ) {
           // 只有当原有possibleValues为空或者值发生变化时才更新
           if (!existingField.possibleValues || existingField.possibleValues.length === 0) {
             existingField.possibleValues = [{ value: value, probability: 100 }]
           } else {
             // 检查新值是否已在possibleValues中
-            const hasValue = existingField.possibleValues.some(pv => pv.value === value)
+            const hasValue = existingField.possibleValues.some((pv) => pv.value === value)
             if (!hasValue) {
               // 更新第一个可能值为新值（保持配置不变）
               existingField.possibleValues[0].value = value
@@ -200,41 +203,47 @@ export const mergeFieldStructWithData = (existingStruct: JsonStruct[], data: any
       } else {
         // 字段不存在，添加新字段
         const detectedType = getFieldType(value)
-        
+
         const newField: JsonStruct = {
           id: Math.floor(Math.random() * 1000000),
           fieldName: key,
           fieldType: detectedType,
-          possibleValues: detectedType === FieldTypeEnum.Object || detectedType === FieldTypeEnum.Array
-            ? []
-            : [{ value: value, probability: 100 }],
+          possibleValues:
+            detectedType === FieldTypeEnum.Object || detectedType === FieldTypeEnum.Array
+              ? []
+              : [{ value: value, probability: 100 }],
           children: detectedType === FieldTypeEnum.Object ? [] : undefined,
         }
-        
+
         // 如果是对象，递归处理子字段
-        if (detectedType === FieldTypeEnum.Object && value && typeof value === 'object' && !Array.isArray(value)) {
+        if (
+          detectedType === FieldTypeEnum.Object &&
+          value &&
+          typeof value === "object" &&
+          !Array.isArray(value)
+        ) {
           newField.children = []
           processLevel(newField.children, value)
         }
-        
+
         structArray.push(newField)
       }
     }
   }
-  
+
   processLevel(result, data)
   return result
 }
 
 // 同步编辑器数据到fieldStruct
 export const syncFieldStructFromEditorData = (
-  sendData: string, 
-  existingFieldStruct: JsonStruct[]
+  sendData: string,
+  existingFieldStruct: JsonStruct[],
 ): JsonStruct[] => {
   try {
     // 解析编辑器中的JSON数据
-    const parsedData = JSON.parse(sendData || '{}')
-    
+    const parsedData = JSON.parse(sendData || "{}")
+
     // 如果编辑器中有有效数据，则更新fieldStruct
     if (parsedData && Object.keys(parsedData).length > 0) {
       if (existingFieldStruct.length === 0) {
@@ -245,10 +254,10 @@ export const syncFieldStructFromEditorData = (
         return mergeFieldStructWithData(existingFieldStruct, parsedData)
       }
     }
-    
+
     return existingFieldStruct
   } catch (error) {
-    console.warn('同步编辑器数据到fieldStruct失败:', error)
+    console.warn("同步编辑器数据到fieldStruct失败:", error)
     return existingFieldStruct
   }
 }

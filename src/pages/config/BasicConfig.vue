@@ -1,13 +1,14 @@
 <template>
   <div class="basic-config config-component">
-    <el-form ref="basicFormRef"
-             :rules="rules"
-             :model="config"
-             label-position="top"
-             :inline="false"
-             :show-message="false"
-             class="basic-form"
-             size="small">
+    <el-form
+      ref="basicFormRef"
+      :rules="rules"
+      :model="config"
+      label-position="top"
+      :inline="false"
+      :show-message="false"
+      class="basic-form"
+      size="small">
       <div class="form-section">
         <div class="section-title">
           协议设置
@@ -25,38 +26,44 @@
           连接设置
         </div>
         <el-divider />
-        <el-form-item label="broker地址"
-                      prop="broker"
-                      :rules="[
-                        {
-                          required: true,
-                          message: '请输入broker地址',
-                          trigger: 'blur',
-                        },
-                      ]">
+        <el-form-item
+          label="broker地址"
+          prop="broker"
+          :rules="[
+            {
+              required: true,
+              message: '请输入broker地址',
+              trigger: 'blur',
+            },
+          ]">
           <el-input v-model="config.broker" />
         </el-form-item>
 
-        <el-form-item v-if="config.protocol === 'Mqtt'"
-                      class="topic"
-                      label="消息主题"
-                      prop="topicConfig.data">
+        <el-form-item
+          v-if="config.protocol === 'Mqtt'"
+          class="topic"
+          label="消息主题"
+          prop="topicConfig.data">
           <div class="topic-container">
             <template v-for="(key, value) in config.topicConfig.data" :key="value">
               <div v-if="config.topicConfig.data[value]" class="topic-row">
                 <div class="form-content">
-                  <template v-for="(column, index) in tableColumn" :key="`data-${column.label}-${index}`">
-                    <el-select v-if="column.prop === 'qos'"
-                               v-model="config.topicConfig.data[value][column.prop]"
-                               :placeholder="column.label"
-                               style="width: 20%">
+                  <template
+                    v-for="(column, index) in tableColumn"
+                    :key="`data-${column.label}-${index}`">
+                    <el-select
+                      v-if="column.prop === 'qos'"
+                      v-model="config.topicConfig.data[value][column.prop]"
+                      :placeholder="column.label"
+                      style="width: 20%">
                       <el-option label="0" value="0" />
                       <el-option label="1" value="1" />
                       <el-option label="2" value="2" />
                     </el-select>
-                    <el-input v-else
-                              v-model="config.topicConfig.data[value][column.prop]"
-                              :placeholder="column.label" />
+                    <el-input
+                      v-else
+                      v-model="config.topicConfig.data[value][column.prop]"
+                      :placeholder="column.label" />
                   </template>
                 </div>
               </div>
@@ -79,24 +86,27 @@
           </el-form-item>
 
           <el-form-item label="线程数" prop="threadSize">
-            <el-input-number v-model.number="config.threadSize"
-                             :min="1"
-                             :max="1000"
-                             controls-position="right" />
+            <el-input-number
+              v-model.number="config.threadSize"
+              :min="1"
+              :max="1000"
+              controls-position="right" />
           </el-form-item>
 
           <el-form-item label="每秒连接请求数" prop="maxConnectPerSecond">
-            <el-input-number v-model.number="config.maxConnectPerSecond"
-                             :min="1"
-                             :max="1000"
-                             controls-position="right" />
+            <el-input-number
+              v-model.number="config.maxConnectPerSecond"
+              :min="1"
+              :max="1000"
+              controls-position="right" />
           </el-form-item>
 
           <el-form-item label="数据发送间隔" prop="sendInterval">
-            <el-input-number v-model.number="config.sendInterval"
-                             :min="1"
-                             :max="60"
-                             controls-position="right" />
+            <el-input-number
+              v-model.number="config.sendInterval"
+              :min="1"
+              :max="60"
+              controls-position="right" />
           </el-form-item>
         </div>
       </div>
@@ -119,11 +129,7 @@ const basicFormRef = ref<FormInstance>()
 // 验证主题配置
 const validateTopic = (rule: any, value: any, callback: any) => {
   if (
-    isJsonValueNull(getNestedValue(config.value, rule.field), [
-      "keyIndex",
-      "extraKey",
-      "subscribe",
-    ])
+    isJsonValueNull(getNestedValue(config.value, rule.field), ["keyIndex", "extraKey", "subscribe"])
   ) {
     callback(new Error("请完善主题"))
   }

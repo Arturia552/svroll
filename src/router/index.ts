@@ -1,10 +1,10 @@
-import { createRouter, createWebHistory, RouteRecordRaw } from 'vue-router'
+import { createRouter, createWebHistory, RouteRecordRaw } from "vue-router"
 
 const defaultRouterList: Array<RouteRecordRaw> = [
   {
-    path: '',
-    name: 'Home',
-    component: () => import('@/pages/home.vue'),
+    path: "",
+    name: "Home",
+    component: () => import("@/pages/home.vue"),
   },
 ]
 
@@ -13,9 +13,9 @@ const router = createRouter({
   routes: defaultRouterList,
   scrollBehavior() {
     return {
-      el: '#app',
+      el: "#app",
       top: 0,
-      behavior: 'smooth',
+      behavior: "smooth",
     }
   },
 })

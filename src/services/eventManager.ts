@@ -6,9 +6,9 @@ import { listen, type UnlistenFn } from "@tauri-apps/api/event"
 import type { rs2JsEntity } from "@/types/mqttConfig"
 
 export interface EventCallbacks {
-  onCounter?: (count: number) => void;
-  onClientInfo?: (clientInfo: any) => void;
-  onTerminal?: (entity: rs2JsEntity) => void;
+  onCounter?: (count: number) => void
+  onClientInfo?: (clientInfo: any) => void
+  onTerminal?: (entity: rs2JsEntity) => void
 }
 
 export class EventManager {
@@ -27,14 +27,14 @@ export class EventManager {
     this.unlisten = await listen("rs2js", async (event) => {
       try {
         const entity: rs2JsEntity = JSON.parse(event.payload as string)
-        
+
         switch (entity.msgType) {
           case "counter":
             if (callbacks.onCounter) {
               callbacks.onCounter(parseInt(entity.msg))
             }
             break
-            
+
           case "clientInfo":
             if (callbacks.onClientInfo) {
               try {
@@ -45,13 +45,13 @@ export class EventManager {
               }
             }
             break
-            
+
           case "terminal":
             if (callbacks.onTerminal) {
               callbacks.onTerminal(entity)
             }
             break
-            
+
           default:
             console.warn("未知的消息类型:", entity.msgType)
         }

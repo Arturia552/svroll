@@ -4,89 +4,95 @@
     <div class="main-container">
       <div class="header">
         <div class="config-tabs-group">
-          <el-button :type="activeConfigTab === 'basic' ? 'primary' : 'default'
-                     "
-                     size="default"
-                     :disabled="isRunning"
-                     class="config-tab-button"
-                     @click="setActiveConfigTab('basic')">
+          <el-button
+            :type="activeConfigTab === 'basic' ? 'primary' : 'default'"
+            size="default"
+            :disabled="isRunning"
+            class="config-tab-button"
+            @click="setActiveConfigTab('basic')">
             <template #icon>
               <el-icon :size="16">
                 <setting />
               </el-icon>
-            </template>基础配置
-            <el-tag v-if="tabsConfigRef?.formErrors?.basic"
-                    type="danger"
-                    size="small"
-                    effect="dark"
-                    class="error-badge">
+            </template>
+            基础配置
+            <el-tag
+              v-if="tabsConfigRef?.formErrors?.basic"
+              type="danger"
+              size="small"
+              effect="dark"
+              class="error-badge">
               !
             </el-tag>
           </el-button>
-          <el-button :type="activeConfigTab === 'client' ? 'primary' : 'default'
-                     "
-                     size="default"
-                     :disabled="isRunning"
-                     class="config-tab-button"
-                     @click="setActiveConfigTab('client')">
+          <el-button
+            :type="activeConfigTab === 'client' ? 'primary' : 'default'"
+            size="default"
+            :disabled="isRunning"
+            class="config-tab-button"
+            @click="setActiveConfigTab('client')">
             <template #icon>
               <el-icon :size="16">
                 <cellphone />
               </el-icon>
-            </template>客户端配置
-            <el-tag v-if="tabsConfigRef?.formErrors?.client"
-                    type="danger"
-                    size="small"
-                    effect="dark"
-                    class="error-badge">
+            </template>
+            客户端配置
+            <el-tag
+              v-if="tabsConfigRef?.formErrors?.client"
+              type="danger"
+              size="small"
+              effect="dark"
+              class="error-badge">
               !
             </el-tag>
           </el-button>
-          <el-button v-if="config.protocol === 'Mqtt'"
-                     :type="activeConfigTab === 'data' ? 'primary' : 'default'
-                     "
-                     size="default"
-                     :disabled="isRunning"
-                     class="config-tab-button"
-                     @click="setActiveConfigTab('data')">
+          <el-button
+            v-if="config.protocol === 'Mqtt'"
+            :type="activeConfigTab === 'data' ? 'primary' : 'default'"
+            size="default"
+            :disabled="isRunning"
+            class="config-tab-button"
+            @click="setActiveConfigTab('data')">
             <template #icon>
               <el-icon :size="16">
                 <document />
               </el-icon>
-            </template>数据配置
-            <el-tag v-if="tabsConfigRef?.formErrors?.data"
-                    type="danger"
-                    size="small"
-                    effect="dark"
-                    class="error-badge">
+            </template>
+            数据配置
+            <el-tag
+              v-if="tabsConfigRef?.formErrors?.data"
+              type="danger"
+              size="small"
+              effect="dark"
+              class="error-badge">
               !
             </el-tag>
           </el-button>
         </div>
         <div class="func-button-group">
-          <el-button type="primary"
-                     size="default"
-                     :disabled="isRunning"
-                     @click="exportConfig">
+          <el-button type="primary" size="default" :disabled="isRunning" @click="exportConfig">
             <template #icon>
               <el-icon :size="16">
                 <upload />
               </el-icon>
-            </template>导出配置
+            </template>
+            导出配置
           </el-button>
           <el-button type="primary" :disabled="isRunning" @click="loadConfig">
             <template #icon>
               <el-icon :size="16">
                 <download />
               </el-icon>
-            </template>导入配置
+            </template>
+            导入配置
           </el-button>
           <el-button type="info" :disabled="isRunning" @click="showHistory">
             <template #icon>
               <el-icon :size="16">
                 <clock />
               </el-icon>
-            </template>历史配置
+            </template>
+            历史配置
           </el-button>
         </div>
       </div>
@@ -94,25 +100,27 @@
       <div class="editor-section">
         <div v-show="!isRunning && !showDashboard" class="content-wrapper">
           <div class="config-wrapper">
-            <tabs-config ref="tabsConfigRef" v-model:config-form="config" v-model:active-tab="activeConfigTab" />
+            <tabs-config
+              ref="tabsConfigRef"
+              v-model:config-form="config"
+              v-model:active-tab="activeConfigTab" />
           </div>
           <div class="editor-wrapper">
             <div class="editor-controls">
-              <el-button type="danger"
-                         :disabled="isRunning"
-                         size="small"
-                         @click="resetConfig">
+              <el-button type="danger" :disabled="isRunning" size="small" @click="resetConfig">
                 <template #icon>
                   <el-icon :size="16">
                     <delete />
                   </el-icon>
-                </template>重置表单
+                </template>
+                重置表单
               </el-button>
               <div class="editor-mode-controls">
-                <el-button v-if="editorMode === 'hex'"
-                           type="primary"
-                           size="small"
-                           @click="formatHexText">
+                <el-button
+                  v-if="editorMode === 'hex'"
+                  type="primary"
+                  size="small"
+                  @click="formatHexText">
                   格式化Hex
                 </el-button>
                 <el-radio-group v-model="editorMode" size="small">
@@ -125,27 +133,30 @@
                 </el-radio-group>
               </div>
             </div>
-            <code-editor ref="codeEditorRef"
-                         v-model:jsonEdit="config.sendData"
-                         class="json-edit-container"
-                         :language="editorMode" />
+            <code-editor
+              ref="codeEditorRef"
+              v-model:jsonEdit="config.sendData"
+              class="json-edit-container"
+              :language="editorMode" />
           </div>
         </div>
-        <dashboard-panel v-if="showDashboard"
-                         :counter="counter"
-                         :terminal-log="terminalLog"
-                         :client-info="clientInfo"
-                         class="dashboard-container"
-                         @return-to-editor="returnToEditor" />
+        <dashboard-panel
+          v-if="showDashboard"
+          :counter="counter"
+          :terminal-log="terminalLog"
+          :client-info="clientInfo"
+          class="dashboard-container"
+          @return-to-editor="returnToEditor" />
       </div>
 
       <div class="control-section">
         <div class="controls">
-          <el-button v-if="!isRunning || !showDashboard"
-                     type="primary"
-                     size="default"
-                     :disabled="isRunning"
-                     @click="start">
+          <el-button
+            v-if="!isRunning || !showDashboard"
+            type="primary"
+            size="default"
+            :disabled="isRunning"
+            @click="start">
             <template #icon>
               <el-icon :size="20">
                 <video-play />
@@ -153,11 +164,12 @@
             </template>
             开始
           </el-button>
-          <el-button v-if="isRunning && showDashboard"
-                     type="danger"
-                     size="default"
-                     :loading="stopping"
-                     @click="stop">
+          <el-button
+            v-if="isRunning && showDashboard"
+            type="danger"
+            size="default"
+            :loading="stopping"
+            @click="stop">
             <template #icon>
               <el-icon :size="20">
                 <video-pause />
@@ -165,27 +177,30 @@
             </template>
             停止
           </el-button>
-          <el-button v-if="showDashboard"
-                     type="warning"
-                     size="default"
-                     :disabled="isRunning"
-                     @click="returnToEditor">
+          <el-button
+            v-if="showDashboard"
+            type="warning"
+            size="default"
+            :disabled="isRunning"
+            @click="returnToEditor">
             <template #icon>
               <el-icon>
                 <back />
               </el-icon>
-            </template>返回编辑器
+            </template>
+            返回编辑器
           </el-button>
         </div>
       </div>
     </div>
   </div>
-  <el-drawer v-model="historyDrawerVisible"
-             title="历史配置"
-             direction="rtl"
-             size="400px"
-             :with-header="false"
-             destroy-on-close>
+  <el-drawer
+    v-model="historyDrawerVisible"
+    title="历史配置"
+    direction="rtl"
+    size="400px"
+    :with-header="false"
+    destroy-on-close>
     <history-component @load-config="handleHistoryConfigLoad" />
   </el-drawer>
 </template>
@@ -284,8 +299,7 @@ const handleHistoryConfigLoad = async (historyConfig: ConnectConfig) => {
 
   editorMode.value = ConfigManager.detectEditorMode(config.value)
   await nextTick()
-  config.value.sendData =
-    temp || (editorMode.value === "json" ? "{}" : "")
+  config.value.sendData = temp || (editorMode.value === "json" ? "{}" : "")
   historyDrawerVisible.value = false
 }
 

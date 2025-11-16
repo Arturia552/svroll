@@ -6,10 +6,10 @@ import { TauriService } from "./tauriService"
 import type { ClientInfo } from "@/types/mqttConfig"
 
 export interface ClientInfoSummary {
-  connected: number;
-  disconnected: number;
-  failed: number;
-  connecting: number;
+  connected: number
+  disconnected: number
+  failed: number
+  connecting: number
 }
 
 export class TimerManager {
@@ -26,12 +26,12 @@ export class TimerManager {
   startClientInfoTimer(
     protocol: string,
     callback: (summary: ClientInfoSummary, clients: ClientInfo[]) => void,
-    interval: number = 500
+    interval: number = 500,
   ): void {
     this.stop() // 确保先停止已有的定时器
     this.protocol = protocol
     this.onClientInfoUpdate = callback
-    
+
     this.timerId = window.setInterval(() => {
       this.fetchClientInfo()
     }, interval)
@@ -61,7 +61,7 @@ export class TimerManager {
     try {
       const clients = await TauriService.getClients(this.protocol)
       const summary = this.calculateClientSummary(clients)
-      
+
       if (this.onClientInfoUpdate) {
         this.onClientInfoUpdate(summary, clients)
       }
@@ -79,18 +79,18 @@ export class TimerManager {
       connected: 0,
       disconnected: 0,
       failed: 0,
-      connecting: 0
+      connecting: 0,
     }
 
     clients.forEach((client: ClientInfo) => {
       switch (client.connectionState) {
-        case 'Connected':
+        case "Connected":
           summary.connected += 1
           break
-        case 'Failed':
+        case "Failed":
           summary.failed += 1
           break
-        case 'Connecting':
+        case "Connecting":
           summary.connecting += 1
           break
         default:

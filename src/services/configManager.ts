@@ -32,15 +32,15 @@ export class ConfigManager {
           topic: "",
           qos: 0,
           keyIndex: 0,
-          extraKey: ""
+          extraKey: "",
         },
         subscribe: {
           topic: "",
           qos: 0,
           keyIndex: 0,
-          extraKey: ""
+          extraKey: "",
         },
-      }
+      },
     },
   }
 
@@ -72,15 +72,15 @@ export class ConfigManager {
             topic: null,
             qos: null,
             keyIndex: null,
-            extraKey: null
+            extraKey: null,
           },
           subscribe: {
             topic: null,
             qos: null,
             keyIndex: null,
-            extraKey: null
+            extraKey: null,
           },
-        }
+        },
       },
     }
   }
@@ -98,11 +98,11 @@ export class ConfigManager {
    * @param config 配置对象
    * @returns 编辑器模式 ('json' | 'hex')
    */
-  static detectEditorMode(config: ConnectConfig): 'json' | 'hex' {
+  static detectEditorMode(config: ConnectConfig): "json" | "hex" {
     if (config.sendData && isValidHexString(config.sendData)) {
-      return 'hex'
+      return "hex"
     }
-    return 'json'
+    return "json"
   }
 
   /**
@@ -110,11 +110,11 @@ export class ConfigManager {
    * @param config 配置对象
    * @param editorMode 编辑器模式
    */
-  static prepareConfigForRuntime(config: ConnectConfig, editorMode: 'json' | 'hex'): void {
+  static prepareConfigForRuntime(config: ConnectConfig, editorMode: "json" | "hex"): void {
     this.validateAndConvertConfig(config)
-    
-    if (editorMode === 'hex') {
-      config.sendData = config.sendData.replace(/\s+/g, '')
+
+    if (editorMode === "hex") {
+      config.sendData = config.sendData.replace(/\s+/g, "")
     }
   }
 }

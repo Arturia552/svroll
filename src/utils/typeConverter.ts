@@ -18,10 +18,10 @@ export function convertType(obj: any, typeDef: any): void {
       if (typeDef.hasOwnProperty(key)) {
         if (typeof obj[key] !== typeof typeDef[key]) {
           // 强制转换类型
-           if (typeof typeDef[key] === "number") {
-            if(obj[key] === null) {
+          if (typeof typeDef[key] === "number") {
+            if (obj[key] === null) {
               obj[key] = undefined
-            }else {
+            } else {
               obj[key] = Number(obj[key])
             }
           } else if (typeof typeDef[key] === "string") {
@@ -55,5 +55,5 @@ export function isValidHexString(str: string): boolean {
  * @returns 格式化后的字符串
  */
 export function formatHexString(hexStr: string): string {
-  return hexStr.replace(/\s+/g, '')
+  return hexStr.replace(/\s+/g, "")
 }

@@ -1,15 +1,15 @@
 export interface ConnectConfig {
-  sendData?: string;
-  clientFilePath?: string;
-  protocol: string;
-  clients?: ClientInfo[];
-  threadSize?: number;
-  enableRandom?: boolean;
-  broker?: string;
-  maxConnectPerSecond?: number;
-  sendInterval?: number;
-  fieldStruct?: JsonStruct[];
-  topicConfig?: TopicConfig;
+  sendData?: string
+  clientFilePath?: string
+  protocol: string
+  clients?: ClientInfo[]
+  threadSize?: number
+  enableRandom?: boolean
+  broker?: string
+  maxConnectPerSecond?: number
+  sendInterval?: number
+  fieldStruct?: JsonStruct[]
+  topicConfig?: TopicConfig
 }
 
 export const connectConfigTypeDef: ConnectConfig = {
@@ -34,44 +34,42 @@ export const connectConfigTypeDef: ConnectConfig = {
 }
 
 export interface TopicConfig {
-  register?: topicWrap;
-  data?: topicWrap;
+  register?: topicWrap
+  data?: topicWrap
 }
 
 export interface topicWrap {
-  publish: TopicInfo,
+  publish: TopicInfo
   subscribe?: TopicInfo
 }
 
 export interface TopicInfo {
-  keyIndex?: number;
-  topic: string;
-  qos: number;
-  extraKey?: string;
+  keyIndex?: number
+  topic: string
+  qos: number
+  extraKey?: string
 }
 
-
-
 export interface JsonStruct {
-  id?: number;
-  fieldName?: string;
-  fieldType?: FieldTypeEnum;
-  minValue?: number;
-  maxValue?: number;
-  possibleValues?: PossibleValue[];
+  id?: number
+  fieldName?: string
+  fieldType?: FieldTypeEnum
+  minValue?: number
+  maxValue?: number
+  possibleValues?: PossibleValue[]
   // For object type, nested children definitions
-  children?: JsonStruct[];
+  children?: JsonStruct[]
 }
 
 export interface PossibleValue {
-  value: any;  // 支持各种类型的值：number, string, boolean等
-  probability: number;
+  value: any // 支持各种类型的值：number, string, boolean等
+  probability: number
 }
 
 export interface rs2JsEntity {
-  msgType: 'counter' | 'clientInfo' | 'error' | 'terminal';
-  msg: string;
-  time: string;
+  msgType: "counter" | "clientInfo" | "error" | "terminal"
+  msg: string
+  time: string
 }
 
 export enum FieldTypeEnum {
@@ -91,11 +89,11 @@ export enum FieldTypeEnum {
 }
 
 export interface ClientInfo {
-  clientId: string;
-  username: string;
-  password: string;
+  clientId: string
+  username: string
+  password: string
   connectionState?: ConnectionState
-  identifyKey?: string;
+  identifyKey?: string
 }
 
 export enum ConnectionState {

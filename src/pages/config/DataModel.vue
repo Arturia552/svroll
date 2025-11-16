@@ -3,30 +3,21 @@
     <div class="header">
       <div class="actions">
         <el-tooltip content="刷新数据结构" placement="top">
-          <el-button type="primary"
-                     size="small"
-                     circle
-                     @click="refreshStructure">
+          <el-button type="primary" size="small" circle @click="refreshStructure">
             <el-icon>
               <refresh />
             </el-icon>
           </el-button>
         </el-tooltip>
         <el-tooltip content="添加字段" placement="top">
-          <el-button type="success"
-                     size="small"
-                     circle
-                     @click="showAddFieldDialog">
+          <el-button type="success" size="small" circle @click="showAddFieldDialog">
             <el-icon>
               <plus />
             </el-icon>
           </el-button>
         </el-tooltip>
         <el-tooltip content="导入模板" placement="top">
-          <el-button type="info"
-                     size="small"
-                     circle
-                     @click="importTemplate">
+          <el-button type="info" size="small" circle @click="importTemplate">
             <el-icon>
               <download />
             </el-icon>
@@ -62,11 +53,7 @@
         <el-table-column prop="minValue" label="最小值" min-width="15%">
           <template #default="scope">
             <div class="cell-content">
-              {{
-                isContainerType(scope.row.fieldType)
-                  ? "--"
-                  : (scope.row.minValue ?? "--")
-              }}
+              {{ isContainerType(scope.row.fieldType) ? "--" : (scope.row.minValue ?? "--") }}
             </div>
           </template>
         </el-table-column>
@@ -74,11 +61,7 @@
         <el-table-column prop="maxValue" label="最大值" min-width="15%">
           <template #default="scope">
             <div class="cell-content">
-              {{
-                isContainerType(scope.row.fieldType)
-                  ? "--"
-                  : (scope.row.maxValue ?? "--")
-              }}
+              {{ isContainerType(scope.row.fieldType) ? "--" : (scope.row.maxValue ?? "--") }}
             </div>
           </template>
         </el-table-column>
@@ -86,29 +69,18 @@
         <el-table-column prop="possibleValues" label="有效值" min-width="20%">
           <template #default="scope">
             <div class="cell-content">
-              <template v-if="
-                scope.row.fieldType === FieldTypeEnum.Object
-              ">
+              <template v-if="scope.row.fieldType === FieldTypeEnum.Object">
                 <el-tag type="info">
-                  子字段：{{
-                    scope.row.children?.length || 0
-                  }}
+                  子字段：{{ scope.row.children?.length || 0 }}
                 </el-tag>
               </template>
               <template v-else>
-                <template v-if="
-                  scope.row.possibleValues &&
-                    scope.row.possibleValues.length > 0
-                ">
-                  <el-tag v-for="(item, index) in scope.row
-                            .possibleValues"
-                          :key="index"
-                          class="possible-value-tag">
-                    <span> {{ item.value }}</span><span v-if="
-                      scope.row.fieldType ===
-                        FieldTypeEnum.Enum
-                    ">
-                      ({{ item.probability }}%)</span>
+                <template v-if="scope.row.possibleValues && scope.row.possibleValues.length > 0">
+                  <el-tag v-for="(item, index) in scope.row.possibleValues" :key="index" class="possible-value-tag">
+                    <span>{{ item.value }}</span>
+                    <span v-if="scope.row.fieldType === FieldTypeEnum.Enum">
+                      ({{ item.probability }}%)
+                    </span>
                   </el-tag>
                 </template>
                 <span v-else class="no-value">--</span>
@@ -144,20 +116,11 @@
                width="500px"
                :close-on-click-modal="false"
                :append-to-body="true">
-      <el-form ref="fieldFormRef"
-               :model="newField"
-               label-width="100px"
-               :rules="fieldRules">
+      <el-form ref="fieldFormRef" :model="newField" label-width="100px" :rules="fieldRules">
         <el-form-item label="添加到" prop="parentField">
-          <el-select v-model="selectedParentFieldId"
-                     placeholder="请选择添加位置（空为根级）"
-                     style="width: 100%"
-                     clearable>
+          <el-select v-model="selectedParentFieldId" placeholder="请选择添加位置（空为根级）" style="width: 100%" clearable>
             <el-option value="" label="根级字段" />
-            <el-option v-for="field in objectFields"
-                       :key="field.id"
-                       :label="field.label"
-                       :value="field.id" />
+            <el-option v-for="field in objectFields" :key="field.id" :label="field.label" :value="field.id" />
           </el-select>
         </el-form-item>
         <el-form-item label="字段名称" prop="fieldName">
@@ -165,20 +128,14 @@
         </el-form-item>
         <el-form-item label="字段类型" prop="fieldType">
           <el-select v-model="newField.fieldType" placeholder="请选择字段类型" style="width: 100%">
-            <el-option v-for="item in fieldTypeOptions"
-                       :key="item.value"
-                       :label="item.label"
-                       :value="item.value" />
+            <el-option v-for="item in fieldTypeOptions" :key="item.value" :label="item.label" :value="item.value" />
           </el-select>
         </el-form-item>
         <template v-if="!isContainerType(newField.fieldType)">
           <el-form-item v-if="newField.fieldType" label="有效值">
             <div v-if="newField.fieldType === FieldTypeEnum.Enum">
               <div class="possible-values-table">
-                <el-table :data="possibleValuesArray"
-                          border
-                          size="default"
-                          max-height="200">
+                <el-table :data="possibleValuesArray" border size="default" max-height="200">
                   <el-table-column label="值" min-width="120">
                     <template #default="scope">
                       <el-input-number v-model="scope.row.value"
@@ -200,14 +157,7 @@
                   </el-table-column>
                   <el-table-column label="操作" width="80" align="center">
                     <template #default="scope">
-                      <el-button type="danger"
-                                 circle
-                                 size="small"
-                                 @click="
-                                   removePossibleValue(
-                                     scope.$index,
-                                   )
-                                 ">
+                      <el-button type="danger" circle size="small" @click="removePossibleValue(scope.$index)">
                         <el-icon>
                           <delete />
                         </el-icon>
@@ -230,17 +180,11 @@
           <template v-if="isNumericType(newField.fieldType)">
             <el-form-item label="最小值">
               <el-input-number v-model="newField.minValue"
-                               :precision="newField.fieldType === FieldTypeEnum.Float
-                                 ? 2
-                                 : 0
-                               " />
+                               :precision="newField.fieldType === FieldTypeEnum.Float ? 2 : 0" />
             </el-form-item>
             <el-form-item label="最大值">
               <el-input-number v-model="newField.maxValue"
-                               :precision="newField.fieldType === FieldTypeEnum.Float
-                                 ? 2
-                                 : 0
-                               " />
+                               :precision="newField.fieldType === FieldTypeEnum.Float ? 2 : 0" />
             </el-form-item>
           </template>
         </template>
@@ -259,32 +203,20 @@
                width="500px"
                :close-on-click-modal="false"
                :append-to-body="true">
-      <el-form ref="editFieldFormRef"
-               :model="currentEditField"
-               label-width="80px"
-               :rules="fieldRules">
+      <el-form ref="editFieldFormRef" :model="currentEditField" label-width="80px" :rules="fieldRules">
         <el-form-item label="字段名称" prop="fieldName">
           <el-input v-model="currentEditField.fieldName" placeholder="请输入字段名称" />
         </el-form-item>
         <el-form-item label="字段类型" prop="fieldType">
           <el-select v-model="currentEditField.fieldType" placeholder="请选择字段类型" style="width: 100%">
-            <el-option v-for="item in fieldTypeOptions"
-                       :key="item.value"
-                       :label="item.label"
-                       :value="item.value" />
+            <el-option v-for="item in fieldTypeOptions" :key="item.value" :label="item.label" :value="item.value" />
           </el-select>
         </el-form-item>
         <template v-if="!isContainerType(currentEditField.fieldType)">
           <el-form-item v-if="currentEditField.fieldType" label="有效值">
-            <div v-if="
-              currentEditField.fieldType ===
-                FieldTypeEnum.Enum
-            ">
+            <div v-if="currentEditField.fieldType === FieldTypeEnum.Enum">
               <div class="possible-values-table">
-                <el-table :data="editPossibleValuesArray"
-                          border
-                          size="small"
-                          max-height="200">
+                <el-table :data="editPossibleValuesArray" border size="small" max-height="200">
                   <el-table-column label="值" min-width="120">
                     <template #default="scope">
                       <el-input-number v-model="scope.row.value"
@@ -306,14 +238,7 @@
                   </el-table-column>
                   <el-table-column label="操作" width="80" align="center">
                     <template #default="scope">
-                      <el-button type="danger"
-                                 circle
-                                 size="small"
-                                 @click="
-                                   removeEditPossibleValue(
-                                     scope.$index,
-                                   )
-                                 ">
+                      <el-button type="danger" circle size="small" @click="removeEditPossibleValue(scope.$index)">
                         <el-icon>
                           <delete />
                         </el-icon>
@@ -336,19 +261,11 @@
           <template v-if="isNumericType(currentEditField.fieldType)">
             <el-form-item label="最小值">
               <el-input-number v-model="currentEditField.minValue"
-                               :precision="currentEditField.fieldType ===
-                                 FieldTypeEnum.Float
-                                 ? 2
-                                 : 0
-                               " />
+                               :precision="currentEditField.fieldType === FieldTypeEnum.Float ? 2 : 0" />
             </el-form-item>
             <el-form-item label="最大值">
               <el-input-number v-model="currentEditField.maxValue"
-                               :precision="currentEditField.fieldType ===
-                                 FieldTypeEnum.Float
-                                 ? 2
-                                 : 0
-                               " />
+                               :precision="currentEditField.fieldType === FieldTypeEnum.Float ? 2 : 0" />
             </el-form-item>
           </template>
         </template>
@@ -363,10 +280,7 @@
   </div>
 </template>
 <script setup lang="ts" name="DataModel">
-import {
-  convertToJsonStruct,
-  convertJsonStructToJson,
-} from "@/hooks/processJsonStruct"
+import { convertToJsonStruct, convertJsonStructToJson } from "@/hooks/processJsonStruct"
 import { FieldTypeEnum, JsonStruct, PossibleValue } from "@/types/mqttConfig"
 import { open } from "@tauri-apps/plugin-dialog"
 import { invoke } from "@tauri-apps/api/core"
@@ -399,9 +313,7 @@ const newField = ref<JsonStruct>({
 
 const fieldRules = {
   fieldName: [{ required: true, message: "请输入字段名称", trigger: "blur" }],
-  fieldType: [
-    { required: true, message: "请选择字段类型", trigger: "change" },
-  ],
+  fieldType: [{ required: true, message: "请选择字段类型", trigger: "change" }],
 }
 
 const fieldTypeOptions = [
@@ -449,9 +361,7 @@ const getDefaultValueByType = (fieldType: FieldTypeEnum): any => {
 const convertValueByFieldType = (value: any, fieldType: FieldTypeEnum): any => {
   switch (fieldType) {
     case FieldTypeEnum.Integer:
-      return Number.isInteger(Number(value))
-        ? Number(value)
-        : Math.floor(Number(value))
+      return Number.isInteger(Number(value)) ? Number(value) : Math.floor(Number(value))
     case FieldTypeEnum.Float:
     case FieldTypeEnum.Timestamp:
       return Number(value)
@@ -488,7 +398,7 @@ const resetFieldNumericProps = (field: JsonStruct): void => {
 const processFieldPossibleValues = (
   field: JsonStruct,
   singleValue: any,
-  enumValues: PossibleValue[]
+  enumValues: PossibleValue[],
 ): void => {
   if (field.fieldType === FieldTypeEnum.Object) {
     field.children = field.children || []
@@ -496,14 +406,17 @@ const processFieldPossibleValues = (
   } else if (field.fieldType === FieldTypeEnum.Enum) {
     field.possibleValues = convertPossibleValuesType([...enumValues], field.fieldType)
   } else if (!isContainerType(field.fieldType)) {
-    const defaultValue = singleValue !== undefined && singleValue !== ""
-      ? singleValue
-      : getDefaultValueByType(field.fieldType)
+    const defaultValue =
+      singleValue !== undefined && singleValue !== ""
+        ? singleValue
+        : getDefaultValueByType(field.fieldType)
 
-    field.possibleValues = [{
-      value: convertValueByFieldType(defaultValue, field.fieldType),
-      probability: 100,
-    }]
+    field.possibleValues = [
+      {
+        value: convertValueByFieldType(defaultValue, field.fieldType),
+        probability: 100,
+      },
+    ]
   }
 
   resetFieldNumericProps(field)
@@ -564,9 +477,7 @@ const getAllObjectFields = (
   let result: { id: string; label: string }[] = []
 
   fields.forEach((field) => {
-    const fullPath = prefix
-      ? `${prefix}.${field.fieldName}`
-      : field.fieldName
+    const fullPath = prefix ? `${prefix}.${field.fieldName}` : field.fieldName
 
     if (field.fieldType === FieldTypeEnum.Object) {
       result.push({
@@ -576,9 +487,7 @@ const getAllObjectFields = (
 
       // 递归获取子对象字段
       if (field.children && field.children.length > 0) {
-        result = result.concat(
-          getAllObjectFields(field.children, fullPath),
-        )
+        result = result.concat(getAllObjectFields(field.children, fullPath))
       }
     }
   })
@@ -604,11 +513,7 @@ const refreshStructure = () => {
 
 // 更新JSON数据
 const updateJsonFromStruct = () => {
-  config.value.sendData = JSON.stringify(
-    convertJsonStructToJson(config.value.fieldStruct),
-    null,
-    2,
-  )
+  config.value.sendData = JSON.stringify(convertJsonStructToJson(config.value.fieldStruct), null, 2)
 }
 
 // 显示添加字段对话框
@@ -645,15 +550,12 @@ const showEditFieldDialog = (row: JsonStruct) => {
   nextTick(() => {
     // 初始化编辑表单中的可能值数组
     if (currentEditField.value.fieldType === FieldTypeEnum.Enum) {
-      editPossibleValuesArray.value = [
-        ...(currentEditField.value.possibleValues || []),
-      ]
+      editPossibleValuesArray.value = [...(currentEditField.value.possibleValues || [])]
       editSingleDefaultValue.value = undefined
     } else if (!isContainerType(currentEditField.value.fieldType)) {
       // 对于非容器类型，回显第一个有效值或设置默认值
       if (currentEditField.value.possibleValues?.length) {
-        editSingleDefaultValue.value =
-          currentEditField.value.possibleValues[0]?.value
+        editSingleDefaultValue.value = currentEditField.value.possibleValues[0]?.value
       } else {
         editSingleDefaultValue.value = getDefaultValueByType(currentEditField.value.fieldType)
       }
@@ -676,24 +578,14 @@ const confirmAddField = () => {
       const fieldToAdd = { ...newField.value }
 
       // 使用工具函数处理字段的可能值和属性
-      processFieldPossibleValues(
-        fieldToAdd,
-        singleDefaultValue.value,
-        possibleValuesArray.value
-      )
+      processFieldPossibleValues(fieldToAdd, singleDefaultValue.value, possibleValuesArray.value)
 
       // 根据选择的父字段确定添加位置
       if (selectedParentFieldId.value) {
         // 添加到指定的Object字段的children中
-        const findAndAddToParent = (
-          arr: JsonStruct[],
-          parentId: string,
-        ): boolean => {
+        const findAndAddToParent = (arr: JsonStruct[], parentId: string): boolean => {
           for (let i = 0; i < arr.length; i++) {
-            if (
-              arr[i].fieldName === parentId &&
-              arr[i].fieldType === FieldTypeEnum.Object
-            ) {
+            if (arr[i].fieldName === parentId && arr[i].fieldType === FieldTypeEnum.Object) {
               if (!arr[i].children) {
                 arr[i].children = []
               }
@@ -702,22 +594,14 @@ const confirmAddField = () => {
             }
 
             // 递归查找子对象
-            if (
-              arr[i].children &&
-              findAndAddToParent(arr[i].children, parentId)
-            ) {
+            if (arr[i].children && findAndAddToParent(arr[i].children, parentId)) {
               return true
             }
           }
           return false
         }
 
-        if (
-          !findAndAddToParent(
-            config.value.fieldStruct,
-            selectedParentFieldId.value,
-          )
-        ) {
+        if (!findAndAddToParent(config.value.fieldStruct, selectedParentFieldId.value)) {
           ElMessage.error("未找到指定的父字段")
           return
         }
@@ -741,14 +625,11 @@ const confirmEditField = () => {
       processFieldPossibleValues(
         currentEditField.value,
         editSingleDefaultValue.value,
-        editPossibleValuesArray.value
+        editPossibleValuesArray.value,
       )
 
       // 找到字段并更新（支持嵌套查找）
-      const updateField = (
-        arr: JsonStruct[],
-        fieldId: string,
-      ): boolean => {
+      const updateField = (arr: JsonStruct[], fieldId: string): boolean => {
         for (let i = 0; i < arr.length; i++) {
           if (arr[i].fieldName === fieldId) {
             // 更新字段属性，保留minValue和maxValue
@@ -757,20 +638,14 @@ const confirmEditField = () => {
           }
 
           // 递归查找子字段
-          if (
-            arr[i].children &&
-            updateField(arr[i].children, fieldId)
-          ) {
+          if (arr[i].children && updateField(arr[i].children, fieldId)) {
             return true
           }
         }
         return false
       }
 
-      updateField(
-        config.value.fieldStruct,
-        currentEditField.value.fieldName,
-      )
+      updateField(config.value.fieldStruct, currentEditField.value.fieldName)
       editFieldDialogVisible.value = false
       updateJsonFromStruct()
       ElMessage.success("字段更新成功")
@@ -792,10 +667,7 @@ const importTemplate = async () => {
       })
       try {
         const parsedTemplate = JSON.parse(templateContent as string)
-        config.value.fieldStruct = convertToJsonStruct(
-          parsedTemplate,
-          [],
-        )
+        config.value.fieldStruct = convertToJsonStruct(parsedTemplate, [])
         config.value.sendData = JSON.stringify(parsedTemplate, null, 2)
         ElMessage.success("模板导入成功")
       } catch (e) {

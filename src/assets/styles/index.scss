@@ -2,107 +2,107 @@
 
 html,
 body {
-    font-family:
-        Inter, system-ui, Avenir, "Helvetica Neue", Helvetica, "PingFang SC",
-        "Hiragino Sans GB", "Microsoft YaHei", "微软雅黑", Arial, sans-serif;
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
-    margin: 0;
-    padding: 0;
-    height: 100%;
-    overflow: hidden;
-    background-color: var(--el-bg-color-page);
+  font-family:
+    Inter, system-ui, Avenir, "Helvetica Neue", Helvetica, "PingFang SC", "Hiragino Sans GB",
+    "Microsoft YaHei", "微软雅黑", Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  overflow: hidden;
+  background-color: var(--el-bg-color-page);
 }
 
 #app {
-    height: 100vh;
-    overflow: hidden;
+  height: 100vh;
+  overflow: hidden;
 }
 
 // Custom titlebar styles
 .custom-titlebar {
-    -webkit-app-region: drag;
+  -webkit-app-region: drag;
 
-    button,
-    .control-button,
-    .theme-toggle-btn {
-        -webkit-app-region: no-drag;
-    }
+  button,
+  .control-button,
+  .theme-toggle-btn {
+    -webkit-app-region: no-drag;
+  }
 }
 
 // Dark theme root styles
 :root.dark {
-    .custom-titlebar {
-        background: var(--el-bg-color) !important;
-        border-bottom-color: var(--el-border-color) !important;
-    }
+  .custom-titlebar {
+    background: var(--el-bg-color) !important;
+    border-bottom-color: var(--el-border-color) !important;
+  }
 }
 
 // Light theme root styles
 :root:not(.dark) {
-    .custom-titlebar {
-        background: var(--el-bg-color) !important;
-        border-bottom-color: var(--el-border-color) !important;
-    }
+  .custom-titlebar {
+    background: var(--el-bg-color) !important;
+    border-bottom-color: var(--el-border-color) !important;
+  }
 }
 
 // Ensure proper scrolling for content
 .app-content {
-    height: calc(100vh - 40px); // Subtract titlebar height
-    overflow: auto;
+  height: calc(100vh - 40px); // Subtract titlebar height
+  overflow: auto;
 }
 
 .basic-drawer {
-    .el-drawer__header {
-        margin: 0;
-    }
+  .el-drawer__header {
+    margin: 0;
+  }
 }
 
 // Global styles for better Grafana-like appearance
 * {
-    box-sizing: border-box;
+  box-sizing: border-box;
 }
 
 // Smooth transitions for theme switching
 html,
 body,
 #app {
-    transition:
-        background-color 0.3s ease,
-        color 0.3s ease;
+  transition:
+    background-color 0.3s ease,
+    color 0.3s ease;
 }
 
 // Custom scrollbar styles for better integration
 ::-webkit-scrollbar {
-    width: 8px;
-    height: 8px;
+  width: 8px;
+  height: 8px;
 }
 
 ::-webkit-scrollbar-track {
-    background: var(--el-fill-color-lighter);
-    border-radius: 4px;
+  background: var(--el-fill-color-lighter);
+  border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb {
-    background: var(--el-fill-color-dark);
-    border-radius: 4px;
+  background: var(--el-fill-color-dark);
+  border-radius: 4px;
 
-    &:hover {
-        background: var(--el-fill-color-darker);
-    }
+  &:hover {
+    background: var(--el-fill-color-darker);
+  }
 }
 
 // Dark mode scrollbar
 :root.dark {
-    ::-webkit-scrollbar-track {
-        background: var(--el-fill-color-lighter);
-    }
+  ::-webkit-scrollbar-track {
+    background: var(--el-fill-color-lighter);
+  }
 
-    ::-webkit-scrollbar-thumb {
-        background: var(--el-fill-color-light);
+  ::-webkit-scrollbar-thumb {
+    background: var(--el-fill-color-light);
 
-        &:hover {
-            background: var(--el-fill-color);
-        }
+    &:hover {
+      background: var(--el-fill-color);
     }
+  }
 }
